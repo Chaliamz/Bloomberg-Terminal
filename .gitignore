@@ -12,3 +12,6 @@ state/*.json
 !state/.gitkeep
 out/
 *.html.bak
+
+# generated board scratch
+board/board-fragment.html

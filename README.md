@@ -6,7 +6,7 @@ classification, derived cross-asset transmission maps, ICT-style market
 structure, and an R:R-gated setup engine — behind a Bloomberg-style command
 surface.
 
-Python 3.11+, **standard library only**, 163 tests.
+Python 3.11+, **standard library only**, 192 tests.
 
 ## The one design rule
 
@@ -31,6 +31,27 @@ That rule is enforced in code, not asserted in prose:
 The practical consequence: a freshly started radar tells you almost nothing,
 and every blank is labelled. That is the intended behaviour. A dashboard full
 of confident numbers you cannot trace is worth less than an honest blank.
+
+## The board
+
+`python -m macro board` regenerates two artefacts from one registry in
+`macro/board.py`:
+
+| Output | What it is |
+|---|---|
+| `docs/intelligence-terminal.md` | the architecture document: doctrine, source hierarchy, module registry, feed registry |
+| `board/cold-start-terminal.html` | a standalone dark terminal board, no build step, no external assets beyond webfonts |
+
+Both are generated, never hand-edited, so neither can claim more than the package
+delivers &mdash; `tests/test_board.py` fails if a committed artefact drifts from the
+registry, if the page addresses a DOM node that no longer exists, or if a
+market-like number appears on a page whose whole premise is that it holds none.
+
+Live rendering is verified separately with a headless browser:
+
+```bash
+python3 tools/verify_board.py       # 3 viewports x 2 motion settings + tape geometry
+```
 
 ## Quick start
 
@@ -150,9 +171,12 @@ the same reason. There is no bundled consensus table anywhere in this repo.
 macro/            engines (see table above)
 macro/data/       FRED, US Treasury, snapshot store
 macro/render/     single-file HTML terminal
+macro/board.py    module registry -> board + architecture doc
+board/            generated board (standalone + embeddable fragment)
 prompts/          operating system prompt for LLM-driven use
-docs/             spec coverage map
-tests/            163 tests, stdlib unittest
+docs/             spec coverage map, architecture document
+tools/            headless-browser verification for the board
+tests/            192 tests, stdlib unittest
 state.example.json
 ```
 

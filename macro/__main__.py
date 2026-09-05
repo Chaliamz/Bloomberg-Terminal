@@ -97,7 +97,8 @@ def build_parser() -> argparse.ArgumentParser:
         description="Institutional macro intelligence & news radar. Reports only "
                     "what it knows; everything else is UNKNOWN.",
     )
-    p.add_argument("command", choices=sorted(CLI_TO_COMMAND) + ["demo", "selftest", "coverage"],
+    p.add_argument("command",
+                   choices=sorted(CLI_TO_COMMAND) + ["demo", "selftest", "coverage", "board"],
                    help="command to run")
     p.add_argument("arg", nargs="?", help="argument (e.g. a release code for pre-event)")
     p.add_argument("--state", help="path to a market-state JSON file")
@@ -113,6 +114,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "selftest":
         return _selftest()
+    if args.command == "board":
+        from .board import main as board_main
+        return board_main(args.arg or "board/cold-start-terminal.html")
     if args.command == "coverage":
         from .calendar_spec import RELEASES, coverage_report
         print(f"{len(RELEASES)} releases modelled")

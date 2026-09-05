@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Institutional market intelligence architecture at cold start: every live slot marked UNFED with the primary source that would fill it.">
+<title>Cold Start Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500&amp;display=swap">
+<style>
+:root{
+  --ink:#070A12;--ink-2:#0A0F1A;--panel:#0E1421;--panel-2:#111826;
+  --line:#1B2536;--line-hi:#27364C;
+  --amber:#F2A93B;--amber-dim:#8A6524;
+  --cyan:#3FC7C0;--cyan-dim:#1F6B68;
+  --crimson:#E2565F;--crimson-dim:#7A2E33;
+  --violet:#8B7CBD;--violet-dim:#41386B;
+  --txt:#C8D2E0;--txt-2:#93A1B5;--mute:#61708A;--faint:#3D4A5F;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --disp:"Archivo","Archivo Narrow",system-ui,sans-serif;
+  --gap:14px;
+}
+*{box-sizing:border-box}
+html{background:var(--ink)}
+body{margin:0;background:var(--ink);color:var(--txt);font-family:var(--sans);
+  font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{max-width:100%}
+[hidden]{display:none!important}
+#bg{position:fixed;inset:0;z-index:0;display:block;pointer-events:none}
+.wash{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:
+    radial-gradient(1100px 620px at 12% -8%, rgba(242,169,59,.075), transparent 62%),
+    radial-gradient(900px 520px at 92% 4%, rgba(63,199,192,.055), transparent 60%),
+    radial-gradient(1200px 800px at 50% 118%, rgba(139,124,189,.055), transparent 65%);}
+.shell{position:relative;z-index:2}
+
+.mast{border-bottom:1px solid var(--line-hi);
+  background:linear-gradient(180deg,rgba(14,20,33,.97),rgba(7,10,18,.93));
+  padding:14px 20px 0}
+.mast-top{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;
+  flex-wrap:wrap;max-width:1560px;margin:0 auto}
+.brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;min-width:0}
+.brand h1{font-family:var(--disp);font-weight:800;font-size:26px;letter-spacing:-.02em;
+  margin:0;color:var(--amber);text-transform:uppercase;text-wrap:balance}
+.brand .sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.19em;
+  text-transform:uppercase;color:var(--mute)}
+.mast-meta{display:flex;gap:26px;font-family:var(--mono);font-size:10.5px;
+  letter-spacing:.11em;text-transform:uppercase;text-align:right;flex-wrap:wrap}
+.mast-meta div span{display:block;color:var(--faint);font-size:9px;letter-spacing:.2em;
+  margin-bottom:2px}
+.mast-meta div b{font-weight:500;color:var(--txt-2);font-variant-numeric:tabular-nums;
+  white-space:nowrap}
+.tapebar{max-width:1560px;margin:12px auto 0;display:flex;overflow:hidden;
+  border-top:1px solid var(--line)}
+.tapebar .cell{flex:1 1 0;min-width:0;padding:9px 12px;border-right:1px solid var(--line);
+  font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+  display:flex;align-items:center;gap:8px;color:var(--mute);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.tapebar .cell:last-child{border-right:0}
+.tapebar .cell b{color:var(--violet);font-weight:500}
+
+main{max-width:1560px;margin:0 auto;padding:var(--gap) 20px 60px;
+  display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:var(--gap);
+  align-items:start}
+.p{border:1px solid var(--line);background:var(--panel);border-radius:2px;
+  display:flex;flex-direction:column;min-width:0;
+  animation:rise .5s cubic-bezier(.2,.7,.3,1) both}
+.p:nth-child(1){animation-delay:.02s}.p:nth-child(2){animation-delay:.05s}
+.p:nth-child(3){animation-delay:.08s}.p:nth-child(4){animation-delay:.11s}
+.p:nth-child(5){animation-delay:.14s}.p:nth-child(6){animation-delay:.17s}
+.p:nth-child(7){animation-delay:.20s}.p:nth-child(8){animation-delay:.23s}
+.p:nth-child(9){animation-delay:.26s}.p:nth-child(n+10){animation-delay:.29s}
+@keyframes rise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+.p>h2{margin:0;padding:8px 12px;border-bottom:1px solid var(--line);
+  background:var(--panel-2);font-family:var(--mono);font-weight:600;font-size:10.5px;
+  letter-spacing:.17em;text-transform:uppercase;color:var(--txt-2);
+  display:flex;align-items:baseline;justify-content:space-between;gap:6px 12px;
+  flex-wrap:wrap;min-width:0}
+/* The spec label must yield before the panel does: flex:none made it push the
+   header past the viewport on narrow screens. */
+.p>h2 .sec{color:var(--faint);font-weight:400;letter-spacing:.12em;
+  flex:0 1 auto;min-width:0;text-align:right;overflow-wrap:anywhere}
+.p .body{padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.p .body>*{min-width:0}
+.p .body.tight{padding:0}
+.c12{grid-column:span 12}.c8{grid-column:span 8}.c7{grid-column:span 7}
+.c6{grid-column:span 6}.c5{grid-column:span 5}.c4{grid-column:span 4}.c3{grid-column:span 3}
+@media(max-width:1180px){.c8,.c7,.c6,.c5{grid-column:span 12}.c4,.c3{grid-column:span 6}}
+@media(max-width:660px){.c4,.c3{grid-column:span 12}main{padding:var(--gap) 12px 48px}
+  .brand h1{font-size:20px}
+  .mast-meta{gap:10px 14px;text-align:left;font-size:9.5px}
+  .mast{padding:12px 12px 0}
+  /* show every ticker by scrolling rather than clipping seven of ten away */
+  .tapebar{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tapebar .cell{flex:0 0 auto}
+  .p>h2 .sec{font-size:9.5px}}
+
+.lamp{width:7px;height:7px;border-radius:50%;flex:none;display:inline-block;
+  background:var(--violet);box-shadow:0 0 0 2px rgba(139,124,189,.14)}
+.lamp.built{background:var(--cyan);box-shadow:0 0 0 2px rgba(63,199,192,.14);
+  animation:breathe 3.4s ease-in-out infinite}
+.lamp.partial{background:var(--amber);box-shadow:0 0 0 2px rgba(242,169,59,.14)}
+.lamp.spec{background:var(--violet-dim);box-shadow:0 0 0 2px rgba(139,124,189,.09)}
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.42}}
+
+.tag{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  padding:2px 6px;border-radius:2px;border:1px solid;white-space:nowrap;flex:none;
+  display:inline-block}
+.tag.unfed{color:var(--violet);border-color:var(--violet-dim);background:rgba(139,124,189,.07)}
+.tag.built{color:var(--cyan);border-color:var(--cyan-dim);background:rgba(63,199,192,.07)}
+.tag.partial{color:var(--amber);border-color:var(--amber-dim);background:rgba(242,169,59,.07)}
+.tag.spec{color:var(--mute);border-color:var(--line-hi);background:rgba(97,112,138,.06)}
+.tag.t1{color:var(--cyan);border-color:var(--cyan-dim);background:rgba(63,199,192,.07)}
+.tag.t2{color:var(--amber);border-color:var(--amber-dim);background:rgba(242,169,59,.07)}
+.tag.t3{color:var(--txt-2);border-color:var(--line-hi);background:rgba(147,161,181,.06)}
+.tag.t4{color:var(--crimson);border-color:var(--crimson-dim);background:rgba(226,86,95,.07)}
+
+.note{font-size:11.5px;line-height:1.55;color:var(--mute);
+  border-left:2px solid var(--line-hi);padding-left:9px;margin:0}
+.note b{color:var(--txt-2);font-weight:500}
+
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
+th{text-align:left;font-weight:400;font-size:9px;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--faint);padding:7px 12px;border-bottom:1px solid var(--line);
+  position:sticky;top:0;background:var(--panel);z-index:1}
+td{padding:6px 12px;border-bottom:1px solid rgba(27,37,54,.6);vertical-align:top;color:var(--txt-2)}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:rgba(39,54,76,.26)}
+td.k{color:var(--txt);font-weight:500}
+td.u{color:var(--violet)}
+.scroll{overflow:auto;min-width:0;max-width:100%;max-height:340px}
+.scroll::-webkit-scrollbar{width:8px;height:8px}
+.scroll::-webkit-scrollbar-thumb{background:var(--line-hi);border-radius:4px}
+.scroll::-webkit-scrollbar-track{background:transparent}
+
+.tier{border-left:3px solid;padding:9px 0 9px 11px;display:flex;flex-direction:column;gap:5px}
+.tier.a{border-color:var(--cyan)}.tier.b{border-color:var(--amber)}
+.tier.c{border-color:var(--txt-2)}.tier.d{border-color:var(--crimson)}
+.tier-h{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.tier-h strong{font-family:var(--mono);font-size:11px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--txt);font-weight:600}
+.tier-h em{font-style:normal;font-size:11px;color:var(--mute)}
+.orgs{display:flex;flex-wrap:wrap;gap:4px}
+.orgs span{font-family:var(--mono);font-size:9.5px;color:var(--txt-2);
+  border:1px solid var(--line);padding:1px 5px;border-radius:2px;background:var(--ink-2)}
+.tier.d .orgs span{color:var(--mute)}
+
+.rack{display:flex;flex-direction:column}
+.mod{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:9px;align-items:center;
+  padding:7px 12px;border-bottom:1px solid rgba(27,37,54,.6)}
+.rack .mod:last-child{border-bottom:0}
+.mod:hover{background:rgba(39,54,76,.26)}
+.mod .nm{min-width:0}
+.mod .nm b{display:block;font-family:var(--mono);font-size:11px;font-weight:500;
+  color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mod .nm i{font-style:normal;font-size:10px;color:var(--mute);font-family:var(--mono);
+  display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mod .st{display:flex;gap:5px;flex:none}
+
+.wrow{display:grid;grid-template-columns:126px minmax(0,1fr) 42px;gap:10px;align-items:center}
+.wrow .lb{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--txt-2);
+  text-transform:uppercase}
+.wtrack{display:block;height:9px;background:var(--ink-2);border:1px solid var(--line);
+  border-radius:2px;overflow:hidden}
+.wfill{display:block;height:100%;background:var(--amber);border-radius:0 2px 2px 0;
+  transform-origin:left center;animation:grow .85s cubic-bezier(.2,.75,.3,1) both .35s}
+.wrow .vv{font-family:var(--mono);font-size:10.5px;color:var(--amber);text-align:right;
+  font-variant-numeric:tabular-nums}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+.ladder{display:flex;flex-direction:column}
+.rung{display:grid;grid-template-columns:26px minmax(0,1fr);gap:10px;align-items:center;
+  padding:7px 0;border-bottom:1px dashed rgba(27,37,54,.85)}
+.rung:last-child{border-bottom:0}
+.rung .idx{font-family:var(--mono);font-size:10px;color:var(--faint);
+  border:1px solid var(--line);border-radius:2px;text-align:center;padding:1px 0}
+.rung .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--txt-2);
+  text-transform:uppercase}
+.rung.last .idx{border-color:var(--amber-dim);color:var(--amber)}
+.rung.last .lbl{color:var(--amber)}
+
+.chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}
+.chip{border:1px solid var(--line);border-top:2px solid;border-radius:2px;padding:8px 9px;
+  background:var(--ink-2)}
+.chip h4{margin:0 0 3px;font-family:var(--mono);font-size:10px;letter-spacing:.16em;
+  text-transform:uppercase;font-weight:600}
+.chip p{margin:0;font-size:11px;color:var(--mute);line-height:1.45}
+.chip.f{border-top-color:var(--cyan)}.chip.f h4{color:var(--cyan)}
+.chip.d{border-top-color:#7FB3E8}.chip.d h4{color:#7FB3E8}
+.chip.a{border-top-color:var(--amber)}.chip.a h4{color:var(--amber)}
+.chip.i{border-top-color:var(--violet)}.chip.i h4{color:var(--violet)}
+.chip.s{border-top-color:#B08BD6}.chip.s h4{color:#B08BD6}
+.chip.r{border-top-color:var(--crimson)}.chip.r h4{color:var(--crimson)}
+
+.cmds{display:flex;flex-direction:column;gap:7px}
+.cmd{border:1px solid var(--line);border-radius:2px;background:var(--ink-2);
+  padding:8px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;
+  transition:border-color .18s ease,background .18s ease}
+.cmd:hover{border-color:var(--amber-dim);background:rgba(242,169,59,.045)}
+.cmd .key{font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--amber);
+  letter-spacing:.1em}
+.cmd .desc{grid-column:1/-1;font-size:11.5px;color:var(--mute);line-height:1.45}
+
+.regime{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+@media(max-width:900px){.regime{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.regime{grid-template-columns:1fr}}
+.rg{border:1px solid var(--line);border-radius:2px;padding:9px 10px;background:var(--ink-2)}
+.rg .rh{font-family:var(--mono);font-size:9.5px;letter-spacing:.17em;text-transform:uppercase;
+  color:var(--faint);margin-bottom:6px}
+.rg .rv{font-family:var(--mono);font-size:12px;letter-spacing:.09em;color:var(--violet);
+  font-weight:500;margin-bottom:7px}
+.states{display:flex;flex-wrap:wrap;gap:3px}
+.states span{font-family:var(--mono);font-size:9px;color:var(--faint);
+  border:1px solid rgba(27,37,54,.9);padding:1px 4px;border-radius:2px}
+
+.fields{display:grid;grid-template-columns:minmax(0,1fr) auto}
+.fn{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--txt-2);padding:6px 0;border-bottom:1px solid rgba(27,37,54,.6)}
+.fv{font-family:var(--mono);font-size:10.5px;color:var(--violet);text-align:right;
+  padding:6px 0 6px 12px;border-bottom:1px solid rgba(27,37,54,.6)}
+
+.gate{display:flex;flex-direction:column}
+.gcond{display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:9px;align-items:center;
+  font-family:var(--mono);font-size:11px;color:var(--txt-2);padding:5px 0;
+  border-bottom:1px solid rgba(27,37,54,.55)}
+.gcond:last-of-type{border-bottom:0}
+.gcond .bx{width:12px;height:12px;border:1px solid var(--line-hi);border-radius:2px;
+  background:var(--ink-2)}
+.gcond .st{font-size:9.5px;letter-spacing:.13em;color:var(--violet)}
+.verdict{margin-top:8px;border:1px solid var(--crimson-dim);background:rgba(226,86,95,.075);
+  border-radius:2px;padding:10px;text-align:center}
+.verdict b{display:block;font-family:var(--disp);font-weight:800;font-size:18px;
+  letter-spacing:.06em;color:var(--crimson);text-transform:uppercase}
+.verdict span{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--mute)}
+
+.flowwrap{overflow-x:auto;overflow-y:hidden;min-width:0;max-width:100%;
+  padding:4px 0 2px;-webkit-overflow-scrolling:touch}
+.flow{display:block;min-width:1130px;height:auto}
+.dash{stroke-dasharray:5 9;animation:travel 2.6s linear infinite}
+@keyframes travel{to{stroke-dashoffset:-56}}
+
+.mq{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;font-size:12px;
+  color:var(--txt-2);line-height:1.5}
+.mq em{font-style:normal;color:var(--txt)}
+.mq em.hit{color:var(--amber)}
+
+.legend{display:flex;flex-direction:column;gap:7px;border-left:1px solid var(--line);
+  padding-left:20px}
+.legend .lh{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--faint);margin-bottom:1px}
+.legend .row{display:flex;align-items:center;gap:9px}
+.legend .row span:last-child{font-family:var(--mono);font-size:11px;color:var(--txt-2)}
+.legend .tag{width:56px;text-align:center}
+.thesis{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:26px;
+  align-items:start}
+@media(max-width:900px){
+  .thesis{grid-template-columns:1fr;gap:16px}
+  .legend{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:12px}
+}
+.thesis p{margin:0;font-size:14px;line-height:1.65;color:var(--txt)}
+.thesis .hl{color:var(--amber);font-weight:600}
+.thesis .un{color:var(--violet);font-family:var(--mono);font-size:12.5px;letter-spacing:.08em}
+
+footer{max-width:1560px;margin:0 auto;padding:20px;border-top:1px solid var(--line);
+  color:var(--mute);font-size:11.5px;line-height:1.6}
+footer strong{color:var(--txt-2);font-weight:500}
+footer code{font-family:var(--mono);font-size:10.5px;color:var(--amber)}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+noscript .ns{display:block;margin:var(--gap) 20px;padding:12px;border:1px solid var(--amber-dim);
+  background:rgba(242,169,59,.07);color:var(--amber);font-family:var(--mono);font-size:11.5px;
+  border-radius:2px}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
+    transition-duration:.001ms!important}
+}
+</style>
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+<div class="wash" aria-hidden="true"></div>
+
+<div class="shell">
+<header class="mast">
+  <div class="mast-top">
+    <div class="brand">
+      <h1>Cold Start Terminal</h1>
+      <span class="sub">Institutional Market Intelligence &middot; Operating Board</span>
+    </div>
+    <div class="mast-meta">
+      <div><span>Session UTC</span><b id="clock">--:--:--</b></div>
+      <div><span>Modules</span><b><span id="m-built">&mdash;</span> / <span id="m-partial">&mdash;</span> / <span id="m-spec">&mdash;</span></b></div>
+      <div><span>Feeds live</span><b style="color:var(--violet)" id="feeds-live">&mdash;</b></div>
+      <div><span>State</span><b style="color:var(--amber)">COLD START</b></div>
+    </div>
+  </div>
+  <div class="tapebar"><div class="cell">CPI <b>UNFED</b></div><div class="cell">PCE <b>UNFED</b></div><div class="cell">NFP <b>UNFED</b></div><div class="cell">UST 10Y <b>UNFED</b></div><div class="cell">DXY <b>UNFED</b></div><div class="cell">BRENT <b>UNFED</b></div><div class="cell">GOLD <b>UNFED</b></div><div class="cell">BTC <b>UNFED</b></div><div class="cell">HY OAS <b>UNFED</b></div><div class="cell">VIX <b>UNFED</b></div></div>
+</header>
+
+<noscript><span class="ns">This board builds its module rack, tables and counts from an
+embedded registry at load. Enable JavaScript to see them; the doctrine panels below render
+without it.</span></noscript>
+
+<main>
+
+  <section class="p c12">
+    <h2>Board state <span class="sec">§53 &middot; §54 information standard</span></h2>
+    <div class="body">
+      <div class="thesis">
+        <p>Every value slot on this board reads <span class="un">UNFED</span> because no primary
+        source is connected. That is the terminal working correctly, not failing. The governing
+        rule &mdash; <span class="hl">primary data before verified news before market pricing</span>
+        &mdash; makes an invented number strictly worse than a blank one. What the board shows
+        instead is the wiring: which engines hold live logic, which are still specification, and
+        exactly which institution's feed fills each gap. Module status is generated from the
+        package registry, so this page cannot overstate what the system actually does.</p>
+        <div class="legend">
+          <div class="lh">Legend</div>
+          <div class="row"><span class="lamp built"></span><span>Built &mdash; implemented and tested</span></div>
+          <div class="row"><span class="lamp partial"></span><span>Partial &mdash; section incomplete</span></div>
+          <div class="row"><span class="lamp spec"></span><span>Spec &mdash; not yet written</span></div>
+          <div class="row"><span class="tag unfed">Unfed</span><span>No source connected</span></div>
+          <div class="row"><span class="tag t1">Tier 1</span><span>Primary document, outranks all</span></div>
+          <div class="row"><span class="tag t4">Tier 4</span><span>Never treated as confirmed</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="p c5">
+    <h2>Source hierarchy <span class="sec">§1 &middot; §2</span></h2>
+    <div class="body">
+      <div class="tier a"><div class="tier-h"><span class="tag t1">Tier 1</span><strong>Primary / official</strong><em>overrides everything below</em></div><div class="orgs"><span>Federal Reserve</span><span>FOMC</span><span>US Treasury</span><span>BLS</span><span>BEA</span><span>Census</span><span>CFTC</span><span>SEC</span><span>FDIC</span><span>OCC</span><span>OFAC</span><span>EIA</span><span>DoE</span><span>ECB</span><span>Eurostat</span><span>European Commission</span><span>ESMA</span><span>EBA</span><span>BoE</span><span>BoJ</span><span>SNB</span><span>PBoC</span><span>BoC</span><span>RBA</span><span>RBNZ</span><span>Riksbank</span><span>Norges Bank</span><span>RBI</span><span>BCB</span><span>Banxico</span><span>BIS</span><span>IMF</span><span>World Bank</span></div></div><div class="tier b"><div class="tier-h"><span class="tag t2">Tier 2</span><strong>Institutional press</strong><em>speed and context, never override</em></div><div class="orgs"><span>Reuters</span><span>Bloomberg</span><span>Financial Times</span><span>WSJ</span><span>Dow Jones</span><span>AP</span><span>CNBC</span><span>Nikkei Asia</span><span>The Economist</span></div></div><div class="tier c"><div class="tier-h"><span class="tag t3">Tier 3</span><strong>Professional commentary</strong><em>named and attributable</em></div><div class="orgs"><span>Sell-side economists</span><span>Strategists</span><span>Credible financial journalists</span></div></div><div class="tier d"><div class="tier-h"><span class="tag t4">Tier 4</span><strong>Social / alternative</strong><em>never treated as confirmed</em></div><div class="orgs"><span>X</span><span>Telegram</span><span>Reddit</span><span>Blogs</span><span>Anonymous accounts</span></div></div>
+      <p class="note"><b>Independence is counted by organisation, not by citation.</b>
+      Twenty articles tracing to one original report is one information event (§43). A Tier-2 wire
+      saying &ldquo;Reuters reports X&rdquo; is never promoted to &ldquo;X is confirmed&rdquo;
+      without the Tier-1 document.</p>
+    </div>
+  </section>
+
+  <section class="p c7">
+    <h2>Engine rack <span class="sec"><span id="rack-count">&mdash;</span> &middot; logic vs feed</span></h2>
+    <div class="body tight">
+      <div class="scroll" style="max-height:470px"><div class="rack" id="rack"></div></div>
+    </div>
+  </section>
+
+  <section class="p c12">
+    <h2>Geopolitical transmission chain <span class="sec">§12 &middot; never report &ldquo;tensions increased&rdquo;</span></h2>
+    <div class="body">
+      <div class="flowwrap">
+        <svg class="flow" viewBox="0 0 1130 112" role="img" aria-label="Transmission chain from event through supply, commodity, inflation, central bank, rates, FX, equities and credit to crypto">
+          <defs><linearGradient id="wire" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#E2565F"/><stop offset="0.42" stop-color="#F2A93B"/>
+            <stop offset="1" stop-color="#3FC7C0"/></linearGradient></defs>
+          <line x1="24" y1="52" x2="1106" y2="52" stroke="#1B2536" stroke-width="2" fill="none"/>
+          <line x1="24" y1="52" x2="1106" y2="52" stroke="url(#wire)" stroke-width="2" fill="none" class="dash" opacity="0.95"/>
+          <g id="nodes"></g>
+        </svg>
+      </div>
+      <p class="note"><b>The chain is the output, not the headline.</b> A missile test is not a
+      market event until it is priced through physical supply. If a link cannot be established
+      &mdash; no affected supply, no commodity channel &mdash; the event scores high on attention
+      and low on market relevance, and the board says so rather than manufacturing a narrative.</p>
+    </div>
+  </section>
+
+  <section class="p c4">
+    <h2>Priority score model <span class="sec">§45</span></h2>
+    <div class="body">
+      <div style="display:flex;flex-direction:column;gap:7px" id="weights"></div>
+      <div style="border:1px solid var(--cyan-dim);background:rgba(63,199,192,.06);border-radius:2px;padding:9px 10px">
+        <div style="font-family:var(--mono);font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--cyan);margin-bottom:4px">Credibility gate</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--txt-2)">priority = core &times; (0.25 + 0.75 &times; cred/100)</div>
+        <p style="margin:6px 0 0;font-size:11px;color:var(--mute);line-height:1.45">Multiplicative,
+        not additive. An unverifiable claim keeps at most a quarter of its raw score &mdash; so
+        &ldquo;sources say emergency 100bp cut&rdquo; from an anonymous account cannot outrank a
+        confirmed print.</p>
+      </div>
+      <p class="note">Novelty (§45) is handled by the duplicate filter; market sensitivity is folded
+      into impact. Neither is yet a separate input.</p>
+    </div>
+  </section>
+
+  <section class="p c8">
+    <h2>Regime matrix <span class="sec">§39 &middot; §41 &middot; all six undetermined</span></h2>
+    <div class="body">
+      <div class="regime" id="regime"></div>
+      <p class="note"><b>Regime decides the sign, not the data.</b> The same weak payroll is bought
+      under a monetary-driven regime and sold under a growth-driven one. Until these six resolve,
+      every directional cell in the cross-asset map returns
+      <span style="color:var(--violet);font-family:var(--mono)">AMBIGUOUS</span> at zero confidence.</p>
+    </div>
+  </section>
+
+  <section class="p c7">
+    <h2>Central-bank consensus map <span class="sec">§15 &middot; §16 &middot; §17</span></h2>
+    <div class="body tight">
+      <div class="scroll"><table>
+        <thead><tr><th style="width:23%">Bank</th><th style="width:22%">Stance</th>
+        <th style="width:22%">&Delta; vs last</th><th style="width:33%">Primary source of record</th></tr></thead>
+        <tbody id="cbmap"></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="p c5">
+    <h2>Information integrity <span class="sec">§3 &middot; §4</span></h2>
+    <div class="body">
+      <div class="fields"><div class="fn">Source reliability</div><div class="fv">UNSCORED</div><div class="fn">Primary confirmation</div><div class="fv">NO</div><div class="fn">Independent confirmation</div><div class="fv">NO</div><div class="fn">Conflicting reports</div><div class="fv">NONE INGESTED</div><div class="fn">Information age</div><div class="fv">N/A</div><div class="fn">Propaganda risk</div><div class="fv">UNASSESSED</div><div class="fn">Market relevance</div><div class="fv">UNSCORED</div><div class="fn">Confidence</div><div class="fv">0 / 100</div></div>
+      <p class="note"><b>On conflict, the dramatic story never wins by default.</b> The engine emits
+      <span style="color:var(--crimson);font-family:var(--mono);font-size:10.5px">CONFLICTING REPORTS &mdash; NOT CONFIRMED</span>,
+      then separates confirmed facts from disputed claims and names the next confirmation point.</p>
+    </div>
+  </section>
+
+  <section class="p c3">
+    <h2>Golden rule <span class="sec">§54</span></h2>
+    <div class="body">
+      <div class="ladder"><div class="rung"><span class="idx">01</span><span class="lbl">Primary data</span></div><div class="rung"><span class="idx">02</span><span class="lbl">Verified news</span></div><div class="rung"><span class="idx">03</span><span class="lbl">Market pricing</span></div><div class="rung"><span class="idx">04</span><span class="lbl">Positioning</span></div><div class="rung"><span class="idx">05</span><span class="lbl">Cross-asset confirm</span></div><div class="rung"><span class="idx">06</span><span class="lbl">On-chain / flow</span></div><div class="rung"><span class="idx">07</span><span class="lbl">Market structure</span></div><div class="rung last"><span class="idx">08</span><span class="lbl">Trade</span></div></div>
+      <p class="note">Numbering here is precedence, not decoration. A convincing narrative never
+      reverses the order.</p>
+    </div>
+  </section>
+
+  <section class="p c4">
+    <h2>Trade gate <span class="sec">§51 &middot; §52</span></h2>
+    <div class="body">
+      <div class="gate"><div class="gcond"><span class="bx"></span><span>Catalyst exists</span><span class="st">UNMET</span></div><div class="gcond"><span class="bx"></span><span>Structure confirms</span><span class="st">UNMET</span></div><div class="gcond"><span class="bx"></span><span>Liquidity target identified</span><span class="st">UNMET</span></div><div class="gcond"><span class="bx"></span><span>Invalidation is clear</span><span class="st">UNMET</span></div><div class="gcond"><span class="bx"></span><span>R:R ≥ 3R net of costs</span><span class="st">UNMET</span></div><div class="gcond"><span class="bx"></span><span>Risk ≤ 1% of equity</span><span class="st">UNMET</span></div><div class="gcond"><span class="bx"></span><span>No conflicting catalyst</span><span class="st">UNMET</span></div>
+        <div class="verdict"><b>No Trade</b><span>0 of 7 conditions met</span></div>
+      </div>
+      <p class="note">The gate is implemented; the §52 confluence score (macro, fundamentals,
+      liquidity, positioning, structure at 20 each) is not. Preference is 5R; 3R is the floor,
+      measured after costs on both legs.</p>
+    </div>
+  </section>
+
+  <section class="p c5">
+    <h2>Master question <span class="sec">§55 &middot; asked of every event</span></h2>
+    <div class="body">
+      <ol class="mq"><li>What did the market believe before this arrived?</li><li>What new information actually arrived?</li><li>How much does it move the distribution of outcomes?</li><li>What <em>should</em> react, on theory?</li><li>What <em class="hit">did</em> react?</li><li>Where is positioning vulnerable?</li><li>Where is liquidity concentrated?</li><li>What is already priced?</li><li>What remains unpriced?</li><li>What is the next confirmation signal?</li><li>What would invalidate the thesis?</li></ol>
+      <p class="note">Question 5 minus question 4 is the highest-value output the terminal produces
+      &mdash; and the one engine still unbuilt (§34).</p>
+    </div>
+  </section>
+
+  <section class="p c7">
+    <h2>Feed registry <span class="sec">contracted sources &middot; connection state</span></h2>
+    <div class="body tight">
+      <div class="scroll" style="max-height:392px"><table>
+        <thead><tr><th style="width:26%">Function</th><th style="width:34%">Source of record</th>
+        <th style="width:22%">Role</th><th style="width:18%">State</th></tr></thead>
+        <tbody id="feeds"></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="p c5">
+    <h2>Callable functions <span class="sec">§47 &ndash; §50</span></h2>
+    <div class="body"><div class="cmds"><div class="cmd"><span class="key">WHAT MATTERS</span><span class="tag built">built</span><span class="desc">Top five developments only. What changed, why it matters, what is priced, what is not, next catalyst.</span></div><div class="cmd"><span class="key">BEFORE THE MARKET</span><span class="tag built">built</span><span class="desc">Next 24h ranked by probability × impact: releases, speeches, auctions, expiries, unscheduled risk.</span></div><div class="cmd"><span class="key">PRE-EVENT</span><span class="tag built">built</span><span class="desc">T−60m / T−30m / T−15m expectation map / T−5m execution map.</span></div><div class="cmd"><span class="key">WHY IS PRICE MOVING</span><span class="tag partial">partial</span><span class="desc">Ranks probable causes across news, rates, positioning, liquidity and structure.</span></div><div class="cmd"><span class="key">REACTION CHECK</span><span class="tag spec">spec</span><span class="desc">Expected reaction against actual. A divergence outranks the headline that caused it.</span></div><div class="cmd"><span class="key">EARLY WARNING</span><span class="tag spec">spec</span><span class="desc">Credible, evidenced, not yet mainstream. Never manufactured — an empty result is a valid result.</span></div></div></div>
+  </section>
+
+  <section class="p c12">
+    <h2>Information standard <span class="sec">§53 &middot; these six never mix</span></h2>
+    <div class="body"><div class="chips"><div class="chip f"><h4>Fact</h4><p>Directly verified against the issuing institution&#x27;s own document.</p></div><div class="chip d"><h4>Data</h4><p>Quantitative observation with a unit, a timestamp and a source.</p></div><div class="chip a"><h4>Analysis</h4><p>Interpretation of fact and data. Carries a confidence.</p></div><div class="chip i"><h4>Inference</h4><p>System-generated conclusion. Never given the weight of a fact.</p></div><div class="chip s"><h4>Scenario</h4><p>Conditional outcome with an explicit trigger and invalidation.</p></div><div class="chip r"><h4>Rumor</h4><p>Unverified. Labelled, quarantined, excluded from any decision.</p></div></div></div>
+  </section>
+
+</main>
+
+<footer>
+  <strong>Reading this board.</strong> Cyan marks logic that exists and is tested, amber marks a
+  section only partly implemented, violet marks a slot with no data behind it. The module rack and
+  every count on this page are generated from the registry in <code>macro/board.py</code>, so the
+  board cannot claim more than the package delivers. Nothing here is a market observation, a price,
+  a forecast or investment advice &mdash; the terminal has no feeds attached, and states so rather
+  than filling the gap. Total modules 40: 18 built, 3 partial,
+  19 specified.
+</footer>
+</div>
+
+<script>window.__BOARD__={"modules": [{"name": "Source hierarchy & tiering", "sections": "§1 · §2", "status": "BUILT", "module": "macro/sources.py", "feed": "Wire access + institution registry", "note": "Four tiers by registrable domain suffix; independence counted by host."}, {"name": "Information integrity / anti-propaganda", "sections": "§3 · §4", "status": "BUILT", "module": "macro/sources.py", "feed": "Tier-1 document store", "note": "Six misinformation patterns; conflicting reports never resolve to the more dramatic claim."}, {"name": "Event surprise model", "sections": "§4 · §33", "status": "BUILT", "module": "macro/surprise.py", "feed": "Consensus + historical surprise series", "note": "Standardised only against supplied history; no bundled sigma table."}, {"name": "Release calendar & indicator semantics", "sections": "§5 · §6 (schedule layer)", "status": "BUILT", "module": "macro/calendar_spec.py", "feed": "Agency release calendars", "note": "58 releases, 11 jurisdictions. Clocks and signs only, never values."}, {"name": "Central-bank speech intelligence", "sections": "§15", "status": "BUILT", "module": "macro/centralbank.py", "feed": "Speech archives (Fed · ECB · BoE · BoJ)", "note": "Weighted lexicon, five-level tone, statement diffing including deletions."}, {"name": "Yield-curve regime", "sections": "§9 (curve layer)", "status": "BUILT", "module": "macro/curve.py", "feed": "UST par curve · TIPS · breakevens", "note": "Four canonical moves; refuses attribution without real yields."}, {"name": "Global liquidity & funding conditions", "sections": "§10", "status": "BUILT", "module": "macro/liquidity.py", "feed": "BIS · NY Fed · FRED", "note": "16-input panel with hard alarms and coverage-weighted confidence."}, {"name": "Cross-asset transmission & second order", "sections": "§12 · §19", "status": "BUILT", "module": "macro/reaction.py", "feed": "Cross-asset price series", "note": "Cells derived from a stated chain, not a correlation table."}, {"name": "Unexplained-move detector", "sections": "§50", "status": "BUILT", "module": "macro/liquidity.py", "feed": "Tick data + headline stream", "note": "Emits weighted candidates; structurally cannot name a cause."}, {"name": "Market structure & liquidity mapping", "sections": "§30", "status": "BUILT", "module": "macro/structure.py", "feed": "OHLCV series", "note": "Pivot-confirmation lag enforced: no lookahead in any break."}, {"name": "Trade gate", "sections": "§51", "status": "BUILT", "module": "macro/setups.py", "feed": "Structure + catalyst + cost model", "note": "Five independent refusal gates; costs enter both legs and the size."}, {"name": "Event whipsaw protocol", "sections": "§31 (execution layer)", "status": "BUILT", "module": "macro/setups.py", "feed": "Pre-event range levels", "note": "Four-phase sequence; never enter the first spike."}, {"name": "Duplicate & noise filter", "sections": "§26 · §43", "status": "BUILT", "module": "macro/noise.py", "feed": "Headline stream", "note": "Near-duplicate collapse; the expectation-change test decides ranking."}, {"name": "Information priority score", "sections": "§45", "status": "BUILT", "module": "macro/scoring.py", "feed": "Scored events", "note": "Credibility multiplies rather than adds; floor 0.25."}, {"name": "Information latency & staleness", "sections": "§16 · §42", "status": "BUILT", "module": "macro/scoring.py", "feed": "Publication timestamps", "note": "Public detectability only — never a claim of non-public access."}, {"name": "Event alert format", "sections": "§25", "status": "BUILT", "module": "macro/events.py", "feed": "Any scored event", "note": "Every field renders UNKNOWN rather than a placeholder."}, {"name": "Daily dashboard / brief", "sections": "§46", "status": "BUILT", "module": "macro/brief.py", "feed": "Populated market state", "note": "Twelve sections; trading bias defaults to WAIT and must be earned."}, {"name": "Feed adapters", "sections": "§1 (transport)", "status": "BUILT", "module": "macro/data/", "feed": "FRED key · home.treasury.gov egress", "note": "Return Unavailable rather than substituting a cached value."}, {"name": "Regime detection", "sections": "§39 · §41", "status": "PARTIAL", "module": "macro/regime.py · liquidity.py", "feed": "Full cross-asset panel", "note": "Risk/liquidity regime is classified from data; monetary, inflation and growth regimes are supplied inputs. Geopolitical and volatility regimes are absent."}, {"name": "Pre-event radar", "sections": "§31", "status": "PARTIAL", "module": "macro/preevent.py", "feed": "Consensus · implied vol · positioning", "note": "T−60 / T−30 / T−15 / T−5 implemented. The T−24h slice specified in §31 is not."}, {"name": "Command surface", "sections": "§47 – §50", "status": "PARTIAL", "module": "macro/radar.py", "feed": "Populated event book", "note": "WHAT MATTERS and BEFORE THE MARKET are built; WHY IS PRICE MOVING is partial via the anomaly detector; EARLY WARNING is not implemented."}, {"name": "Inflation breadth & persistence", "sections": "§5", "status": "SPEC", "module": "", "feed": "BLS component detail", "note": "Breadth, persistence, services/goods split and energy pass-through are not computed."}, {"name": "Labor regime classifier", "sections": "§6", "status": "SPEC", "module": "", "feed": "BLS · DOL/ETA · JOLTS", "note": "Payrolls against claims, JOLTS, wages and hours is not implemented."}, {"name": "Growth nowcasting", "sections": "§7 · §32", "status": "SPEC", "module": "", "feed": "PMI · ISM · freight · claims · tax receipts", "note": "Must be built point-in-time: no look-ahead from later releases."}, {"name": "Fiscal policy engine", "sections": "§8", "status": "SPEC", "module": "", "feed": "CBO · Treasury statements", "note": "Fiscal impulse and its rates/FX transmission."}, {"name": "Treasury auction analytics", "sections": "§9 (auction layer)", "status": "SPEC", "module": "", "feed": "TreasuryDirect results", "note": "Bid-to-cover, tail vs when-issued, indirect take-down."}, {"name": "Market-implied policy pricing", "sections": "§17", "status": "SPEC", "module": "", "feed": "OIS · fed funds · SOFR futures", "note": "The single highest-value missing input: without it, 'what is priced' stays UNKNOWN everywhere."}, {"name": "Positioning engine", "sections": "§18", "status": "SPEC", "module": "", "feed": "CFTC COT · ETF flows", "note": "Separates a fundamental signal from a crowded one."}, {"name": "Derivatives & liquidation radar", "sections": "§25 · §26", "status": "SPEC", "module": "", "feed": "Options chain · OI · funding", "note": "Requires a chain no free public endpoint supplies."}, {"name": "Energy intelligence", "sections": "§13", "status": "SPEC", "module": "", "feed": "EIA · IEA · OPEC", "note": "Physical supply shock into inflation into rates."}, {"name": "Commodity intelligence", "sections": "§14", "status": "SPEC", "module": "", "feed": "Exchange stocks · crop reports", "note": "Metals and agriculture with inventory and weather."}, {"name": "Central-bank consensus map", "sections": "§16", "status": "SPEC", "module": "", "feed": "Official calendars + speeches", "note": "The stance / last stance / change / next-action structure does not exist as data."}, {"name": "Geopolitical & early warning", "sections": "§11 · §35 · §48", "status": "SPEC", "module": "", "feed": "ACLED · SIPRI · government primaries", "note": "Signal / confirmation / probability / impact, never weak signal to claim."}, {"name": "Supply-chain & tariff", "sections": "§36 · §37", "status": "SPEC", "module": "", "feed": "Freight · Baltic · customs · WTO", "note": "Inflationary supply shock before it reaches CPI."}, {"name": "Crypto on-chain intelligence", "sections": "§20 – §24", "status": "SPEC", "module": "", "feed": "Glassnode · CryptoQuant · CoinGlass", "note": "Network, supply, miners, stablecoins, ETF flow."}, {"name": "Capital-flow map", "sections": "§40", "status": "SPEC", "module": "", "feed": "Treasury TIC · fund flows", "note": "Where capital moves, not where price moves."}, {"name": "Systemic-risk radar", "sections": "§38", "status": "SPEC", "module": "", "feed": "FDIC · CDS · spreads", "note": "Banking, credit, sovereign and market legs into one score."}, {"name": "Market reaction analyzer", "sections": "§34", "status": "SPEC", "module": "", "feed": "Live cross-asset tape", "note": "Expected reaction against actual. A divergence outranks the headline — the highest-value output still missing."}, {"name": "Narrative vs data", "sections": "§44", "status": "SPEC", "module": "", "feed": "Headline stream + macro series", "note": "Tracks the live narrative against what the data says."}, {"name": "Confluence scoring", "sections": "§52", "status": "SPEC", "module": "", "feed": "All engines populated", "note": "Macro / fundamentals / liquidity / positioning / structure at 20 each."}], "weights": [["Market impact", 0.36], ["Surprise", 0.26], ["Expected volatility", 0.18], ["Information latency", 0.1], ["Directional conf.", 0.1]], "regimes": [["Monetary", "Fed-driven · ECB-driven · liquidity-driven"], ["Inflation", "Deflation · disinflation · inflation · stagflation"], ["Growth", "Expansion · slowdown · recession"], ["Liquidity", "Expansion · contraction · stress"], ["Geopolitical", "Stable · elevated · crisis"], ["Volatility", "Low · normal · high · extreme"]], "banks": [["Federal Reserve", "federalreserve.gov"], ["ECB", "ecb.europa.eu"], ["Bank of England", "bankofengland.co.uk"], ["Bank of Japan", "boj.or.jp"], ["SNB", "snb.ch"], ["Bank of Canada", "bankofcanada.ca"], ["RBA", "rba.gov.au"], ["RBNZ", "rbnz.govt.nz"], ["PBoC", "pbc.gov.cn"], ["Riksbank", "riksbank.se"], ["Norges Bank", "norges-bank.no"], ["RBI", "rbi.org.in"], ["Banco Central do Brasil", "bcb.gov.br"], ["Banxico", "banxico.org.mx"]], "feeds": [["US macro", "BLS · BEA · Census", "Primary data"], ["Monetary policy", "Federal Reserve / FOMC", "Rates + speeches"], ["Europe", "ECB · Eurostat", "Macro + policy"], ["Global macro", "IMF · World Bank · BIS", "System level"], ["Global liquidity", "BIS", "Cross-border credit"], ["Treasury flows", "US Treasury TIC", "Foreign capital"], ["Energy", "EIA · IEA · OPEC", "Physical market"], ["Positioning", "CFTC", "Futures positioning"], ["Geopolitics", "UN · NATO · governments", "Primary confirmation"], ["Conflict", "ACLED", "Near-real-time events"], ["Military", "SIPRI", "Arms + expenditure"], ["Crypto on-chain", "Glassnode · CryptoQuant", "Network + supply"], ["Crypto derivatives", "CoinGlass · Kaiko", "OI · funding · liquidations"], ["Breaking news", "Reuters · Bloomberg · FT", "Speed + context"], ["Deep research", "IMF · BIS · central banks", "Analysis"]], "chain": ["Event", "Supply", "Commodity", "Inflation", "Central bank", "Rates", "FX", "Equities", "Credit", "Crypto"]};</script>
+<script>
+(function(){
+"use strict";
+var D=window.__BOARD__;
+function e(s){return String(s).replace(/[&<>"]/g,function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+function q(id){return document.getElementById(id);}
+/* Every DOM write goes through these. A missing node must degrade one panel,
+   never abort the script and take the rest of the board down with it. */
+function setText(id,v){var el=q(id);if(el){el.textContent=v;}
+  else if(window.console&&console.warn){console.warn("board: missing #"+id);}}
+function setHTML(id,v){var el=q(id);if(el){el.innerHTML=v;}
+  else if(window.console&&console.warn){console.warn("board: missing #"+id);}}
+
+/* ---- engine rack: counts are derived here, never typed ---- */
+var built=0,partial=0,spec=0;
+setHTML("rack",D.modules.map(function(m){
+  if(m.status==="BUILT")built++;else if(m.status==="PARTIAL")partial++;else spec++;
+  var cls=m.status.toLowerCase();
+  var where=m.module?m.module:"not implemented";
+  return '<div class="mod" title="'+e(m.note)+'">'
+    +'<span class="lamp '+cls+'" aria-hidden="true"></span>'
+    +'<span class="nm"><b>'+e(m.name)+'</b><i>'+e(m.sections)+' &middot; '+e(where)
+    +' &middot; needs '+e(m.feed)+'</i></span>'
+    +'<span class="st"><span class="tag '+cls+'">'+e(m.status)+'</span>'
+    +'<span class="tag unfed">Unfed</span></span></div>';
+}).join(""));
+setText("m-built",built+" built");
+setText("m-partial",partial+" partial");
+setText("m-spec",spec+" spec");
+setText("rack-count",D.modules.length+" modules");
+setText("feeds-live","0 of "+D.feeds.length);
+
+/* ---- priority weights ---- */
+var maxw=Math.max.apply(null,D.weights.map(function(w){return w[1];}));
+setHTML("weights",D.weights.map(function(w,i){
+  return '<div class="wrow"><span class="lb">'+e(w[0])+'</span>'
+    +'<span class="wtrack"><span class="wfill" style="width:'
+    +(w[1]/maxw*100).toFixed(1)+'%;animation-delay:'+(0.35+i*0.07).toFixed(2)+'s"></span></span>'
+    +'<span class="vv">'+w[1].toFixed(2)+'</span></div>';
+}).join(""));
+
+/* ---- regimes ---- */
+setHTML("regime",D.regimes.map(function(r){
+  return '<div class="rg"><div class="rh">'+e(r[0])+' regime</div>'
+    +'<div class="rv">UNDETERMINED</div><div class="states">'
+    +r[1].split(" · ").map(function(x){return "<span>"+e(x)+"</span>";}).join("")
+    +'</div></div>';
+}).join(""));
+
+/* ---- tables ---- */
+setHTML("cbmap",D.banks.map(function(b){
+  return '<tr><td class="k">'+e(b[0])+'</td><td class="u">UNFED</td>'
+    +'<td class="u">&mdash;</td><td style="color:var(--mute)">'+e(b[1])+'</td></tr>';
+}).join(""));
+setHTML("feeds",D.feeds.map(function(f){
+  return '<tr><td class="k">'+e(f[0])+'</td><td>'+e(f[1])+'</td>'
+    +'<td style="color:var(--mute)">'+e(f[2])+'</td>'
+    +'<td><span class="tag unfed">Not connected</span></td></tr>';
+}).join(""));
+
+/* ---- transmission chain ---- */
+(function(){
+  var n=D.chain.length,x0=24,x1=1106,step=(x1-x0)/(n-1),out="";
+  for(var i=0;i<n;i++){
+    var x=(x0+step*i).toFixed(1);
+    var hue=i<2?"#E2565F":(i<6?"#F2A93B":"#3FC7C0");
+    var idx=(i+1)<10?("0"+(i+1)):String(i+1);
+    out+='<circle cx="'+x+'" cy="52" r="6.5" fill="#0E1421" stroke="'+hue+'" stroke-width="2"/>'
+      +'<circle cx="'+x+'" cy="52" r="2.2" fill="'+hue+'"/>'
+      +'<text x="'+x+'" y="82" text-anchor="middle" fill="#C8D2E0" font-family="IBM Plex Mono, monospace" font-size="10.5">'+e(D.chain[i])+'</text>'
+      +'<text x="'+x+'" y="99" text-anchor="middle" fill="#3D4A5F" font-family="IBM Plex Mono, monospace" font-size="8.5" letter-spacing="1.2">'+idx+'</text>'
+      +'<text x="'+x+'" y="28" text-anchor="middle" fill="#8B7CBD" font-family="IBM Plex Mono, monospace" font-size="8.5" letter-spacing="1">UNFED</text>';
+  }
+  setHTML("nodes",out);
+})();
+
+/* ---- clock ---- */
+(function(){
+  if(!q("clock"))return;
+  function tick(){setText("clock",new Date().toISOString().slice(11,19)+"Z");}
+  tick();setInterval(tick,1000);
+})();
+
+/* ---- ambient canvas: seamless parallax tape + CRT sweep ---- */
+(function(){
+  var c=q("bg");if(!c||!c.getContext)return;
+  var ctx=c.getContext("2d");if(!ctx)return;
+  var reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var W=0,H=0,dpr=1,layers=[],sweep=-0.25,N=280;
+
+  /* Periodic sums of sinusoids with integer wavenumbers: the series is exactly
+     cyclic over N, so rotating the ring scrolls it with no seam and no drain. */
+  function makeLayer(seed,speed,alpha,hue){
+    var pts=[],k=[3,7,13],a=[0.16,0.09,0.05];
+    for(var i=0;i<N;i++){
+      var y=0.5;
+      for(var j=0;j<3;j++){y+=a[j]*Math.sin(2*Math.PI*k[j]*i/N+seed*(j+1));}
+      pts.push(Math.max(0.06,Math.min(0.94,y)));
+    }
+    return {pts:pts,speed:speed,alpha:alpha,hue:hue,acc:0};
+  }
+  function resize(){
+    dpr=Math.min(window.devicePixelRatio||1,2);
+    W=c.width=Math.max(1,Math.floor(innerWidth*dpr));
+    H=c.height=Math.max(1,Math.floor(innerHeight*dpr));
+    c.style.width=innerWidth+"px";c.style.height=innerHeight+"px";
+  }
+  function drawLayer(L){
+    var seg=W/(N-1),i,x,y;
+    ctx.beginPath();
+    for(i=0;i<=N;i++){
+      x=(i-L.acc)*seg;y=L.pts[i%N]*H;
+      if(i===0){ctx.moveTo(x,y);}
+      else{ctx.lineTo(x,L.pts[(i-1)%N]*H);ctx.lineTo(x,y);}
+    }
+    ctx.strokeStyle=L.hue;ctx.globalAlpha=L.alpha;ctx.lineWidth=dpr;
+    ctx.stroke();ctx.globalAlpha=1;
+  }
+  function frame(){
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle="#070A12";ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle="rgba(27,37,54,0.55)";ctx.lineWidth=1;
+    var gs=64*dpr,x,y;
+    for(x=0;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(y=0;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    for(var i=0;i<layers.length;i++){
+      var L=layers[i];
+      if(!reduce){
+        L.acc+=L.speed;
+        while(L.acc>=1){L.pts.push(L.pts.shift());L.acc-=1;}
+      }
+      drawLayer(L);
+    }
+    if(!reduce){
+      sweep+=0.0016;if(sweep>1.25)sweep=-0.25;
+      var sx=sweep*W,g=ctx.createLinearGradient(sx-150*dpr,0,sx+18*dpr,0);
+      g.addColorStop(0,"rgba(242,169,59,0)");
+      g.addColorStop(0.82,"rgba(242,169,59,0.045)");
+      g.addColorStop(1,"rgba(242,169,59,0.11)");
+      ctx.fillStyle=g;ctx.fillRect(sx-150*dpr,0,168*dpr,H);
+      ctx.fillStyle="rgba(242,169,59,0.16)";ctx.fillRect(sx,0,dpr,H);
+      requestAnimationFrame(frame);
+    }
+  }
+  layers=[makeLayer(1.3,0.055,0.16,"#F2A93B"),
+          makeLayer(4.7,0.032,0.11,"#3FC7C0"),
+          makeLayer(8.1,0.018,0.08,"#8B7CBD")];
+  resize();frame();
+  addEventListener("resize",function(){resize();if(reduce)frame();},{passive:true});
+})();
+})();
+</script>
+</body>
+</html>
