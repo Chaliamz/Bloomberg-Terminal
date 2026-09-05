@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "macro-radar"
+version = "1.0.0"
+description = "Institutional macro intelligence and news radar: event scoring, cross-asset transmission, and market structure, with a hard no-fabrication contract."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+# Only needed on hosts whose tzdata is trimmed and lacks some IANA zones.
+tz = ["tzdata>=2024.1"]
+
+[project.scripts]
+macro = "macro.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["macro*"]
+
+[tool.setuptools.package-data]
+macro = ["py.typed"]

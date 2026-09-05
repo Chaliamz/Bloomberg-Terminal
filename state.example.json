@@ -1,0 +1,39 @@
+{
+  "_comment": [
+    "Market-state input. Every field is optional; anything absent stays UNKNOWN.",
+    "Nothing here is bundled data - these are placeholder shapes you overwrite",
+    "with real values that you have sourced yourself. Delete any field you",
+    "cannot source rather than leaving a stale number in place.",
+    "tier: PRIMARY | INSTITUTIONAL | PROFESSIONAL | SOCIAL | UNKNOWN"
+  ],
+  "regime": "UNKNOWN",
+  "regime_basis": "State how you established the regime, or leave it UNKNOWN.",
+  "observations": {
+    "US2Y":       {"value": null, "unit": "pct", "as_of": null, "source": "", "tier": "PRIMARY"},
+    "US2Y_PRIOR": {"value": null, "unit": "pct", "as_of": null, "source": "", "tier": "PRIMARY"},
+    "US10Y":      {"value": null, "unit": "pct", "as_of": null, "source": "", "tier": "PRIMARY"},
+    "US10Y_PRIOR":{"value": null, "unit": "pct", "as_of": null, "source": "", "tier": "PRIMARY"},
+    "US10Y_REAL": {"value": null, "unit": "pct", "as_of": null, "source": "", "tier": "PRIMARY"},
+    "US10Y_BREAKEVEN": {"value": null, "unit": "pct", "as_of": null, "source": "", "tier": "PRIMARY"},
+    "DXY":        {"value": null, "unit": "index", "as_of": null, "source": "", "tier": "INSTITUTIONAL"},
+    "VIX":        {"value": null, "unit": "index", "as_of": null, "source": "", "tier": "INSTITUTIONAL"},
+    "HY_OAS":     {"value": null, "unit": "bp", "as_of": null, "source": "", "tier": "PRIMARY"},
+    "SOFR":       {"value": null, "unit": "pct", "as_of": null, "source": "", "tier": "PRIMARY"},
+    "IORB":       {"value": null, "unit": "pct", "as_of": null, "source": "", "tier": "PRIMARY"}
+  },
+  "changes_z": {
+    "_comment": "Standardised daily changes you computed from your own history.",
+    "vix": null, "spx_pct": null, "dxy": null, "hy_oas_bp": null
+  },
+  "session_levels": {
+    "prev_day_high": null, "prev_day_low": null,
+    "prev_week_high": null, "prev_week_low": null,
+    "asia_high": null, "asia_low": null,
+    "london_high": null, "london_low": null,
+    "ny_high": null, "ny_low": null
+  },
+  "market_pricing": {
+    "Federal Reserve": "",
+    "ECB": ""
+  }
+}
