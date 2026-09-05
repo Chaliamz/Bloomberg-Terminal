@@ -12,11 +12,14 @@ outbound network is available; the terminal always renders the true age.
 
 from __future__ import annotations
 
-from .live import Headline, Quote, RELEASE_CLOCK, Snapshot
+from .live import (GeoEvent, Gauge, Headline, Liquidations, Quote,
+                   RELEASE_CLOCK, Snapshot)
 
 __all__ = ["build"]
 
 CLOSE = "2026-09-04T20:00:00Z"      # US cash close, 16:00 ET
+CRYPTO = "2026-09-04T11:21:00Z"     # 07:21 ET - crypto prints, PRE-payrolls
+LIQ = "2026-09-04T03:52:00Z"        # liquidation window close
 SESSION = "2026-09-04T21:00:00Z"    # end of the US session
 CAPTURE = "2026-09-05T13:00:00Z"    # when this scan was performed
 
@@ -26,6 +29,11 @@ _INV = "https://au.investing.com/news/stock-market-news/global-macro-outlook-hor
 _FED = "https://www.federalreserve.gov/newsevents/pressreleases/monetary20260729a.htm"
 _BLS_CPI = "https://www.bls.gov/news.release/cpi.nr0.htm"
 _FRB_MIN = "https://www.federalreserve.gov/monetarypolicy/fomcminutes20260729.htm"
+_RIO = "https://www.riotimesonline.com/global-economy-briefing-september-5-2026/"
+_YF = "https://finance.yahoo.com/personal-finance/investing/article/bitcoin-and-ethereum-prices-today-friday-september-4-2026-bitcoin-holding-above-81000-following-massive-etf-inflows-113751298.html"
+_BLOCK = "https://www.theblock.co/news/markets/2026-09-04-us-bitcoin-etfs-largest-inflow-day-since-january-413515"
+_COINOTAG = "https://en.coinotag.com/bitcoin-leads-468-million-crypto-liquidations-24-hours"
+_FAF = "https://www.faf.ae/home/2026/9/1/irans-war-returns-hormuz-bleeds-and-the-worlds-bond-markets-brace-for-a-geopolitical-inflation-shock"
 
 _Q = [
     # ---- rates ----------------------------------------------------------
@@ -33,10 +41,11 @@ _Q = [
          url=_CNBC, label="UST 2Y", change=8.0, change_unit="bp", confidence=0.75,
          note="Reported as an 8bp climb breaching 4.416%, highest since Jan 2025. "
               "A second, lower-tier report said +12bp to 4.35% - see conflicts."),
-    dict(key="US10Y", value=4.76, unit="pct", as_of=CLOSE, source="CNBC", tier=2,
-         url=_CNBC, label="UST 10Y", change=0.0, change_unit="bp", confidence=0.85,
-         note="Little changed on the day; +5bp over five sessions. One source "
-              "described it as climbing to roughly 4.80% intraday post-payrolls."),
+    dict(key="US10Y", value=4.79, unit="pct", as_of=CLOSE, source="Rio Times briefing",
+         tier=3, url=_RIO, label="UST 10Y", change=3.0, change_unit="bp", confidence=0.8,
+         note="Reported as 4.789% on the 5 September briefing, corroborating a second "
+              "account of a climb to roughly 4.80% after payrolls. CNBC separately "
+              "described the close as 'little changed at 4.76%' - see conflicts."),
     # ---- equities -------------------------------------------------------
     dict(key="SPX", value=7718.60, unit="index", as_of=CLOSE, source="TheStreet", tier=2,
          url=_TS, label="S&P 500", change=-0.38, change_unit="pct", confidence=0.9),
@@ -53,12 +62,11 @@ _Q = [
               "low given the front-end repricing - the vol market is not pricing the "
               "hike risk the rates market is."),
     # ---- fx -------------------------------------------------------------
-    dict(key="DXY", value=99.13, unit="index", as_of=CLOSE,
-         source="Search aggregate (Investing.com / Yahoo Finance)", tier=3,
-         url="https://www.investing.com/indices/usdollar", label="Dollar index",
-         change=0.25, change_unit="pct", confidence=0.65,
-         note="Retrieved from an aggregated summary, not a primary quote page. "
-              "Carried as a level and a direction, not as a print."),
+    dict(key="DXY", value=99.16, unit="index", as_of=CLOSE, source="Rio Times briefing",
+         tier=3, url=_RIO, label="Dollar index", change=0.25, change_unit="pct",
+         confidence=0.75,
+         note="Reported as 99.157. An earlier aggregated summary gave 99.13; the two "
+              "agree to within noise and the more precise figure is carried."),
     # ---- commodities ----------------------------------------------------
     dict(key="BRENT", value=97.62, unit="usd_bbl", as_of=SESSION, source="Investing.com",
          tier=2, url=_INV, label="Brent crude", change=7.0, change_unit="pct",
@@ -69,20 +77,67 @@ _Q = [
          tier=3, url="https://fxdailyreport.com/wti-crude-oil-price-analysis-for-september-4-2026/",
          label="WTI crude", confidence=0.7,
          note="Opened 91.69; ranged from lows near 80.18 to a high of 93.05."),
-    dict(key="GOLD", value=4500.0, unit="usd_oz", as_of=SESSION, source="TradingEconomics",
-         tier=3, url="https://tradingeconomics.com/commodity/gold", label="Gold",
-         confidence=0.6,
-         note="Sourced as 'near $4,500' on Friday after ~$4,470 Thursday. "
-              "Approximate: treat the level, not the digits."),
+    dict(key="GOLD", value=4429.0, unit="usd_oz", as_of=CLOSE, source="Rio Times briefing",
+         tier=3, url=_RIO, label="Gold", change=-1.14, change_unit="pct", confidence=0.8,
+         note="CORRECTED. An earlier read carried gold at 'near $4,500' from a "
+              "descriptive summary; the 5 September briefing prints 4,429 and a "
+              "-1.14% session. Real yields up on the payrolls beat is consistent "
+              "with gold down."),
     # ---- crypto ---------------------------------------------------------
-    dict(key="BTC", value=79000.0, unit="usd", as_of=SESSION, source="CryptoTimes",
-         tier=4, url="https://www.cryptotimes.io/2026/09/04/bitcoin-price-prediction-september-2026-can-btc-reach-90k-or-retest-72k/",
-         label="Bitcoin", confidence=0.5,
-         note="Sourced as 'holding near $79K' with $80,000 the level being watched "
-              "as support. Tier 4: directional only, not a print."),
+    dict(key="BTC", value=81240.29, unit="usd", as_of=CRYPTO, source="Yahoo Finance",
+         tier=2, url=_YF, label="Bitcoin", change=5.10, change_unit="pct",
+         confidence=0.85,
+         note="CORRECTED from an earlier Tier-4 read of 'near $79K'. Priced at "
+              "07:21 ET - BEFORE the 08:30 ET payrolls print - so this rally belongs "
+              "to the dovish Waller/ETF story, not to the hawkish payrolls story that "
+              "set the equity and rates closes. The timestamps are not interchangeable."),
+    dict(key="ETH", value=2507.70, unit="usd", as_of=CRYPTO, source="Yahoo Finance",
+         tier=2, url=_YF, label="Ethereum", change=4.90, change_unit="pct",
+         confidence=0.85,
+         note="Friday open, +4.9% on Thursday's open."),
 ]
 
 _H = [
+    dict(title="US spot bitcoin ETFs take $731m, the largest inflow day since 14 January; "
+               "BlackRock's IBIT captured $454m of it",
+         source="The Block", tier=2, published="2026-09-04T14:00:00Z", url=_BLOCK,
+         impact=78, assets=("BTC", "ETH", "Crypto"),
+         summary="Attributed to Waller's dovish remarks. Three-week cumulative inflow "
+                 "of $3.8bn is the biggest streak of 2026."),
+    dict(title="Crypto liquidations hit $468.6m in 24 hours with 87% on the short side; "
+               "bitcoin alone accounted for $272.6m, 92% short",
+         source="CoinGlass via COINOTAG", tier=3, published="2026-09-04T03:52:00Z",
+         url=_COINOTAG, impact=72, assets=("BTC", "ETH"),
+         summary="A short squeeze, not spot demand. Forced buybacks were the fuel, "
+                 "which is a mechanically different move from an accumulation rally."),
+    dict(title="OPEC+ meets Saturday 5 September; any output surprise repricies crude "
+               "into an already-tight geopolitical bid",
+         source="Rio Times briefing", tier=3, published="2026-09-05T08:00:00Z", url=_RIO,
+         impact=84, assets=("Brent", "WTI", "Breakevens", "CAD", "NOK"),
+         summary="The single unpriced catalyst inside 24 hours. Publication time is "
+                 "not scheduled, so it cannot be counted down - only watched."),
+    dict(title="US strikes Iranian launch positions on Larak Island; Iran responds with "
+               "missile attacks on US forces in Jordan",
+         source="Foreign Affairs Forum", tier=3, published="2026-09-01T12:00:00Z",
+         url=_FAF, impact=93, assets=("Brent", "WTI", "Gold", "CHF", "Breakevens"),
+         summary="Direct military exchange has resumed. This is the supply-side engine "
+                 "under the whole inflation leg."),
+    dict(title="Washington revokes the licence permitting limited Iranian oil sales; "
+               "tanker damage reported near Oman",
+         source="Foreign Affairs Forum", tier=3, published="2026-09-02T12:00:00Z",
+         url=_FAF, impact=86, assets=("Brent", "WTI", "Freight"),
+         summary="Sanctions tightening plus physical shipping risk. Hormuz transits are "
+                 "running far below normal."),
+    dict(title="Equity sentiment reads Fear at 42 while crypto sentiment reads Greed at 61",
+         source="CNN / Crypto Fear & Greed", tier=3, published="2026-09-04T21:00:00Z",
+         url="https://cfgi.io/", impact=58, assets=("S&P 500", "BTC"),
+         summary="The two are measuring different clocks: crypto priced the pre-payrolls "
+                 "dovish story, equities closed on the post-payrolls hawkish one."),
+    dict(title="Gold falls 1.14% to $4,429 as real yields back up on the payrolls beat",
+         source="Rio Times briefing", tier=3, published="2026-09-04T21:00:00Z", url=_RIO,
+         impact=60, assets=("Gold", "US10Y real"),
+         summary="Gold trading as a real-rate asset here, not as a haven - which is the "
+                 "read to carry into any geopolitical escalation."),
     dict(title="August payrolls +162k versus +53k expected; unemployment steady at 4.1%",
          source="BLS Employment Situation (via CNBC)", tier=1, published="2026-09-04T12:30:00Z",
          url=_CNBC, impact=95, primary_confirmed=True,
@@ -146,6 +201,17 @@ _H = [
 ]
 
 CONFLICTS = [
+    "Bitcoin was initially carried at ~$79,000 from a Tier-4 description. That was "
+    "WRONG: two Tier-2 sources price it at $81,240 after a 5% short squeeze. The "
+    "corrected figure is carried and the error is recorded rather than erased.",
+    "Gold was initially carried at ~$4,500 from a descriptive summary. The 5 September "
+    "briefing prints 4,429 with a -1.14% session; the corrected figure is carried.",
+    "US 10Y: CNBC described the close as 'little changed at 4.76%'; the 5 September "
+    "briefing prints 4.789%, corroborating a separate account of a climb toward 4.80% "
+    "after payrolls. The higher, corroborated figure is carried at 0.80 confidence.",
+    "Crypto liquidation totals were reported over at least three different windows the "
+    "same day ($468.59m, $544.85m, and $415m of shorts). The window is stated on the "
+    "board rather than the largest headline number being chosen.",
     "US 2Y level: CNBC reported +8bp breaching 4.416%; a lower-tier outlet reported "
     "+12bp to 4.35%. The Tier-2 figure is carried at reduced confidence and the "
     "disagreement is not resolved to the more convenient number.",
@@ -199,6 +265,87 @@ REGIME_BASIS = (
 )
 
 
+GAUGES = [
+    dict(key="CNN_FG", label="Equity Fear & Greed", value=42.0, band="FEAR",
+         as_of="2026-09-04T21:00:00Z", source="CNN Business", tier=2,
+         url="https://edition.cnn.com/markets/fear-and-greed", confidence=0.75,
+         note="A second read gave 43.77 the same day; both sit in the FEAR band, so "
+              "the band is robust even though the digit is not."),
+    dict(key="CRYPTO_FG", label="Crypto Fear & Greed", value=61.0, band="GREED",
+         as_of="2026-09-04T21:00:00Z", source="Crypto Fear & Greed Index", tier=3,
+         url="https://cfgi.io/", confidence=0.8,
+         note="Flipped from Fear to Greed overnight on the ETF-inflow and short-squeeze "
+              "rally."),
+]
+
+LIQUIDATIONS = dict(
+    window="24h to 03:52 UTC, 4 September 2026",
+    total_usd=468_590_000.0, long_usd=60_490_000.0, short_usd=408_100_000.0,
+    as_of=LIQ, source="CoinGlass via COINOTAG", tier=3, url=_COINOTAG,
+    asset_usd=272_600_000.0, asset_label="Bitcoin", asset_short_pct=92.0,
+    note="Two other windows were reported the same day - $544.85m and a $415m "
+         "shorts-only figure - covering different periods and scopes. The window is "
+         "stated here rather than the largest number being chosen.",
+)
+
+GEO = [
+    dict(headline="US strikes on Iranian launch positions, Larak Island",
+         region="Strait of Hormuz", severity=93, as_of="2026-09-01T12:00:00Z",
+         source="Foreign Affairs Forum", tier=3, url=_FAF, status="ESCALATING",
+         channel="Military action -> tanker insurance and transit risk -> crude supply "
+                 "premium -> headline CPI -> breakevens -> the policy path",
+         assets=("Brent", "WTI", "Gold", "CHF", "Breakevens")),
+    dict(headline="Iranian missile attacks on US forces in Jordan",
+         region="Levant", severity=88, as_of="2026-09-01T18:00:00Z",
+         source="Foreign Affairs Forum", tier=3, url=_FAF, status="ESCALATING",
+         channel="Direct exchange raises the probability of a sustained campaign, which "
+                 "is what turns a risk premium into a supply disruption",
+         assets=("Brent", "Defence", "Gold")),
+    dict(headline="Licence for limited Iranian oil sales revoked",
+         region="Policy", severity=80, as_of="2026-09-02T12:00:00Z",
+         source="Foreign Affairs Forum", tier=3, url=_FAF, status="ACTIVE",
+         channel="Sanctions tightening removes barrels from the legal market: a direct, "
+                 "quantifiable supply subtraction rather than a sentiment effect",
+         assets=("Brent", "WTI")),
+    dict(headline="Tanker damage near Oman; Hormuz transits far below normal",
+         region="Strait of Hormuz", severity=85, as_of="2026-09-02T12:00:00Z",
+         source="Foreign Affairs Forum", tier=3, url=_FAF, status="ONGOING",
+         channel="Physical chokepoint risk -> freight and insurance rates -> delivered "
+                 "energy cost -> goods inflation with a lag",
+         assets=("Brent", "Freight", "Breakevens")),
+    dict(headline="Red Sea shipping attacks continue",
+         region="Red Sea", severity=68, as_of="2026-09-04T12:00:00Z",
+         source="Investing.com", tier=2, url=_INV, status="ONGOING",
+         channel="Rerouting round the Cape adds voyage days: a supply-chain cost shock "
+                 "that reaches CPI months after it reaches freight rates",
+         assets=("Freight", "Breakevens")),
+    dict(headline="OPEC+ meets Saturday 5 September",
+         region="OPEC+", severity=84, as_of="2026-09-05T08:00:00Z",
+         source="Rio Times briefing", tier=3, url=_RIO, status="TODAY - TIME NOT PUBLISHED",
+         channel="An output surprise lands on top of an already-tight geopolitical bid. "
+                 "No publication time is scheduled, so it can be watched but not counted "
+                 "down",
+         assets=("Brent", "WTI", "CAD", "NOK")),
+]
+
+FLOWS = [
+    {"label": "US spot BTC ETFs", "value": "+$731m", "window": "3 September",
+     "note": "Largest single day since 14 January. IBIT took $454m, over 60% of it.",
+     "source": "The Block", "tier": 2, "url": _BLOCK, "direction": "in"},
+    {"label": "US spot BTC ETFs", "value": "+$175m", "window": "4 September",
+     "note": "Solid but unremarkable follow-through.", "source": "CryptoBriefing",
+     "tier": 3, "url": "https://cryptobriefing.com/bitcoin-ethereum-etf-inflows-september/",
+     "direction": "in"},
+    {"label": "US spot BTC ETFs", "value": "+$3.8bn", "window": "trailing 3 weeks",
+     "note": "Biggest inflow streak of 2026.", "source": "Bloomingbit", "tier": 3,
+     "url": "https://en.bloomingbit.io/feed/news/119801", "direction": "in"},
+    {"label": "US spot ETH ETFs", "value": "+$27m", "window": "4 September",
+     "note": "Materially smaller than the bitcoin complex.", "source": "CryptoBriefing",
+     "tier": 3, "url": "https://cryptobriefing.com/bitcoin-ethereum-etf-inflows-september/",
+     "direction": "in"},
+]
+
+
 def build() -> Snapshot:
     """Materialise the captured snapshot."""
     snap = Snapshot(captured=CAPTURE, regime=REGIME, regime_basis=REGIME_BASIS)
@@ -209,6 +356,13 @@ def build() -> Snapshot:
     snap.headlines.sort(key=lambda h: -h.impact)
     snap.releases = list(RELEASE_CLOCK)
     snap.policy = POLICY
+    for gd in GAUGES:
+        g = Gauge(**gd)
+        snap.gauges[g.key] = g
+    snap.liquidations = Liquidations(**LIQUIDATIONS)
+    snap.geo = [GeoEvent(**g) for g in GEO]
+    snap.geo.sort(key=lambda g: -g.severity)
+    snap.flows = list(FLOWS)
     snap.conflicts = list(CONFLICTS)
     snap.errors = [
         "Live scan unavailable in the capture environment: outbound egress policy "

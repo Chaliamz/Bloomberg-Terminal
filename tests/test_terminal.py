@@ -113,9 +113,87 @@ class TestDataIntegrity(unittest.TestCase):
             datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ")
 
     def test_every_headline_is_tiered_and_timestamped(self):
-        self.assertEqual(self.doc.count('class="nw"'), len(self.snap.headlines))
+        import html as _h
+        self.assertEqual(self.doc.count('class="sqr"'), len(self.snap.headlines))
         for h in self.snap.headlines:
-            self.assertIn(h.source, self.doc)
+            self.assertIn(_h.escape(h.source, quote=True), self.doc)
+
+    def test_squawk_is_ordered_newest_first(self):
+        stamps = re.findall(r'<span class="sqt">(\d{2}-\d{2})<br>(\d{2}:\d{2})Z</span>',
+                            self.doc)
+        self.assertEqual(len(stamps), len(self.snap.headlines))
+        keys = [a + b for a, b in stamps]
+        self.assertEqual(keys, sorted(keys, reverse=True))
+
+    def test_every_gauge_renders_with_a_band_and_provenance(self):
+        import html as _h
+        self.assertEqual(self.doc.count('class="gg"'), len(self.snap.gauges))
+        for g in self.snap.gauges.values():
+            self.assertIn(g.band, self.doc)
+            self.assertIn(_h.escape(g.source, quote=True), self.doc)
+
+    def test_gauge_needle_stays_inside_the_arc(self):
+        import math
+        from macro.terminal import _arc_point
+        for f in (0.0, 0.25, 0.5, 0.75, 1.0):
+            x, y = _arc_point(f, 62.0)
+            self.assertAlmostEqual(math.hypot(x - 100, y - 100), 62.0, places=6)
+            self.assertGreaterEqual(x, 100 - 62 - 1e-9)
+            self.assertLessEqual(x, 100 + 62 + 1e-9)
+            self.assertLessEqual(y, 100 + 1e-9)
+
+    def test_gauge_svg_viewbox_contains_every_drawn_point(self):
+        for m in re.finditer(r'<svg viewBox="0 0 (\d+) (\d+)"(.*?)</svg>', self.doc, re.S):
+            w, h, body = int(m.group(1)), int(m.group(2)), m.group(3)
+            for cx, cy in re.findall(r'[cxy]1?="(-?[\d.]+)" [cy]y?1?="(-?[\d.]+)"', body):
+                pass
+            for val in re.findall(r'(?:cx|x|x1|x2)="(-?[\d.]+)"', body):
+                self.assertGreaterEqual(float(val), -1)
+                self.assertLessEqual(float(val), w + 1)
+            for val in re.findall(r'(?:cy|y|y1|y2)="(-?[\d.]+)"', body):
+                self.assertGreaterEqual(float(val), -1)
+                self.assertLessEqual(float(val), h + 1)
+
+    def test_liquidation_split_bar_sums_to_one_hundred(self):
+        flexes = [float(x) for x in re.findall(r'flex:0 0 ([\d.]+)%', self.doc)]
+        self.assertEqual(len(flexes), 2)
+        self.assertAlmostEqual(sum(flexes), 100.0, places=2)
+
+    def test_liquidation_ladder_matches_the_carried_spot(self):
+        from macro.live import liquidation_ladder
+        btc = self.snap.q("BTC")
+        self.assertIsNotNone(btc)
+        for r in liquidation_ladder(btc.value):
+            self.assertIn(f'{r["long_liq"]:,.0f}', self.doc)
+            self.assertIn(f'{r["short_liq"]:,.0f}', self.doc)
+
+    def test_ladder_is_labelled_computed_not_observed(self):
+        flat = " ".join(self.doc.split())
+        self.assertIn("Computed, not observed", flat)
+        self.assertIn("not</b> a heatmap of where open interest", flat)
+
+    def test_ladder_segments_never_exceed_the_track(self):
+        for left, width in re.findall(r'left:([\d.]+)%;\s*width:([\d.]+)%', self.doc):
+            self.assertGreaterEqual(float(left), 0.0)
+            self.assertLessEqual(float(left) + float(width), 100.0 + 1e-6)
+
+    def test_every_geo_event_states_a_transmission_channel(self):
+        import html as _h
+        self.assertEqual(self.doc.count('class="ge"'), len(self.snap.geo))
+        for g in self.snap.geo:
+            self.assertTrue(g.channel.strip(), g.headline)
+            self.assertIn(_h.escape(g.channel[:50], quote=True), self.doc)
+
+    def test_geo_sorted_by_severity(self):
+        sev = [int(x) for x in re.findall(r'<div class="sev" style="color:[^"]+">(\d+)',
+                                          self.doc)]
+        self.assertEqual(sev, sorted(sev, reverse=True))
+
+    def test_every_flow_carries_a_source(self):
+        self.assertEqual(self.doc.count('class="fl"'), len(self.snap.flows))
+        import html as _h
+        for f in self.snap.flows:
+            self.assertIn(_h.escape(f["source"], quote=True), self.doc)
 
     def test_audit_table_lists_every_field(self):
         rows = re.search(r"<tbody>(.*?)</tbody>", self.doc.split("Source &amp; freshness")[1],
@@ -141,18 +219,46 @@ class TestDataIntegrity(unittest.TestCase):
         body = re.sub(r"<style>.*?</style>", "", self.doc, flags=re.S)
         body = re.sub(r"<script>.*?</script>", "", body, flags=re.S)
         body = re.sub(r"<!--.*?-->", "", body, flags=re.S)
+        # SVG path/point coordinates are drawing instructions, not values a reader
+        # can misread as data. They are excluded here and the visible SVG text is
+        # checked separately by test_svg_text_shows_only_known_values.
+        body = re.sub(r"<svg\b.*?</svg>", "", body, flags=re.S)
         known = set()
         for q in self.snap.quotes.values():
             known |= {f"{q.value:,.2f}", f"{q.value:,.0f}", f"{q.value:.2f}",
                       f"{q.value:.2f}%", f"{abs(q.change or 0):.2f}",
                       f"{abs(q.change or 0):.0f}"}
-        # derived: the 2s10s spread
+        # declared derivations: the 2s10s spread, the liquidation ladder and the
+        # liquidation split. Each is arithmetic on a carried value and is labelled
+        # as computed on the page, so it is admissible - anything else is not.
         two, ten = self.snap.q("US2Y"), self.snap.q("US10Y")
         if two and ten:
             known.add(f"{(ten.value - two.value) * 100:+.0f}")
             known.add(f"{abs((ten.value - two.value) * 100):.0f}")
+        btc = self.snap.q("BTC")
+        if btc:
+            from macro.live import liquidation_ladder
+            for r in liquidation_ladder(btc.value):
+                known |= {f'{r["long_liq"]:,.0f}', f'{r["short_liq"]:,.0f}',
+                          f'{r["move_pct"]:.0f}'}
+        liq = self.snap.liquidations
+        if liq:
+            known |= {f"{liq.short_pct:.1f}", f"{liq.long_pct:.1f}",
+                      f"{liq.short_pct:.2f}", f"{liq.long_pct:.2f}",
+                      f"{liq.total_usd / 1e6:,.1f}", f"{liq.short_usd / 1e6:,.0f}",
+                      f"{liq.long_usd / 1e6:,.1f}",
+                      f"{(liq.asset_usd or 0) / 1e6:,.1f}"}
         for tok in re.findall(r"\b\d[\d,]{2,}\.\d{2}\b", body):
             self.assertIn(tok, known, f"unsourced number on the page: {tok}")
+
+    def test_svg_text_shows_only_known_values(self):
+        """Whatever a reader can actually read inside a chart must be real."""
+        allowed = {"0", "50", "100"}                      # gauge scale ticks
+        for g in self.snap.gauges.values():
+            allowed |= {f"{g.value:.0f}", g.band}
+        for svg in re.findall(r"<svg\b.*?</svg>", self.doc, re.S):
+            for txt in re.findall(r"<text[^>]*>(.*?)</text>", svg, re.S):
+                self.assertIn(txt.strip(), allowed, f"unexplained chart label: {txt!r}")
 
     def test_regime_basis_is_shown_with_the_regime(self):
         self.assertIn(self.snap.regime, self.doc)

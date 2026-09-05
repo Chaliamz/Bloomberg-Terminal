@@ -33,7 +33,11 @@ STATIC = """() => {
   const txt = id => (document.getElementById(id) || {}).textContent || "";
 
   if (n(".q") < 8) bad.push("quote grid thin: " + n(".q"));
-  if (n(".nw") < 5) bad.push("news feed thin: " + n(".nw"));
+  if (n(".sqr") < 8) bad.push("squawk thin: " + n(".sqr"));
+  if (n(".gg") < 2) bad.push("sentiment gauges missing: " + n(".gg"));
+  if (n(".ge") < 4) bad.push("geopolitical board thin: " + n(".ge"));
+  if (n(".fl") < 3) bad.push("flows thin: " + n(".fl"));
+  if (n(".lr") < 5) bad.push("liquidation ladder thin: " + n(".lr"));
   if (n("[data-when]") < 3) bad.push("too few countdowns");
   if (n(".tk") < 10) bad.push("ticker thin");
 
@@ -49,10 +53,64 @@ STATIC = """() => {
     if (q.getBoundingClientRect().height < 40) bad.push("quote cell collapsed");
   });
 
-  // every news row must carry a tier badge and a timestamp
-  document.querySelectorAll(".nw").forEach((a, i) => {
-    if (!a.querySelector(".t")) bad.push("news " + i + " lacks a tier badge");
-    if (!/\\d{4}-\\d{2}-\\d{2}/.test(a.textContent)) bad.push("news " + i + " lacks a date");
+  // every squawk row must carry a tier badge and a timestamp
+  document.querySelectorAll(".sqr").forEach((a, i) => {
+    if (!a.querySelector(".t")) bad.push("squawk " + i + " lacks a tier badge");
+    if (!/\\d{2}:\\d{2}Z/.test(a.textContent)) bad.push("squawk " + i + " lacks a time");
+    if (a.getBoundingClientRect().height < 30) bad.push("squawk row collapsed");
+  });
+
+  // gauges: the needle must sit inside its own arc, and the value must render
+  document.querySelectorAll(".gg").forEach((g, i) => {
+    const svg = g.querySelector("svg"), val = g.querySelector(".gv");
+    if (!svg) { bad.push("gauge " + i + " has no svg"); return; }
+    if (!val || !/^\\d+$/.test(val.textContent.trim()))
+      bad.push("gauge " + i + " value not rendered");
+    const vb = svg.viewBox.baseVal, needle = svg.querySelector(".needle");
+    if (!needle) { bad.push("gauge " + i + " has no needle"); return; }
+    const x = +needle.getAttribute("x2"), y = +needle.getAttribute("y2");
+    if (x < 0 || x > vb.width || y < 0 || y > vb.height)
+      bad.push("gauge " + i + " needle outside viewBox: " + x + "," + y);
+    if (svg.getBoundingClientRect().width < 60) bad.push("gauge " + i + " svg collapsed");
+  });
+
+  // the quote grid must tile exactly: no dead slots on the final row
+  (() => {
+    const cells = [...document.querySelectorAll(".q:not(.derived)")];
+    if (!cells.length) return;
+    const grid = cells[0].parentElement.getBoundingClientRect();
+    const last = cells[cells.length - 1].getBoundingClientRect();
+    if (last.right < grid.right - 2)
+      bad.push("quote grid leaves a gap on its last row (" +
+               Math.round(grid.right - last.right) + "px)");
+    const cols = new Set(cells.map(c => Math.round(c.getBoundingClientRect().left))).size;
+    if (cells.length % cols !== 0)
+      bad.push(cells.length + " quote cells do not tile " + cols + " columns");
+  })();
+
+  // liquidation split bar must total the full width
+  const segs = [...document.querySelectorAll(".liqbar span")];
+  if (segs.length !== 2) bad.push("liquidation split bar malformed");
+  else {
+    const w = segs[0].parentElement.clientWidth;
+    const sum = segs[0].getBoundingClientRect().width + segs[1].getBoundingClientRect().width;
+    if (Math.abs(sum - w) > 6) bad.push("liquidation bar does not fill: " + sum + " vs " + w);
+  }
+
+  // ladder segments must stay inside their track
+  document.querySelectorAll(".lr .rng").forEach((rng, i) => {
+    const rb = rng.getBoundingClientRect();
+    rng.querySelectorAll(".seg").forEach(sg => {
+      const sb = sg.getBoundingClientRect();
+      if (sb.left < rb.left - 1 || sb.right > rb.right + 1)
+        bad.push("ladder segment " + i + " escapes its track");
+    });
+  });
+
+  // geopolitical rows must state a channel
+  document.querySelectorAll(".ge").forEach((g, i) => {
+    if (!g.querySelector(".ch") || g.querySelector(".ch").textContent.trim().length < 20)
+      bad.push("geo " + i + " lacks a transmission channel");
   });
 
   // panels must rest visible
@@ -85,7 +143,8 @@ STATIC = """() => {
   if (document.documentElement.scrollWidth > window.innerWidth + 1)
     bad.push("h-overflow " + document.documentElement.scrollWidth + " > " + window.innerWidth);
 
-  return {bad, quotes: n(".q"), news: n(".nw"), cds: n("[data-when]"),
+  return {bad, quotes: n(".q"), news: n(".sqr"), gauges: n(".gg"), geo: n(".ge"),
+          cds: n("[data-when]"),
           state: txt("state"), age: txt("age"), sess: txt("sess"), clk: txt("clk")};
 }"""
 
@@ -135,8 +194,9 @@ async def run(path: str) -> int:
                     for b in res["bad"] + real:
                         print(f"       - {b}")
                 else:
-                    print(f"PASS {tag}  quotes={res['quotes']} news={res['news']} "
-                          f"cds={res['cds']} state={res['state']}")
+                    print(f"PASS {tag}  quotes={res['quotes']} squawk={res['news']} "
+                          f"gauges={res['gauges']} geo={res['geo']} cds={res['cds']} "
+                          f"state={res['state']}")
                 await page.close()
             await ctx.close()
 

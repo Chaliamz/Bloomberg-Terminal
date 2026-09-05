@@ -6,7 +6,7 @@ classification, derived cross-asset transmission maps, ICT-style market
 structure, and an R:R-gated setup engine — behind a Bloomberg-style command
 surface.
 
-Python 3.11+, **standard library only**, 249 tests.
+Python 3.11+, **standard library only**, 261 tests.
 
 ## The one design rule
 
@@ -44,6 +44,18 @@ python -m macro live            # one scan cycle, then regenerate
 python -m macro live 60         # 24/7 daemon, polling every 60s
 python3 tools/verify_terminal.py
 ```
+
+Panels: cross-asset board, timestamped squawk wire, equity and crypto Fear &
+Greed gauges, a bitcoin liquidation map, a geopolitical board that states each
+event's transmission channel, ETF flows, release countdowns, curve, policy,
+cross-asset transmission, and a source-and-freshness audit of every figure.
+
+The liquidation map separates two things that are usually blurred: **observed**
+24h liquidation totals with their window stated, and a **computed** leverage
+ladder — `price x (1 - 1/N)` for a long, `price x (1 + 1/N)` for a short. The
+ladder is exact arithmetic on the carried spot, excludes maintenance margin and
+fees, and is *not* a heatmap of where open interest sits. That would need
+per-exchange position data this terminal does not have, and it is not guessed.
 
 The scanner (`macro/live.py`) polls **primary agency endpoints first** and wires
 second, because a statistical release is public at the agency URL the instant the
@@ -209,7 +221,7 @@ state/            snapshot.json, the terminal's data source
 prompts/          operating system prompt for LLM-driven use
 docs/             spec coverage map, architecture document
 tools/            headless-browser verification for the board
-tests/            249 tests, stdlib unittest
+tests/            261 tests, stdlib unittest
 state.example.json
 ```
 

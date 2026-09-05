@@ -29,8 +29,9 @@ from typing import Any, Iterable
 from .types import Tier, iso, utcnow
 
 __all__ = [
-    "Quote", "Headline", "Snapshot", "SOURCES", "RELEASE_CLOCK",
-    "load", "save", "scan", "merge", "age_seconds",
+    "Quote", "Headline", "Gauge", "Liquidations", "GeoEvent", "Snapshot",
+    "SOURCES", "RELEASE_CLOCK", "load", "save", "scan", "merge", "age_seconds",
+    "liquidation_ladder",
 ]
 
 UA = "macro-radar/1.1 (institutional macro terminal; contact: operator)"
@@ -94,6 +95,122 @@ class Headline:
             raise ValueError("headline impact out of range")
 
 
+@dataclass(frozen=True)
+class Gauge:
+    """A bounded sentiment reading, e.g. a Fear & Greed index."""
+
+    key: str
+    label: str
+    value: float
+    band: str                  # "Extreme Fear" ... "Extreme Greed"
+    as_of: str
+    source: str
+    tier: int
+    lo: float = 0.0
+    hi: float = 100.0
+    url: str = ""
+    note: str = ""
+    confidence: float = 1.0
+
+    def __post_init__(self) -> None:
+        if not self.source.strip():
+            raise ValueError(f"{self.key}: a gauge without a source is not representable")
+        if not (self.lo <= self.value <= self.hi):
+            raise ValueError(f"{self.key}: {self.value} outside [{self.lo}, {self.hi}]")
+        if self.tier not in (1, 2, 3, 4):
+            raise ValueError(f"{self.key}: tier must be 1-4")
+        datetime.strptime(self.as_of, "%Y-%m-%dT%H:%M:%SZ")
+
+    @property
+    def pct(self) -> float:
+        span = self.hi - self.lo
+        return 0.0 if span <= 0 else (self.value - self.lo) / span
+
+
+@dataclass(frozen=True)
+class Liquidations:
+    """Observed derivatives liquidations over a stated window."""
+
+    window: str                # e.g. "24h to 03:52 UTC 2026-09-04"
+    total_usd: float
+    long_usd: float
+    short_usd: float
+    as_of: str
+    source: str
+    tier: int
+    asset_usd: float | None = None      # the single-asset share, e.g. BTC
+    asset_label: str = ""
+    asset_short_pct: float | None = None
+    url: str = ""
+    note: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.source.strip():
+            raise ValueError("liquidations without a source are not representable")
+        for name, v in (("total", self.total_usd), ("long", self.long_usd),
+                        ("short", self.short_usd)):
+            if v < 0:
+                raise ValueError(f"liquidation {name} cannot be negative")
+        datetime.strptime(self.as_of, "%Y-%m-%dT%H:%M:%SZ")
+
+    @property
+    def short_pct(self) -> float:
+        t = self.long_usd + self.short_usd
+        return 0.0 if t <= 0 else 100.0 * self.short_usd / t
+
+    @property
+    def long_pct(self) -> float:
+        return 100.0 - self.short_pct
+
+
+@dataclass(frozen=True)
+class GeoEvent:
+    """A geopolitical development with an identified market channel."""
+
+    headline: str
+    region: str
+    severity: int              # 0-100
+    as_of: str
+    source: str
+    tier: int
+    channel: str = ""          # the transmission path into markets
+    assets: tuple[str, ...] = ()
+    status: str = "ONGOING"
+    url: str = ""
+
+    def __post_init__(self) -> None:
+        if not (0 <= self.severity <= 100):
+            raise ValueError("severity out of range")
+        if self.tier not in (1, 2, 3, 4):
+            raise ValueError("geo event tier must be 1-4")
+        datetime.strptime(self.as_of, "%Y-%m-%dT%H:%M:%SZ")
+
+
+def liquidation_ladder(price: float, levels=(5, 10, 25, 50, 100)) -> list[dict]:
+    """Exact liquidation prices for a position opened at ``price``.
+
+    long_liq  = price * (1 - 1/N)     short_liq = price * (1 + 1/N)
+
+    This is arithmetic, not observed exchange data: it excludes maintenance
+    margin and fees, so a real venue triggers marginally earlier. It is NOT a
+    heatmap of where open interest actually sits - that requires per-exchange
+    position data. The page must say so.
+    """
+    if price <= 0:
+        return []
+    out = []
+    for n in levels:
+        if n <= 1:
+            continue
+        out.append({
+            "leverage": n,
+            "long_liq": price * (1 - 1.0 / n),
+            "short_liq": price * (1 + 1.0 / n),
+            "move_pct": 100.0 / n,
+        })
+    return out
+
+
 @dataclass
 class Snapshot:
     captured: str
@@ -101,6 +218,10 @@ class Snapshot:
     headlines: list[Headline] = field(default_factory=list)
     releases: list[dict[str, Any]] = field(default_factory=list)
     policy: dict[str, Any] = field(default_factory=dict)
+    gauges: dict[str, Gauge] = field(default_factory=dict)
+    liquidations: Liquidations | None = None
+    geo: list[GeoEvent] = field(default_factory=list)
+    flows: list[dict[str, Any]] = field(default_factory=list)
     conflicts: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     regime: str = "UNKNOWN"
@@ -116,6 +237,10 @@ class Snapshot:
             "regime_basis": self.regime_basis,
             "quotes": {k: asdict(v) for k, v in self.quotes.items()},
             "headlines": [asdict(h) for h in self.headlines],
+            "gauges": {k: asdict(v) for k, v in self.gauges.items()},
+            "liquidations": asdict(self.liquidations) if self.liquidations else None,
+            "geo": [asdict(g) for g in self.geo],
+            "flows": self.flows,
             "releases": self.releases,
             "policy": self.policy,
             "conflicts": self.conflicts,
@@ -125,6 +250,22 @@ class Snapshot:
 
 def _quote_from(d: dict) -> Quote:
     return Quote(**{k: v for k, v in d.items() if k in Quote.__dataclass_fields__})
+
+
+def _gauge_from(d: dict) -> Gauge:
+    return Gauge(**{k: v for k, v in d.items() if k in Gauge.__dataclass_fields__})
+
+
+def _geo_from(d: dict) -> GeoEvent:
+    data = {k: v for k, v in d.items() if k in GeoEvent.__dataclass_fields__}
+    if isinstance(data.get("assets"), list):
+        data["assets"] = tuple(data["assets"])
+    return GeoEvent(**data)
+
+
+def _liq_from(d: dict) -> Liquidations:
+    return Liquidations(**{k: v for k, v in d.items()
+                           if k in Liquidations.__dataclass_fields__})
 
 
 def _headline_from(d: dict) -> Headline:
@@ -149,6 +290,11 @@ def load(path: str) -> Snapshot | None:
             regime_basis=raw.get("regime_basis", ""),
             quotes={k: _quote_from(v) for k, v in (raw.get("quotes") or {}).items()},
             headlines=[_headline_from(h) for h in (raw.get("headlines") or [])],
+            gauges={k: _gauge_from(v) for k, v in (raw.get("gauges") or {}).items()},
+            liquidations=(_liq_from(raw["liquidations"])
+                          if raw.get("liquidations") else None),
+            geo=[_geo_from(g) for g in (raw.get("geo") or [])],
+            flows=list(raw.get("flows") or []),
             releases=list(raw.get("releases") or []),
             policy=dict(raw.get("policy") or {}),
             conflicts=list(raw.get("conflicts") or []),
@@ -362,6 +508,10 @@ def scan(previous: Snapshot | None = None, *, now: datetime | None = None,
     if previous:
         snap.quotes = dict(previous.quotes)
         snap.policy = dict(previous.policy)
+        snap.gauges = dict(previous.gauges)
+        snap.liquidations = previous.liquidations
+        snap.geo = list(previous.geo)
+        snap.flows = list(previous.flows)
         snap.regime = previous.regime
         snap.regime_basis = previous.regime_basis
 
@@ -470,6 +620,14 @@ def merge(previous: Snapshot | None, fresh: Snapshot) -> Snapshot:
         return fresh
     for key, q in previous.quotes.items():
         fresh.quotes.setdefault(key, q)
+    for key, g in previous.gauges.items():
+        fresh.gauges.setdefault(key, g)
+    if fresh.liquidations is None:
+        fresh.liquidations = previous.liquidations
+    if not fresh.geo:
+        fresh.geo = list(previous.geo)
+    if not fresh.flows:
+        fresh.flows = list(previous.flows)
     if not fresh.headlines:
         fresh.headlines = list(previous.headlines)
     return fresh
