@@ -12,8 +12,8 @@ outbound network is available; the terminal always renders the true age.
 
 from __future__ import annotations
 
-from .live import (GeoEvent, Gauge, Headline, Liquidations, Quote,
-                   RELEASE_CLOCK, Snapshot)
+from .live import (GeoEvent, Gauge, Headline, Liquidations, PriceAnchor,
+                   Quote, RELEASE_CLOCK, Snapshot)
 
 __all__ = ["build"]
 
@@ -209,6 +209,10 @@ CONFLICTS = [
     "US 10Y: CNBC described the close as 'little changed at 4.76%'; the 5 September "
     "briefing prints 4.789%, corroborating a separate account of a climb toward 4.80% "
     "after payrolls. The higher, corroborated figure is carried at 0.80 confidence.",
+    "The liquidation heatmap is built from four dated BTC closes, not a continuous "
+    "series. Between anchors nothing is observed, so the pending-level field is held "
+    "constant and the price line is drawn dashed. The time resolution is the data's, "
+    "not the renderer's.",
     "Crypto liquidation totals were reported over at least three different windows the "
     "same day ($468.59m, $544.85m, and $415m of shorts). The window is stated on the "
     "board rather than the largest headline number being chosen.",
@@ -328,6 +332,27 @@ GEO = [
          assets=("Brent", "WTI", "CAD", "NOK")),
 ]
 
+# Observed BTC closes. The liquidation heatmap is built from these and nothing
+# else: no price between two anchors is interpolated or invented, so the field
+# is coarse in time by construction. Window high/low bound the price axis and
+# are themselves sourced.
+PRICE_ANCHORS = [
+    dict(date="2026-08-04T20:00:00Z", price=63465.20, source="YCharts", tier=3,
+         url="https://ycharts.com/indicators/bitcoin_price", note="Daily close."),
+    dict(date="2026-08-21T20:00:00Z", price=76712.47, source="Fortune", tier=3,
+         url="https://fortune.com/article/price-of-bitcoin-08-21-2026/",
+         note="Reported level for the session."),
+    dict(date="2026-08-24T20:00:00Z", price=78976.18, source="Fortune", tier=3,
+         url="https://fortune.com/article/price-of-bitcoin-08-24-2026/",
+         note="Reported level for the session."),
+    dict(date="2026-09-04T11:21:00Z", price=81240.29, source="Yahoo Finance", tier=2,
+         url=_YF, note="07:21 ET print, before the payrolls release."),
+]
+# Sourced window extremes, used as the price-axis bounds.
+BTC_WINDOW = {"lo": 62553.7, "hi": 82178.6, "avg": 71773.9,
+              "span": "5 August - 5 September 2026", "source": "StatMuse", "tier": 3,
+              "url": "https://www.statmuse.com/money/ask/bitcoin-price-history-august-2026"}
+
 FLOWS = [
     {"label": "US spot BTC ETFs", "value": "+$731m", "window": "3 September",
      "note": "Largest single day since 14 January. IBIT took $454m, over 60% of it.",
@@ -360,6 +385,8 @@ def build() -> Snapshot:
         g = Gauge(**gd)
         snap.gauges[g.key] = g
     snap.liquidations = Liquidations(**LIQUIDATIONS)
+    snap.price_anchors = [PriceAnchor(**a) for a in PRICE_ANCHORS]
+    snap.btc_window = dict(BTC_WINDOW)
     snap.geo = [GeoEvent(**g) for g in GEO]
     snap.geo.sort(key=lambda g: -g.severity)
     snap.flows = list(FLOWS)

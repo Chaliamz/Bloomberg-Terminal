@@ -73,11 +73,15 @@ class TestDocument(unittest.TestCase):
         self.assertTrue(all(r == 12 for r in rows), f"row sums: {rows}")
 
     def test_typography_differs_from_the_architecture_board(self):
+        """The two pages must remain distinct type systems, whatever the families."""
         from macro import board
-        self.assertIn("Barlow", terminal.CSS)
-        self.assertIn("JetBrains Mono", terminal.CSS)
-        self.assertNotIn("Archivo", terminal.CSS)
-        self.assertIn("Archivo", board.CSS)     # the two pages are distinct systems
+
+        def stacks(css):
+            return {re.sub(r'\s+', '', m) for m in
+                    re.findall(r'--(?:mono|body|disp|sans):([^;]+);', css)}
+        a, b = stacks(terminal.CSS), stacks(board.CSS)
+        self.assertTrue(a and b, "font stacks not declared as tokens")
+        self.assertFalse(a & b, f"the two pages share a font stack: {a & b}")
 
 
 class TestDataIntegrity(unittest.TestCase):
@@ -189,6 +193,66 @@ class TestDataIntegrity(unittest.TestCase):
                                           self.doc)]
         self.assertEqual(sev, sorted(sev, reverse=True))
 
+    def test_heatmap_payload_matches_the_rendered_canvas(self):
+        import json
+        m = re.search(r"window\.__TERM__=(\{.*?\});", self.doc, re.S)
+        self.assertIsNotNone(m)
+        data = json.loads(m.group(1).replace("<\\/", "</"))
+        self.assertIsNotNone(data["heat"], "heat payload missing")
+        heat = data["heat"]
+        cv = re.search(r'id="hm-canvas" width="(\d+)"\s+height="(\d+)" data-cell="(\d+)"',
+                       self.doc)
+        self.assertIsNotNone(cv, "heatmap canvas not rendered")
+        cell = int(cv.group(3))
+        self.assertGreaterEqual(cell, 2, "cell scale too small for a crisp price line")
+        self.assertEqual(int(cv.group(1)), heat["cols"] * cell)
+        self.assertEqual(int(cv.group(2)), heat["rows"] * cell)
+        self.assertEqual(len(heat["grid"]), heat["cols"])
+        self.assertTrue(all(len(c) == heat["rows"] for c in heat["grid"]))
+
+    def test_heatmap_anchors_are_only_observed_prices(self):
+        import json
+        data = json.loads(re.search(r"window\.__TERM__=(\{.*?\});", self.doc, re.S)
+                          .group(1).replace("<\\/", "</"))
+        observed = {round(a.price, 2) for a in self.snap.price_anchors}
+        self.assertEqual({round(a["price"], 2) for a in data["heat"]["anchors"]}, observed)
+
+    def test_heatmap_ramp_shipped_matches_the_module(self):
+        import json
+        from macro.live import HEAT_RAMP
+        data = json.loads(re.search(r"window\.__TERM__=(\{.*?\});", self.doc, re.S)
+                          .group(1).replace("<\\/", "</"))
+        self.assertEqual(data["ramp"], list(HEAT_RAMP))
+
+    def test_heatmap_states_its_method_and_its_limits(self):
+        flat = " ".join(self.doc.split())
+        self.assertIn("Computed by the published method, on real prices", flat)
+        self.assertIn("no price is ever interpolated", flat)
+        self.assertIn("not</b> open-interest weighted", flat)
+
+    def test_heatmap_axis_bounds_come_from_the_sourced_window(self):
+        w = self.snap.btc_window
+        self.assertIn(f'{w["lo"]:,.0f}', self.doc)
+        self.assertIn(f'{w["hi"]:,.0f}', self.doc)
+
+    def test_every_geo_event_shows_when_it_happened(self):
+        stamps = re.findall(r'data-ago="([^"]+)"', self.doc)
+        self.assertEqual(len(stamps), len(self.snap.geo))
+        for st in stamps:
+            datetime.strptime(st, "%Y-%m-%dT%H:%M:%SZ")
+        self.assertEqual({s for s in stamps}, {g.as_of for g in self.snap.geo})
+
+    def test_terminal_chrome_present(self):
+        self.assertIn('class="cmdbar"', self.doc)
+        self.assertIn('class="statusbar"', self.doc)
+        self.assertGreaterEqual(self.doc.count('class="fk"'), 5)
+
+    def test_status_bar_counts_match_the_snapshot(self):
+        self.assertIn(f'<span>QUOTES <b>{len(self.snap.quotes)}</b></span>', self.doc)
+        self.assertIn(f'<span>WIRE <b>{len(self.snap.headlines)}</b></span>', self.doc)
+        self.assertIn(f'<span>GEO <b>{len(self.snap.geo)}</b></span>', self.doc)
+        self.assertIn(f'<span>CONFLICTS <b>{len(self.snap.conflicts)}</b></span>', self.doc)
+
     def test_every_flow_carries_a_source(self):
         self.assertEqual(self.doc.count('class="fl"'), len(self.snap.flows))
         import html as _h
@@ -241,6 +305,13 @@ class TestDataIntegrity(unittest.TestCase):
             for r in liquidation_ladder(btc.value):
                 known |= {f'{r["long_liq"]:,.0f}', f'{r["short_liq"]:,.0f}',
                           f'{r["move_pct"]:.0f}'}
+        w = self.snap.btc_window
+        if w:
+            for i in range(5):
+                known.add(f'{w["lo"] + (w["hi"] - w["lo"]) * i / 4:,.0f}')
+            known |= {f'{w["lo"]:,.0f}', f'{w["hi"]:,.0f}'}
+        for a in self.snap.price_anchors:
+            known |= {f"{a.price:,.2f}", f"{a.price:,.0f}"}
         liq = self.snap.liquidations
         if liq:
             known |= {f"{liq.short_pct:.1f}", f"{liq.long_pct:.1f}",

@@ -6,7 +6,7 @@ classification, derived cross-asset transmission maps, ICT-style market
 structure, and an R:R-gated setup engine — behind a Bloomberg-style command
 surface.
 
-Python 3.11+, **standard library only**, 261 tests.
+Python 3.11+, **standard library only**, 284 tests.
 
 ## The one design rule
 
@@ -46,16 +46,36 @@ python3 tools/verify_terminal.py
 ```
 
 Panels: cross-asset board, timestamped squawk wire, equity and crypto Fear &
-Greed gauges, a bitcoin liquidation map, a geopolitical board that states each
-event's transmission channel, ETF flows, release countdowns, curve, policy,
-cross-asset transmission, and a source-and-freshness audit of every figure.
+Greed gauges, a BTC liquidation heatmap, a geopolitical board that states each
+event's transmission channel and when it happened, ETF flows, release
+countdowns, curve, policy, cross-asset transmission, and a source-and-freshness
+audit of every figure — under a function-key command bar and a status line.
 
-The liquidation map separates two things that are usually blurred: **observed**
-24h liquidation totals with their window stated, and a **computed** leverage
-ladder — `price x (1 - 1/N)` for a long, `price x (1 + 1/N)` for a short. The
-ladder is exact arithmetic on the carried spot, excludes maintenance margin and
-fees, and is *not* a heatmap of where open interest sits. That would need
-per-exchange position data this terminal does not have, and it is not guessed.
+The chrome follows professional-terminal convention (density, monospace grids,
+hard panel divisions, a command line) but **not** amber-on-black: that scheme is
+Bloomberg's protected brand identity, so the accent here is teal and colour is
+spent on encoding magnitude rather than on decoration.
+
+### The liquidation heatmap
+
+Price on the vertical, time on the horizontal, leverage density as colour — the
+published form. It is computed, not observed, and the page says so:
+
+1. At each **observed** close, positions opened there liquidate at
+   `price x (1 - 1/N)` and `price x (1 + 1/N)`; those levels join a pending set.
+2. A pending level is removed when price is later observed to sweep through it.
+3. Between two observations nothing is known, so the field is held constant and
+   the price line is drawn dashed. **No price is ever interpolated.**
+
+The colour ramp is a sequential magnitude scale verified monotonic in OKLab
+lightness (step gaps 0.086–0.110, 15.9:1 contrast at the top) — asserted by
+`tests/test_live.py`, not eyeballed. The field is *not* open-interest weighted;
+that needs per-exchange position data this terminal does not have, and it is not
+guessed. Time resolution is the data's, not the renderer's: feed it a real price
+series and the same renderer draws every column.
+
+Alongside it, **observed** 24h liquidation totals with their window stated, and a
+**computed** leverage ladder on the carried spot.
 
 The scanner (`macro/live.py`) polls **primary agency endpoints first** and wires
 second, because a statistical release is public at the agency URL the instant the
@@ -221,7 +241,7 @@ state/            snapshot.json, the terminal's data source
 prompts/          operating system prompt for LLM-driven use
 docs/             spec coverage map, architecture document
 tools/            headless-browser verification for the board
-tests/            261 tests, stdlib unittest
+tests/            284 tests, stdlib unittest
 state.example.json
 ```
 

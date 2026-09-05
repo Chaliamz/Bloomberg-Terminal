@@ -88,6 +88,37 @@ STATIC = """() => {
       bad.push(cells.length + " quote cells do not tile " + cols + " columns");
   })();
 
+  // heatmap must actually paint, and its price line must sit inside the canvas
+  (() => {
+    const cv = document.getElementById("hm-canvas");
+    if (!cv) { bad.push("heatmap canvas missing"); return; }
+    if (cv.getBoundingClientRect().width < 80) bad.push("heatmap canvas collapsed");
+    const g = cv.getContext("2d");
+    if (!g) { bad.push("heatmap 2d context unavailable"); return; }
+    const d = g.getImageData(0, 0, cv.width, cv.height).data;
+    let lit = 0, distinct = new Set();
+    for (let i = 0; i < d.length; i += 4) {
+      const key = d[i] + "," + d[i+1] + "," + d[i+2];
+      distinct.add(key);
+      if (d[i] + d[i+1] + d[i+2] > 40) lit++;
+    }
+    if (lit < 20) bad.push("heatmap appears unpainted (" + lit + " lit px)");
+    if (distinct.size < 6)
+      bad.push("heatmap uses only " + distinct.size + " colours - ramp not applied");
+    if (d[3] !== 255) bad.push("heatmap pixels not opaque");
+  })();
+
+  // geo events must each show a resolved relative time
+  document.querySelectorAll("[data-ago]").forEach((el, i) => {
+    const t = el.textContent.trim();
+    if (!/^(\\d+m|\\d+h|\\d+d \\d+h) ago$/.test(t))
+      bad.push("geo time " + i + " unresolved: " + JSON.stringify(t));
+  });
+
+  // terminal chrome
+  if (!document.querySelector(".cmdbar")) bad.push("command bar missing");
+  if (!document.querySelector(".statusbar")) bad.push("status bar missing");
+
   // liquidation split bar must total the full width
   const segs = [...document.querySelectorAll(".liqbar span")];
   if (segs.length !== 2) bad.push("liquidation split bar malformed");
@@ -144,8 +175,20 @@ STATIC = """() => {
     bad.push("h-overflow " + document.documentElement.scrollWidth + " > " + window.innerWidth);
 
   return {bad, quotes: n(".q"), news: n(".sqr"), gauges: n(".gg"), geo: n(".ge"),
-          cds: n("[data-when]"),
+          heat: !!document.getElementById("hm-canvas"), cds: n("[data-when]"),
           state: txt("state"), age: txt("age"), sess: txt("sess"), clk: txt("clk")};
+}"""
+
+FXSAMPLE = """() => {
+  const cv = document.getElementById("fx");
+  if (!cv) return null;
+  const g = cv.getContext("2d");
+  if (!g) return null;
+  const w = Math.min(cv.width, 300), h = Math.min(cv.height, 300);
+  const d = g.getImageData(0, 0, w, h).data;
+  let sum = 0;
+  for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i+1] * 3 + d[i+2] * 7;
+  return sum;
 }"""
 
 SAMPLE = """() => {
@@ -195,7 +238,8 @@ async def run(path: str) -> int:
                         print(f"       - {b}")
                 else:
                     print(f"PASS {tag}  quotes={res['quotes']} squawk={res['news']} "
-                          f"gauges={res['gauges']} geo={res['geo']} cds={res['cds']} "
+                          f"gauges={res['gauges']} geo={res['geo']} "
+                          f"heat={'y' if res['heat'] else 'n'} cds={res['cds']} "
                           f"state={res['state']}")
                 await page.close()
             await ctx.close()
@@ -206,8 +250,14 @@ async def run(path: str) -> int:
         await page.goto(url, wait_until="load")
         await page.wait_for_timeout(1200)
         a = await page.evaluate(SAMPLE)
+        fx_a = await page.evaluate(FXSAMPLE)
         await page.wait_for_timeout(2600)
         b = await page.evaluate(SAMPLE)
+        fx_b = await page.evaluate(FXSAMPLE)
+        # the ambient loop must still be running seconds in: a thrown frame that
+        # fails to re-arm requestAnimationFrame leaves a frozen, painted canvas
+        await page.wait_for_timeout(1800)
+        fx_c = await page.evaluate(FXSAMPLE)
 
         live_bad = []
         if not a["clk"] or a["clk"] == b["clk"]:
@@ -232,6 +282,12 @@ async def run(path: str) -> int:
                 live_bad.append(f"countdown format wrong: {y!r}")
         if a["tx"] == b["tx"] and a["tx"] not in ("none", ""):
             live_bad.append("ticker not animating")
+        if fx_a is None:
+            live_bad.append("ambient canvas unreadable")
+        elif fx_a == fx_b or fx_b == fx_c:
+            live_bad.append(
+                f"ambient animation frozen (frame signatures {fx_a}, {fx_b}, {fx_c}) "
+                "- the rAF loop most likely threw and failed to re-arm")
 
         if live_bad:
             failures += 1
@@ -241,7 +297,7 @@ async def run(path: str) -> int:
         else:
             print(f"PASS live behaviour  clock {a['clk']} -> {b['clk']} | "
                   f"state {a['state']} age {a['age']} | session {a['sess']} | "
-                  f"{len(future)} countdowns ticking")
+                  f"{len(future)} countdowns ticking | ambient loop alive")
         await browser.close()
 
     print("\nALL CHECKS PASSED" if not failures else f"\n{failures} CHECK GROUP(S) FAILED")

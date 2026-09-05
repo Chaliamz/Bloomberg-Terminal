@@ -15,8 +15,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from macro import live, seed
 from macro.live import (
-    Headline, Quote, Snapshot, Source, age_seconds, dedupe, load, merge,
-    parse_rss, parse_treasury_csv, save, scan,
+    HEAT_RAMP, Headline, PriceAnchor, Quote, Snapshot, Source, age_seconds,
+    dedupe, liquidation_heatmap, liquidation_ladder, load, merge, parse_rss,
+    parse_treasury_csv, save, scan,
 )
 
 NOW = datetime(2026, 9, 5, 13, 0, 0, tzinfo=timezone.utc)
@@ -274,6 +275,122 @@ class TestScanEndToEnd(unittest.TestCase):
         self.assertTrue(snap.releases)
 
 
+def _oklab_L(hexs):
+    def lin(c):
+        c /= 255.0
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+    r, g, b = (lin(int(hexs[i:i + 2], 16)) for i in (1, 3, 5))
+    l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b
+    m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b
+    s_ = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b
+    l_, m_, s2 = l ** (1 / 3), m ** (1 / 3), s_ ** (1 / 3)
+    return 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s2
+
+
+class TestHeatRamp(unittest.TestCase):
+    """A magnitude ramp that is not monotonic in lightness misreports order."""
+
+    def test_ramp_is_monotonic_in_lightness(self):
+        Ls = [_oklab_L(c) for c in HEAT_RAMP]
+        for i in range(len(Ls) - 1):
+            self.assertLess(Ls[i], Ls[i + 1],
+                            f"ramp reverses at stop {i}: {HEAT_RAMP[i]}")
+
+    def test_ramp_steps_are_reasonably_even(self):
+        Ls = [_oklab_L(c) for c in HEAT_RAMP]
+        gaps = [Ls[i + 1] - Ls[i] for i in range(len(Ls) - 1)]
+        self.assertGreater(min(gaps), 0.05, "a step this small is invisible")
+        self.assertLess(max(gaps) / min(gaps), 2.0, "steps are badly uneven")
+
+    def test_ramp_is_all_valid_hex(self):
+        for c in HEAT_RAMP:
+            self.assertRegex(c, r"^#[0-9A-Fa-f]{6}$")
+
+
+class TestHeatmap(unittest.TestCase):
+    ANCHORS = [
+        PriceAnchor("2026-08-04T20:00:00Z", 63465.20, "YCharts", 3),
+        PriceAnchor("2026-08-21T20:00:00Z", 76712.47, "Fortune", 3),
+        PriceAnchor("2026-08-24T20:00:00Z", 78976.18, "Fortune", 3),
+        PriceAnchor("2026-09-04T11:21:00Z", 81240.29, "Yahoo Finance", 2),
+    ]
+
+    def test_anchor_contract(self):
+        for bad in (dict(date="2026-08-04T20:00:00Z", price=0, source="s", tier=1),
+                    dict(date="2026-08-04T20:00:00Z", price=1, source="", tier=1),
+                    dict(date="nope", price=1, source="s", tier=1),
+                    dict(date="2026-08-04T20:00:00Z", price=1, source="s", tier=9)):
+            with self.assertRaises(ValueError):
+                PriceAnchor(**bad)
+
+    def test_grid_shape_and_normalisation(self):
+        h = liquidation_heatmap(self.ANCHORS, lo=62553.7, hi=82178.6)
+        self.assertTrue(h["ok"])
+        self.assertEqual(len(h["grid"]), h["columns"])
+        for col in h["grid"]:
+            self.assertEqual(len(col), h["rows"])
+            for v in col:
+                self.assertGreaterEqual(v, 0.0)
+                self.assertLessEqual(v, 1.0)
+        self.assertEqual(max(max(c) for c in h["grid"]), 1.0, "peak must normalise to 1")
+
+    def test_every_anchor_lands_inside_the_grid(self):
+        h = liquidation_heatmap(self.ANCHORS, lo=62553.7, hi=82178.6)
+        self.assertEqual(len(h["anchors"]), len(self.ANCHORS))
+        for a in h["anchors"]:
+            self.assertGreaterEqual(a["col"], 0)
+            self.assertLess(a["col"], h["columns"])
+            self.assertGreaterEqual(a["row"], 0)
+            self.assertLess(a["row"], h["rows"])
+
+    def test_anchors_stay_in_time_order(self):
+        cols = [a["col"] for a in
+                liquidation_heatmap(self.ANCHORS)["anchors"]]
+        self.assertEqual(cols, sorted(cols))
+
+    def test_first_and_last_anchor_pin_the_axis(self):
+        h = liquidation_heatmap(self.ANCHORS)
+        self.assertEqual(h["anchors"][0]["col"], 0)
+        self.assertEqual(h["anchors"][-1]["col"], h["columns"] - 1)
+
+    def test_no_price_is_invented(self):
+        """Only observed prices may appear as anchors."""
+        h = liquidation_heatmap(self.ANCHORS, lo=62553.7, hi=82178.6)
+        observed = {round(a.price, 2) for a in self.ANCHORS}
+        self.assertEqual({round(a["price"], 2) for a in h["anchors"]}, observed)
+
+    def test_levels_are_swept_when_price_passes_through(self):
+        """A rising series must clear the short levels it trades through."""
+        rising = [PriceAnchor(f"2026-08-{d:02d}T20:00:00Z", p, "t", 3)
+                  for d, p in ((1, 100.0), (2, 110.0), (3, 130.0))]
+        h = liquidation_heatmap(rising, levels=(10,), columns=8, rows=20,
+                                lo=80.0, hi=150.0)
+        self.assertTrue(h["ok"])
+        # the 10x short level from the first anchor is 110, swept by anchor two
+        self.assertLess(sum(h["grid"][-1]), sum(h["grid"][0]) * 3,
+                        "swept levels are not being cleared")
+
+    def test_degenerate_inputs_refuse_cleanly(self):
+        self.assertFalse(liquidation_heatmap([])["ok"])
+        self.assertFalse(liquidation_heatmap(self.ANCHORS[:1])["ok"])
+        same = [PriceAnchor("2026-08-04T20:00:00Z", 100.0, "s", 3),
+                PriceAnchor("2026-08-04T20:00:00Z", 200.0, "s", 3)]
+        self.assertFalse(liquidation_heatmap(same)["ok"])
+        self.assertFalse(liquidation_heatmap(self.ANCHORS, lo=50, hi=40)["ok"])
+        self.assertFalse(liquidation_heatmap(self.ANCHORS, columns=1)["ok"])
+
+    def test_out_of_range_bounds_produce_no_levels_not_a_crash(self):
+        h = liquidation_heatmap(self.ANCHORS, lo=1.0, hi=2.0)
+        self.assertFalse(h["ok"])
+        self.assertIn("no pending levels", h["reason"])
+
+    def test_ladder_and_heatmap_agree_on_the_same_arithmetic(self):
+        p = 81240.29
+        for r in liquidation_ladder(p, levels=(10, 25)):
+            self.assertAlmostEqual(r["long_liq"], p * (1 - 1 / r["leverage"]), places=6)
+            self.assertAlmostEqual(r["short_liq"], p * (1 + 1 / r["leverage"]), places=6)
+
+
 class TestSeed(unittest.TestCase):
     def test_every_quote_has_a_real_source_and_url_or_note(self):
         snap = seed.build()
@@ -304,6 +421,20 @@ class TestSeed(unittest.TestCase):
         for r in seed.build().releases:
             datetime.strptime(r["when"], "%Y-%m-%dT%H:%M:%SZ")
             self.assertTrue(r["url"].startswith("https://"), r["code"])
+
+    def test_price_anchors_are_sourced_and_dated(self):
+        for a in seed.build().price_anchors:
+            self.assertTrue(a.source.strip())
+            self.assertTrue(a.url.startswith("https://"))
+            datetime.strptime(a.date, "%Y-%m-%dT%H:%M:%SZ")
+
+    def test_btc_window_bounds_contain_every_anchor(self):
+        snap = seed.build()
+        w = snap.btc_window
+        self.assertTrue(w)
+        for a in snap.price_anchors:
+            self.assertGreaterEqual(a.price, w["lo"])
+            self.assertLessEqual(a.price, w["hi"])
 
     def test_headlines_sorted_by_impact(self):
         h = seed.build().headlines

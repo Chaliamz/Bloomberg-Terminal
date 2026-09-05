@@ -29,23 +29,31 @@ def e(x: object) -> str:
 
 
 FONTS = ("https://fonts.googleapis.com/css2?"
-         "family=Barlow+Condensed:wght@500;600;700&"
-         "family=Barlow:wght@400;500;600&"
-         "family=JetBrains+Mono:wght@400;500;700&display=swap")
+         "family=Saira+Condensed:wght@500;600;700&"
+         "family=Fira+Sans:wght@400;500;600&"
+         "family=Fira+Mono:wght@400;500;700&display=swap")
 
 CSS = r"""
 :root{
-  --void:#06070B; --deep:#090B12; --panel:#0C0F17; --raise:#11151F;
-  --edge:#1A2030; --edge-hi:#262E42;
-  --gold:#E8B33C; --gold-dim:#7A5E1F;
-  --up:#35D07F; --up-dim:#17603A;
-  --down:#FF5C6C; --down-dim:#7A2A32;
-  --live:#4EA8FF; --live-dim:#1E4E7A;
+  --void:#05060A; --deep:#080A11; --panel:#0A0C14; --raise:#0F131D;
+  --edge:#171C2A; --edge-hi:#232B3E;
+  /* Primary accent is teal, deliberately NOT amber-on-black: that scheme is
+     Bloomberg's protected brand identity. The conventions borrowed here are
+     functional - density, monospace grids, hard panels, a command line. */
+  --gold:#2EC5CF; --gold-dim:#155F66;
+  --amber:#E8A33C; --amber-dim:#6E4E1B;
+  --up:#3DDC84; --up-dim:#186340;
+  --down:#FF5A6E; --down-dim:#7A2833;
+  --live:#7A6CF0; --live-dim:#332C73;
   --unk:#7E76A8;
-  --ink:#D2D8E4; --ink-2:#98A3B8; --dim:#647089; --faint:#3A4358;
-  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --disp:"Barlow Condensed","Barlow",system-ui,sans-serif;
+  --ink:#DCE3EE; --ink-2:#9AA6BC; --dim:#66738C; --faint:#3B455C;
+  /* Validated sequential magnitude ramp: monotonic in OKLab lightness,
+     step gaps 0.086-0.110, 15.9:1 contrast at the top against the ground. */
+  --h0:#0D1030; --h1:#241A5E; --h2:#28407F; --h3:#22698C;
+  --h4:#2A9284; --h5:#63B85C; --h6:#C8CC46; --h7:#F2E85C;
+  --mono:"Fira Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --body:"Fira Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --disp:"Saira Condensed","Fira Sans Condensed",system-ui,sans-serif;
 }
 *{box-sizing:border-box}
 html{background:var(--void)}
@@ -57,23 +65,23 @@ img{max-width:100%}
 #fx{position:fixed;inset:0;z-index:0;display:block;pointer-events:none}
 .veil{position:fixed;inset:0;z-index:1;pointer-events:none;
   background:
-    radial-gradient(1200px 700px at 8% -10%,rgba(232,179,60,.09),transparent 60%),
-    radial-gradient(1000px 600px at 95% 0%,rgba(78,168,255,.07),transparent 58%),
-    radial-gradient(1400px 900px at 50% 120%,rgba(126,118,168,.07),transparent 62%)}
+    radial-gradient(1200px 700px at 8% -10%,rgba(46,197,207,.10),transparent 60%),
+    radial-gradient(1000px 600px at 95% 0%,rgba(122,108,240,.09),transparent 58%),
+    radial-gradient(1400px 900px at 50% 120%,rgba(99,184,92,.07),transparent 62%)}
 .scan{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.35;
   background:repeating-linear-gradient(180deg,rgba(255,255,255,.022) 0 1px,transparent 1px 3px)}
 .shell{position:relative;z-index:3}
 
 /* ---------- masthead ---------- */
 .top{position:sticky;top:0;z-index:20;border-bottom:1px solid var(--edge-hi);
-  background:linear-gradient(180deg,rgba(12,15,23,.98),rgba(6,7,11,.94));
+  background:linear-gradient(180deg,rgba(10,12,20,.98),rgba(5,6,10,.95));
   backdrop-filter:blur(9px)}
 .top-in{max-width:1720px;margin:0 auto;padding:11px 18px;display:flex;
   align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
 .logo{display:flex;align-items:baseline;gap:12px;min-width:0}
 .logo h1{margin:0;font-family:var(--disp);font-weight:700;font-size:33px;
   letter-spacing:.055em;text-transform:uppercase;color:var(--gold);line-height:1;
-  text-shadow:0 0 26px rgba(232,179,60,.28)}
+  text-shadow:0 0 26px rgba(46,197,207,.30)}
 .logo .tier{font-family:var(--mono);font-size:10px;letter-spacing:.24em;color:var(--dim);
   text-transform:uppercase;border:1px solid var(--gold-dim);padding:2px 7px;border-radius:2px}
 .hud{display:flex;gap:20px;flex-wrap:wrap;align-items:center}
@@ -83,14 +91,14 @@ img{max-width:100%}
 .hud .cell b{font-family:var(--mono);font-size:15.5px;font-weight:500;color:var(--ink);
   font-variant-numeric:tabular-nums;white-space:nowrap}
 .pulse{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;
-  background:var(--up);box-shadow:0 0 0 0 rgba(53,208,127,.7);animation:ping 2s infinite}
-.pulse.stale{background:var(--gold);box-shadow:0 0 0 0 rgba(232,179,60,.7)}
-.pulse.cold{background:var(--down);box-shadow:0 0 0 0 rgba(255,92,108,.7)}
+  background:var(--up);box-shadow:0 0 0 0 rgba(61,220,132,.7);animation:ping 2s infinite}
+.pulse.stale{background:var(--amber);box-shadow:0 0 0 0 rgba(232,163,60,.7)}
+.pulse.cold{background:var(--down);box-shadow:0 0 0 0 rgba(255,90,110,.7)}
 @keyframes ping{0%{box-shadow:0 0 0 0 currentColor;opacity:1}
   70%{box-shadow:0 0 0 8px rgba(0,0,0,0);opacity:.75}100%{box-shadow:0 0 0 0 rgba(0,0,0,0);opacity:1}}
 
 /* ---------- ticker ---------- */
-.tape{border-bottom:1px solid var(--edge);background:rgba(9,11,18,.9);overflow:hidden;
+.tape{border-bottom:1px solid var(--edge);background:rgba(8,10,17,.92);overflow:hidden;
   position:relative}
 .tape::before,.tape::after{content:"";position:absolute;top:0;bottom:0;width:64px;z-index:2;
   pointer-events:none}
@@ -113,7 +121,7 @@ main{max-width:1720px;margin:0 auto;padding:14px 18px 64px;
   display:flex;flex-direction:column;min-width:0;position:relative;overflow:hidden;
   animation:lift .55s cubic-bezier(.2,.7,.3,1) both}
 .card::after{content:"";position:absolute;inset:0 0 auto 0;height:1px;
-  background:linear-gradient(90deg,transparent,rgba(232,179,60,.35),transparent);
+  background:linear-gradient(90deg,transparent,rgba(46,197,207,.38),transparent);
   transform:translateX(-100%);animation:sheen 9s ease-in-out infinite}
 .card:nth-child(2n)::after{animation-delay:2.4s}
 .card:nth-child(3n)::after{animation-delay:4.6s}
@@ -167,10 +175,10 @@ main{max-width:1720px;margin:0 auto;padding:14px 18px 64px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .t{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;padding:1px 4px;border-radius:2px;
   border:1px solid;flex:none}
-.t1{color:var(--up);border-color:var(--up-dim);background:rgba(53,208,127,.08)}
-.t2{color:var(--gold);border-color:var(--gold-dim);background:rgba(232,179,60,.08)}
+.t1{color:var(--up);border-color:var(--up-dim);background:rgba(61,220,132,.09)}
+.t2{color:var(--amber);border-color:var(--amber-dim);background:rgba(232,163,60,.09)}
 .t3{color:var(--ink-2);border-color:var(--edge-hi);background:rgba(152,163,184,.07)}
-.t4{color:var(--down);border-color:var(--down-dim);background:rgba(255,92,108,.08)}
+.t4{color:var(--down);border-color:var(--down-dim);background:rgba(255,90,110,.09)}
 /* The confidence rail sits on the LEFT edge: on the right it reads as the next
    cell's border and the reader mis-attributes the confidence. */
 .conf{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--edge)}
@@ -222,7 +230,7 @@ main{max-width:1720px;margin:0 auto;padding:14px 18px 64px;
 .note{margin:0;font-size:13px;line-height:1.55;color:var(--dim);
   border-left:2px solid var(--edge-hi);padding-left:10px}
 .note b{color:var(--ink-2);font-weight:600}
-.warn{border-left-color:var(--gold);color:var(--ink-2)}
+.warn{border-left-color:var(--amber);color:var(--ink-2)}
 .bad{border-left-color:var(--down)}
 .reg{font-family:var(--disp);font-size:36px;font-weight:700;letter-spacing:.05em;
   color:var(--gold);text-transform:uppercase;line-height:1;margin:0}
@@ -245,7 +253,7 @@ footer strong{color:var(--ink-2)}
 footer code{font-family:var(--mono);font-size:12px;color:var(--gold)}
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 noscript .ns{display:block;margin:14px 18px;padding:12px;border:1px solid var(--gold-dim);
-  background:rgba(232,179,60,.08);color:var(--gold);font-family:var(--mono);font-size:11.5px}
+  background:rgba(46,197,207,.09);color:var(--gold);font-family:var(--mono);font-size:12px}
 /* ---------- sentiment gauges ---------- */
 .gauges{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 @media(max-width:520px){.gauges{grid-template-columns:1fr}}
@@ -265,7 +273,7 @@ noscript .ns{display:block;margin:14px 18px;padding:12px;border:1px solid var(--
 /* ---------- liquidation map ---------- */
 .liqbar{display:flex;height:30px;border:1px solid var(--edge);border-radius:3px;
   overflow:hidden;font-family:var(--mono);font-size:12px;font-weight:700}
-.liqbar span{display:flex;align-items:center;justify-content:center;color:#06070B;
+.liqbar span{display:flex;align-items:center;justify-content:center;color:#05060A;
   white-space:nowrap;overflow:hidden;transition:flex-basis .6s ease}
 .liqbar .ls{background:var(--up)}
 .liqbar .ll{background:var(--down)}
@@ -277,8 +285,8 @@ noscript .ns{display:block;margin:14px 18px;padding:12px;border:1px solid var(--
 .lr .rng{position:relative;height:22px;border-left:1px solid var(--edge);
   border-right:1px solid var(--edge)}
 .lr .seg{position:absolute;top:6px;height:10px;border-radius:2px}
-.lr .seg.dn{background:linear-gradient(90deg,rgba(255,92,108,.75),rgba(255,92,108,.12))}
-.lr .seg.upl{background:linear-gradient(90deg,rgba(53,208,127,.12),rgba(53,208,127,.75))}
+.lr .seg.dn{background:linear-gradient(90deg,rgba(255,90,110,.78),rgba(255,90,110,.12))}
+.lr .seg.upl{background:linear-gradient(90deg,rgba(61,220,132,.12),rgba(61,220,132,.78))}
 .lr .mid{position:absolute;top:0;bottom:0;width:2px;background:var(--gold);left:50%;
   transform:translateX(-50%)}
 .lr .px{font-variant-numeric:tabular-nums;font-size:11.5px}
@@ -301,9 +309,9 @@ noscript .ns{display:block;margin:14px 18px;padding:12px;border:1px solid var(--
   border-left:2px solid var(--down-dim);padding-left:9px}
 .stat{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;padding:2px 6px;
   border-radius:2px;border:1px solid;text-transform:uppercase}
-.stat.esc{color:var(--down);border-color:var(--down-dim);background:rgba(255,92,108,.1);
+.stat.esc{color:var(--down);border-color:var(--down-dim);background:rgba(255,90,110,.11);
   animation:blink 1.8s steps(2,end) infinite}
-.stat.act{color:var(--gold);border-color:var(--gold-dim);background:rgba(232,179,60,.1)}
+.stat.act{color:var(--amber);border-color:var(--amber-dim);background:rgba(232,163,60,.1)}
 .stat.ong{color:var(--ink-2);border-color:var(--edge-hi)}
 
 /* ---------- flows ---------- */
@@ -327,6 +335,52 @@ noscript .ns{display:block;margin:14px 18px;padding:12px;border:1px solid var(--
 .sqrail{border-radius:2px}
 .sqb h3{margin:0 0 4px;font-size:14.5px;font-weight:600;color:var(--ink);line-height:1.35}
 .sqb p{margin:0 0 5px;font-size:12.5px;color:var(--dim);line-height:1.45}
+
+/* ---------- terminal chrome: command line + function strip ---------- */
+.cmdbar{display:flex;align-items:stretch;gap:0;border-bottom:1px solid var(--edge);
+  background:var(--deep);overflow-x:auto}
+.cmdbar .fk{flex:0 0 auto;padding:7px 13px;border-right:1px solid var(--edge);
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;color:var(--dim);
+  white-space:nowrap;display:flex;align-items:center;gap:7px;
+  transition:color .15s ease,background .15s ease}
+.cmdbar .fk:hover{color:var(--ink);background:var(--raise)}
+.cmdbar .fk b{color:var(--gold);font-weight:700}
+.cmdbar .prompt{flex:1 1 auto;display:flex;align-items:center;gap:9px;padding:7px 14px;
+  font-family:var(--mono);font-size:12px;color:var(--faint);min-width:150px}
+.cmdbar .prompt .caret{width:8px;height:15px;background:var(--gold);
+  animation:caret 1.1s steps(2,end) infinite}
+@keyframes caret{50%{opacity:0}}
+.statusbar{display:flex;flex-wrap:wrap;gap:0;border-top:1px solid var(--edge);
+  background:var(--deep);font-family:var(--mono);font-size:11px;color:var(--dim)}
+.statusbar span{padding:6px 14px;border-right:1px solid var(--edge);white-space:nowrap}
+.statusbar b{color:var(--ink-2);font-weight:500}
+
+/* ---------- liquidation heatmap ---------- */
+.hm-wrap{display:grid;grid-template-columns:64px minmax(0,1fr);gap:0 8px;
+  font-family:var(--mono);font-size:10.5px}
+.hm-y{display:flex;flex-direction:column-reverse;justify-content:space-between;
+  color:var(--faint);text-align:right;padding:1px 0}
+.hm{position:relative;border:1px solid var(--edge);background:var(--h0);
+  width:100%;display:block;aspect-ratio:36/22}
+.hm-x{grid-column:2;display:flex;justify-content:space-between;color:var(--faint);
+  padding-top:5px}
+.hm-legend{grid-column:1/-1;display:flex;align-items:center;gap:9px;padding-top:9px;
+  color:var(--faint)}
+.hm-legend .bar{flex:1 1 auto;height:9px;border-radius:2px;border:1px solid var(--edge);
+  background:linear-gradient(90deg,var(--h0),var(--h1),var(--h2),var(--h3),
+    var(--h4),var(--h5),var(--h6),var(--h7))}
+.hm-key{display:flex;gap:12px;flex-wrap:wrap;color:var(--faint);
+  font-family:var(--mono);font-size:10.5px;padding-top:4px}
+.hm-key i{font-style:normal;display:inline-flex;align-items:center;gap:5px}
+.hm-key .sw{width:14px;height:3px;border-radius:2px;display:inline-block}
+
+/* ---------- geo time badge ---------- */
+.when{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:none;
+  font-family:var(--mono);text-align:right}
+.when .abs{font-size:11px;color:var(--ink-2);white-space:nowrap}
+.when .ago{font-size:10px;color:var(--gold);letter-spacing:.08em}
+.ge{grid-template-columns:56px minmax(0,1fr) auto}
+.ge .hd{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;
@@ -363,12 +417,14 @@ function tick(){
   var d=new Date();
   setText("clk",pad(d.getUTCHours())+":"+pad(d.getUTCMinutes())+":"+pad(d.getUTCSeconds())+" UTC");
   setText("sess",sessionState(d));
+  setText("sb-clk",pad(d.getUTCHours())+":"+pad(d.getUTCMinutes())+":"+pad(d.getUTCSeconds()));
   /* data age, ticking upward from the real capture time */
   var cap=Date.parse(D.captured);
   if(!isNaN(cap)){
     var s=Math.max(0,Math.floor((d.getTime()-cap)/1000));
     var dd=Math.floor(s/86400), hh=Math.floor(s%86400/3600), mm=Math.floor(s%3600/60);
-    setText("age",(dd?dd+"d ":"")+pad(hh)+"h "+pad(mm)+"m");
+    var ageTxt=(dd?dd+"d ":"")+pad(hh)+"h "+pad(mm)+"m";
+    setText("age",ageTxt); setText("sb-age",ageTxt);
     var dot=q("dot"), st=q("state");
     var cls=s<900?"":(s<86400?"stale":"cold");
     var lab=s<900?"LIVE":(s<86400?"SNAPSHOT":"STALE SNAPSHOT");
@@ -391,12 +447,79 @@ function tick(){
 }
 tick();setInterval(tick,1000);
 
+/* ---- liquidation heatmap: paint the grid, overlay the observed price line ---- */
+(function(){
+  var cv=q("hm-canvas"); if(!cv||!cv.getContext||!D.heat) return;
+  var g=cv.getContext("2d"); if(!g) return;
+  var H=D.heat, ramp=D.ramp||[];
+  function hex(h){return [parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),
+                          parseInt(h.substr(5,2),16)];}
+  var stops=ramp.map(hex);
+  function colour(v){
+    if(v<=0) return stops[0];
+    var f=Math.min(1,Math.max(0,Math.pow(v,0.55)))*(stops.length-1);
+    var i=Math.floor(f), t=f-i, a=stops[i], b=stops[Math.min(i+1,stops.length-1)];
+    return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+  }
+  /* Cells are drawn as rects at 8x so the price line can be stroked crisply on
+     top instead of being pixelated along with the heat field. */
+  var S=parseInt(cv.getAttribute("data-cell"),10)||8;
+  for(var x=0;x<H.cols;x++){
+    for(var y=0;y<H.rows;y++){
+      var c=colour(H.grid[x][y]);
+      g.fillStyle="rgb("+(c[0]|0)+","+(c[1]|0)+","+(c[2]|0)+")";
+      /* canvas row 0 is the TOP; price row 0 is the LOWEST, so flip y */
+      g.fillRect(x*S,(H.rows-1-y)*S,S,S);
+    }
+  }
+  /* observed closes: markers, dashed connector where nothing was observed */
+  var pts=H.anchors.map(function(a){
+    return [(a.col+0.5)*S,(H.rows-0.5-a.row)*S];
+  });
+  g.save();
+  g.lineJoin="round"; g.lineCap="round";
+  g.strokeStyle="rgba(5,6,10,0.85)"; g.lineWidth=6; g.setLineDash([13,9]);
+  g.beginPath();
+  pts.forEach(function(p,i){ i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]); });
+  g.stroke();
+  g.strokeStyle="#2EC5CF"; g.lineWidth=2.6;
+  g.beginPath();
+  pts.forEach(function(p,i){ i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]); });
+  g.stroke(); g.setLineDash([]);
+  pts.forEach(function(p){
+    g.beginPath(); g.arc(p[0],p[1],5.5,0,6.283);
+    g.fillStyle="#05060A"; g.fill();
+    g.lineWidth=2.4; g.strokeStyle="#2EC5CF"; g.stroke();
+  });
+  g.restore();
+})();
+
+/* ---- relative time on the geopolitical board, recomputed every tick ---- */
+function relTime(){
+  var now=Date.now();
+  var els=document.querySelectorAll("[data-ago]");
+  for(var i=0;i<els.length;i++){
+    var t=Date.parse(els[i].getAttribute("data-ago"));
+    if(isNaN(t)){els[i].textContent="UNKNOWN";continue;}
+    var s=Math.max(0,Math.floor((now-t)/1000));
+    var out;
+    if(s<3600) out=Math.floor(s/60)+"m ago";
+    else if(s<86400) out=Math.floor(s/3600)+"h ago";
+    else out=Math.floor(s/86400)+"d "+Math.floor(s%86400/3600)+"h ago";
+    els[i].textContent=out;
+  }
+}
+relTime(); setInterval(relTime,30000);
+
 /* ---- ambient field: tape, motes, sweep, ping ---- */
 (function(){
   var c=q("fx");if(!c||!c.getContext)return;
   var ctx=c.getContext("2d");if(!ctx)return;
   var reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var W=0,H=0,dpr=1,N=300,layers=[],motes=[],sweep=-0.3,ping=0,pingAt=0,t=0;
+  var W=0,H=0,dpr=1,N=300,layers=[],motes=[],streams=[],sweep=-0.3,
+      ping=0,pingAt=0,ping2At=-570,t=0;   /* negative = phase offset, never ahead of t */
+  var MOTE_HUES=["46,197,207","122,108,240","99,184,92","200,204,70",
+                 "242,232,92","232,163,60"];
 
   /* Integer wavenumbers make the series exactly periodic over N, so rotating
      the ring scrolls it seamlessly and it can never drain off-screen. */
@@ -409,6 +532,15 @@ tick();setInterval(tick,1000);
     }
     return {p:p,speed:speed,alpha:alpha,hue:hue,acc:0};
   }
+  function seedStreams(){
+    streams=[];
+    var n=Math.min(16,Math.max(5,Math.round(innerWidth/140)));
+    for(var i=0;i<n;i++){
+      streams.push({x:Math.random(),y:Math.random(),len:0.05+Math.random()*0.16,
+        v:0.0016+Math.random()*0.0042,w:0.6+Math.random()*1.1,
+        h:MOTE_HUES[(Math.random()*MOTE_HUES.length)|0],a:0.10+Math.random()*0.18});
+    }
+  }
   function seedMotes(){
     motes=[];
     var n=Math.min(70,Math.max(24,Math.round(innerWidth/26)));
@@ -416,7 +548,7 @@ tick();setInterval(tick,1000);
       motes.push({x:Math.random(),y:Math.random(),
         v:0.00006+Math.random()*0.00022,r:0.4+Math.random()*1.3,
         a:0.10+Math.random()*0.30,
-        h:Math.random()<0.6?"232,179,60":(Math.random()<0.5?"78,168,255":"53,208,127")});
+        h:MOTE_HUES[(Math.random()*MOTE_HUES.length)|0]});
     }
   }
   function resize(){
@@ -424,7 +556,7 @@ tick();setInterval(tick,1000);
     W=c.width=Math.max(1,Math.floor(innerWidth*dpr));
     H=c.height=Math.max(1,Math.floor(innerHeight*dpr));
     c.style.width=innerWidth+"px";c.style.height=innerHeight+"px";
-    seedMotes();
+    seedMotes();seedStreams();
   }
   function drawLayer(L){
     var seg=W/(N-1),i,x;
@@ -440,7 +572,7 @@ tick();setInterval(tick,1000);
   function frame(){
     t++;
     ctx.clearRect(0,0,W,H);
-    ctx.fillStyle="#06070B";ctx.fillRect(0,0,W,H);
+    ctx.fillStyle="#05060A";ctx.fillRect(0,0,W,H);
 
     /* drifting measurement grid */
     var gs=68*dpr, off=reduce?0:(t*0.12)%gs;
@@ -463,31 +595,64 @@ tick();setInterval(tick,1000);
       ctx.fillStyle="rgba("+o.h+","+o.a+")";ctx.fill();
     }
 
+    /* vertical data streams */
+    for(var k=0;k<streams.length;k++){
+      var st=streams[k];
+      if(!reduce){st.y+=st.v;if(st.y-st.len>1){st.y=-0.02;st.x=Math.random();}}
+      var gx=st.x*W, gy0=(st.y-st.len)*H, gy1=st.y*H;
+      var lg=ctx.createLinearGradient(gx,gy0,gx,gy1);
+      lg.addColorStop(0,"rgba("+st.h+",0)");
+      lg.addColorStop(1,"rgba("+st.h+","+st.a+")");
+      ctx.strokeStyle=lg;ctx.lineWidth=st.w*dpr;
+      ctx.beginPath();ctx.moveTo(gx,gy0);ctx.lineTo(gx,gy1);ctx.stroke();
+    }
+
+    /* horizon glow */
+    var hg=ctx.createLinearGradient(0,H*0.72,0,H);
+    hg.addColorStop(0,"rgba(46,197,207,0)");
+    hg.addColorStop(1,"rgba(46,197,207,0.045)");
+    ctx.fillStyle=hg;ctx.fillRect(0,H*0.72,W,H*0.28);
+
     if(!reduce){
-      /* radar ping every ~11s from the top-left */
-      if(t-pingAt>660){pingAt=t;ping=0;}
+      /* two radar pings, opposite corners, different hues */
+      if(t-pingAt>660){pingAt=t;}
       ping=(t-pingAt)/660;
-      if(ping<1){
+      if(ping>=0&&ping<1){
         var rr=ping*Math.max(W,H)*1.15;
         ctx.beginPath();ctx.arc(W*0.06,H*0.02,rr,0,6.283);
-        ctx.strokeStyle="rgba(232,179,60,"+(0.10*(1-ping))+")";
+        ctx.strokeStyle="rgba(46,197,207,"+(0.11*(1-ping))+")";
         ctx.lineWidth=1.5*dpr;ctx.stroke();
+      }
+      if(t-ping2At>900){ping2At=t;}
+      var p2=(t-ping2At)/900;
+      if(p2>=0&&p2<1){
+        var r2=p2*Math.max(W,H)*1.25;
+        ctx.beginPath();ctx.arc(W*0.97,H*0.85,r2,0,6.283);
+        ctx.strokeStyle="rgba(122,108,240,"+(0.09*(1-p2))+")";
+        ctx.lineWidth=1.3*dpr;ctx.stroke();
       }
       /* CRT sweep */
       sweep+=0.0014;if(sweep>1.3)sweep=-0.3;
       var sx=sweep*W,g=ctx.createLinearGradient(sx-190*dpr,0,sx+20*dpr,0);
-      g.addColorStop(0,"rgba(232,179,60,0)");
-      g.addColorStop(0.8,"rgba(232,179,60,0.035)");
-      g.addColorStop(1,"rgba(232,179,60,0.10)");
+      g.addColorStop(0,"rgba(46,197,207,0)");
+      g.addColorStop(0.8,"rgba(46,197,207,0.035)");
+      g.addColorStop(1,"rgba(46,197,207,0.11)");
       ctx.fillStyle=g;ctx.fillRect(sx-190*dpr,0,210*dpr,H);
-      ctx.fillStyle="rgba(232,179,60,0.14)";ctx.fillRect(sx,0,dpr,H);
-      requestAnimationFrame(frame);
+      ctx.fillStyle="rgba(46,197,207,0.15)";ctx.fillRect(sx,0,dpr,H);
     }
   }
-  layers=[layer(1.1,0.06,0.15,"#E8B33C"),
-          layer(3.7,0.037,0.10,"#4EA8FF"),
-          layer(6.3,0.021,0.075,"#7E76A8")];
-  resize();frame();
+  /* The loop re-arms in a finally block: one bad frame must degrade a single
+     frame, never stop the animation for the life of the page. */
+  function loop(){
+    try{ frame(); }
+    catch(err){ if(window.console&&console.warn) console.warn("fx frame:",err); }
+    finally{ if(!reduce) requestAnimationFrame(loop); }
+  }
+  layers=[layer(1.1,0.062,0.16,"#2EC5CF"),
+          layer(3.7,0.040,0.115,"#7A6CF0"),
+          layer(6.3,0.024,0.085,"#63B85C"),
+          layer(9.1,0.014,0.06,"#C8CC46")];
+  resize();loop();
   addEventListener("resize",function(){resize();if(reduce)frame();},{passive:true});
 })();
 })();
@@ -631,6 +796,53 @@ def render_liquidations(snap) -> str:
     return "".join(out)
 
 
+def render_heatmap(snap) -> str:
+    """CoinGlass-form liquidation heatmap: price x time, magnitude as colour."""
+    from .live import liquidation_heatmap
+
+    if len(snap.price_anchors) < 2:
+        return ('<p class="note">Heatmap UNAVAILABLE &mdash; needs at least two dated '
+                'price anchors, and they are not interpolated into existence.</p>')
+    win = snap.btc_window or {}
+    lo, hi = win.get("lo"), win.get("hi")
+    hm = liquidation_heatmap(snap.price_anchors, lo=lo, hi=hi)
+    if not hm.get("ok"):
+        return f'<p class="note">Heatmap UNAVAILABLE &mdash; {e(hm.get("reason", ""))}.</p>'
+
+    ylabels = "".join(
+        f"<span>{lo_v:,.0f}</span>" for lo_v in
+        [hm["lo"] + (hm["hi"] - hm["lo"]) * i / 4 for i in range(5)]
+    )
+    xlabels = "".join(f"<span>{d}</span>" for d in
+                      (hm["t0"][5:10], "", "", hm["t1"][5:10]))
+    return (
+        f'<div class="hm-wrap">'
+        f'<div class="hm-y">{ylabels}</div>'
+        f'<canvas class="hm" id="hm-canvas" width="{hm["columns"] * 8}" '
+        f'height="{hm["rows"] * 8}" data-cell="8" role="img" '
+        f'aria-label="Liquidation intensity by price and time, '
+        f'{hm["lo"]:,.0f} to {hm["hi"]:,.0f}"></canvas>'
+        f'<div class="hm-x">{xlabels}</div>'
+        f'<div class="hm-legend"><span>low</span><span class="bar"></span>'
+        f'<span>high leverage density</span></div>'
+        f'<div class="hm-key" style="grid-column:1/-1">'
+        f'<i><span class="sw" style="background:var(--gold)"></span>observed close</i>'
+        f'<i><span class="sw" style="background:repeating-linear-gradient(90deg,'
+        f'var(--gold) 0 3px,transparent 3px 6px)"></span>no observation between</i>'
+        f'<i>leverage tiers {", ".join(str(x) + "x" for x in hm["levels"])}</i>'
+        f'<i>{len(snap.price_anchors)} sourced anchors</i></div>'
+        f'</div>'
+        f'<p class="note warn"><b>Computed by the published method, on real prices.</b> '
+        f'At each observed close, positions opened there liquidate at '
+        f'price&times;(1&minus;1/N) and price&times;(1+1/N); those levels stay pending '
+        f'until price sweeps through them. Between two observations nothing is known, '
+        f'so the field is held and the price line is drawn dashed &mdash; no price is '
+        f'ever interpolated. It is <b>not</b> open-interest weighted: that needs '
+        f'per-exchange position data, and the time resolution here is the data\'s, not '
+        f'the renderer\'s.</p>'
+    )
+
+
 def render_geo(snap) -> str:
     if not snap.geo:
         return '<p class="note">No geopolitical items in this snapshot.</p>'
@@ -652,8 +864,11 @@ def render_geo(snap) -> str:
             f'<div class="meta"><span class="stat {cls}">{e(g.status)}</span>'
             f'<span class="chip">{e(g.region)}</span>'
             f'<span class="t t{g.tier}">T{g.tier}</span><span>{e(g.source)}</span>'
-            f'<span>{e(g.as_of[:16].replace("T", " "))}Z</span>{link}{chips}</div>'
-            f'</div></article>'
+            f'{link}{chips}</div></div>'
+            f'<div class="when"><span class="abs">{e(g.as_of[5:10])} '
+            f'{e(g.as_of[11:16])}Z</span>'
+            f'<span class="ago" data-ago="{e(g.as_of)}">&mdash;</span></div>'
+            f'</article>'
         )
     return f'<div class="geo">{"".join(rows)}</div>'
 
@@ -800,10 +1015,16 @@ def render(snap: Snapshot, standalone: bool = True) -> str:
         curve = '<p class="note">2s10s UNAVAILABLE &mdash; both legs are required.</p>'
 
     # --- news: rendered by render_squawk() ---
+    tier_mix = {}
+    for _q in snap.quotes.values():
+        tier_mix[_q.tier] = tier_mix.get(_q.tier, 0) + 1
+    src_mix = " ".join(f"T{t}:{tier_mix[t]}" for t in sorted(tier_mix))
+
     squawk = render_squawk(snap)
     gauges_html = ("".join(render_gauge(g) for g in snap.gauges.values())
                    or '<p class="note">No sentiment gauges in this snapshot.</p>')
     liq_html = render_liquidations(snap)
+    heat_html = render_heatmap(snap)
     geo_html = render_geo(snap)
     flows_html = render_flows(snap)
 
@@ -881,7 +1102,17 @@ def render(snap: Snapshot, standalone: bool = True) -> str:
         for q in quotes
     )
 
-    payload = json.dumps({"captured": snap.captured}, ensure_ascii=False).replace("</", "<\\/")
+    from .live import HEAT_RAMP, liquidation_heatmap
+    _win = snap.btc_window or {}
+    _hm = liquidation_heatmap(
+        snap.price_anchors, lo=_win.get("lo"), hi=_win.get("hi"),
+    ) if len(snap.price_anchors) >= 2 else {"ok": False}
+    payload = json.dumps({
+        "captured": snap.captured,
+        "ramp": list(HEAT_RAMP),
+        "heat": ({"grid": _hm["grid"], "cols": _hm["columns"], "rows": _hm["rows"],
+                  "anchors": _hm["anchors"]} if _hm.get("ok") else None),
+    }, ensure_ascii=False).replace("</", "<\\/")
 
     head = (f'<title>Macro Desk Live</title>\n'
             f'<link rel="preconnect" href="https://fonts.googleapis.com">\n'
@@ -910,6 +1141,17 @@ def render(snap: Snapshot, standalone: bool = True) -> str:
     </div>
   </div>
   <div class="tape"><div class="tape-run">{tape}{tape}</div></div>
+  <div class="cmdbar">
+    <span class="fk"><b>F1</b> BOARD</span>
+    <span class="fk"><b>F2</b> SQUAWK</span>
+    <span class="fk"><b>F3</b> HEAT</span>
+    <span class="fk"><b>F4</b> GEO</span>
+    <span class="fk"><b>F5</b> RATES</span>
+    <span class="fk"><b>F6</b> FLOW</span>
+    <span class="fk"><b>F7</b> AUDIT</span>
+    <span class="prompt"><span class="caret"></span>
+      <span>type a mnemonic &mdash; panels below are the resident layout</span></span>
+  </div>
 </header>
 
 <noscript><span class="ns">Clocks, countdowns and the data-age indicator are computed
@@ -940,13 +1182,18 @@ timing field stays blank.</span></noscript>
     </div>
   </section>
 
+  <section class="card c7">
+    <h2>BTC liquidation heatmap <em>price &times; time &middot; leverage density</em></h2>
+    <div class="bd">{heat_html}</div>
+  </section>
+
   <section class="card c5">
-    <h2>Bitcoin liquidation map <em>observed + computed</em></h2>
+    <h2>Liquidations <em>observed + computed ladder</em></h2>
     <div class="bd">{liq_html}</div>
   </section>
 
-  <section class="card c7">
-    <h2>Geopolitical board <em>event &rarr; channel &rarr; asset</em></h2>
+  <section class="card c12">
+    <h2>Geopolitical board <em>event &rarr; channel &rarr; asset &middot; with time of occurrence</em></h2>
     <div class="bd flush" style="padding:0 13px">{geo_html}</div>
   </section>
 
@@ -1041,6 +1288,17 @@ timing field stays blank.</span></noscript>
   </section>
 
 </main>
+
+<div class="statusbar">
+  <span>SRC <b id="sb-src">{e(src_mix)}</b></span>
+  <span>QUOTES <b>{len(snap.quotes)}</b></span>
+  <span>WIRE <b>{len(snap.headlines)}</b></span>
+  <span>GEO <b>{len(snap.geo)}</b></span>
+  <span>CONFLICTS <b>{len(snap.conflicts)}</b></span>
+  <span>REGIME <b>{e(snap.regime)}</b></span>
+  <span>AGE <b id="sb-age">&mdash;</b></span>
+  <span>UTC <b id="sb-clk">&mdash;</b></span>
+</div>
 
 <footer>
   <strong>What is live and what is not.</strong> The clock, the session state, the

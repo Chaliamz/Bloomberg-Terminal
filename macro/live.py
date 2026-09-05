@@ -31,7 +31,7 @@ from .types import Tier, iso, utcnow
 __all__ = [
     "Quote", "Headline", "Gauge", "Liquidations", "GeoEvent", "Snapshot",
     "SOURCES", "RELEASE_CLOCK", "load", "save", "scan", "merge", "age_seconds",
-    "liquidation_ladder",
+    "liquidation_ladder", "liquidation_heatmap", "PriceAnchor", "HEAT_RAMP",
 ]
 
 UA = "macro-radar/1.1 (institutional macro terminal; contact: operator)"
@@ -211,6 +211,121 @@ def liquidation_ladder(price: float, levels=(5, 10, 25, 50, 100)) -> list[dict]:
     return out
 
 
+@dataclass(frozen=True)
+class PriceAnchor:
+    """One observed price with its date. The heatmap is built only from these."""
+
+    date: str                  # ISO8601 Z
+    price: float
+    source: str
+    tier: int
+    url: str = ""
+    note: str = ""
+
+    def __post_init__(self) -> None:
+        if self.price <= 0:
+            raise ValueError("price anchor must be positive")
+        if not self.source.strip():
+            raise ValueError("a price anchor without a source is not representable")
+        if self.tier not in (1, 2, 3, 4):
+            raise ValueError("anchor tier must be 1-4")
+        datetime.strptime(self.date, "%Y-%m-%dT%H:%M:%SZ")
+
+
+# Perceptually-ordered magnitude ramp, verified monotonic in OKLab lightness with
+# near-uniform steps (0.086-0.110) and 15.9:1 contrast at the top against the
+# terminal ground. Sequential, because the heatmap encodes magnitude.
+HEAT_RAMP = ("#0D1030", "#241A5E", "#28407F", "#22698C",
+             "#2A9284", "#63B85C", "#C8CC46", "#F2E85C")
+
+
+def liquidation_heatmap(
+    anchors: list["PriceAnchor"],
+    *,
+    levels: tuple[int, ...] = (10, 25, 50, 100),
+    columns: int = 36,
+    rows: int = 34,
+    lo: float | None = None,
+    hi: float | None = None,
+) -> dict[str, Any]:
+    """Cumulative pending-liquidation field over price and time.
+
+    The model, stated so it can be argued with:
+
+    1.  At each observed price, positions opened there at leverage N would
+        liquidate at ``P*(1-1/N)`` (longs) and ``P*(1+1/N)`` (shorts). Those
+        levels are added to a pending set.
+    2.  A pending level is REMOVED when price is later observed to have swept
+        through it - that is the liquidation actually occurring.
+    3.  Between two observations nothing is known, so the pending set is held
+        constant rather than interpolated. Price itself is never interpolated.
+
+    Column intensity is the binned density of the pending set, normalised to
+    the busiest cell. This is the published *shape* of a liquidation heatmap
+    computed from real observed prices; it is NOT open-interest-weighted,
+    because that needs per-exchange position data. Both facts belong on the page.
+    """
+    pts = sorted(anchors, key=lambda a: a.date)
+    if len(pts) < 2 or columns < 2 or rows < 2:
+        return {"ok": False, "reason": "need at least two dated price anchors"}
+
+    prices = [a.price for a in pts]
+    lo = lo if lo is not None else min(prices) * 0.97
+    hi = hi if hi is not None else max(prices) * 1.03
+    if hi <= lo:
+        return {"ok": False, "reason": "degenerate price range"}
+
+    t0 = datetime.strptime(pts[0].date, "%Y-%m-%dT%H:%M:%SZ")
+    t1 = datetime.strptime(pts[-1].date, "%Y-%m-%dT%H:%M:%SZ")
+    span = (t1 - t0).total_seconds()
+    if span <= 0:
+        return {"ok": False, "reason": "all anchors share one timestamp"}
+
+    def col_of(dt_iso: str) -> int:
+        t = datetime.strptime(dt_iso, "%Y-%m-%dT%H:%M:%SZ")
+        f = (t - t0).total_seconds() / span
+        return max(0, min(columns - 1, int(round(f * (columns - 1)))))
+
+    def row_of(price: float) -> int:
+        f = (price - lo) / (hi - lo)
+        return max(0, min(rows - 1, int(f * rows)))
+
+    grid = [[0.0] * rows for _ in range(columns)]
+    pending: list[tuple[float, int, str]] = []      # (level, leverage, side)
+    last_price = pts[0].price
+    anchor_cols = {col_of(a.date): a for a in pts}
+
+    for c in range(columns):
+        a = anchor_cols.get(c)
+        if a is not None:
+            # sweep: any pending level between the previous and current price
+            # has been crossed, so it is gone
+            span_lo, span_hi = min(last_price, a.price), max(last_price, a.price)
+            pending = [p for p in pending if not (span_lo <= p[0] <= span_hi)]
+            for n in levels:
+                pending.append((a.price * (1 - 1.0 / n), n, "long"))
+                pending.append((a.price * (1 + 1.0 / n), n, "short"))
+            last_price = a.price
+        for level, n, _side in pending:
+            if lo <= level <= hi:
+                # weight by leverage: a 100x level is a tighter, denser cluster
+                grid[c][row_of(level)] += n / 10.0
+
+    peak = max((v for col in grid for v in col), default=0.0)
+    if peak <= 0:
+        return {"ok": False, "reason": "no pending levels fell inside the price range"}
+    norm = [[round(v / peak, 4) for v in col] for col in grid]
+
+    return {
+        "ok": True, "columns": columns, "rows": rows, "lo": lo, "hi": hi,
+        "grid": norm, "peak": peak, "levels": list(levels),
+        "t0": pts[0].date, "t1": pts[-1].date,
+        "anchors": [{"col": col_of(a.date), "row": row_of(a.price), "price": a.price,
+                     "date": a.date, "source": a.source, "tier": a.tier}
+                    for a in pts],
+    }
+
+
 @dataclass
 class Snapshot:
     captured: str
@@ -219,6 +334,8 @@ class Snapshot:
     releases: list[dict[str, Any]] = field(default_factory=list)
     policy: dict[str, Any] = field(default_factory=dict)
     gauges: dict[str, Gauge] = field(default_factory=dict)
+    price_anchors: list[PriceAnchor] = field(default_factory=list)
+    btc_window: dict[str, Any] = field(default_factory=dict)
     liquidations: Liquidations | None = None
     geo: list[GeoEvent] = field(default_factory=list)
     flows: list[dict[str, Any]] = field(default_factory=list)
@@ -238,6 +355,8 @@ class Snapshot:
             "quotes": {k: asdict(v) for k, v in self.quotes.items()},
             "headlines": [asdict(h) for h in self.headlines],
             "gauges": {k: asdict(v) for k, v in self.gauges.items()},
+            "price_anchors": [asdict(a) for a in self.price_anchors],
+            "btc_window": self.btc_window,
             "liquidations": asdict(self.liquidations) if self.liquidations else None,
             "geo": [asdict(g) for g in self.geo],
             "flows": self.flows,
@@ -291,6 +410,10 @@ def load(path: str) -> Snapshot | None:
             quotes={k: _quote_from(v) for k, v in (raw.get("quotes") or {}).items()},
             headlines=[_headline_from(h) for h in (raw.get("headlines") or [])],
             gauges={k: _gauge_from(v) for k, v in (raw.get("gauges") or {}).items()},
+            price_anchors=[PriceAnchor(**{k: v for k, v in a.items()
+                                          if k in PriceAnchor.__dataclass_fields__})
+                           for a in (raw.get("price_anchors") or [])],
+            btc_window=dict(raw.get("btc_window") or {}),
             liquidations=(_liq_from(raw["liquidations"])
                           if raw.get("liquidations") else None),
             geo=[_geo_from(g) for g in (raw.get("geo") or [])],
@@ -509,6 +632,8 @@ def scan(previous: Snapshot | None = None, *, now: datetime | None = None,
         snap.quotes = dict(previous.quotes)
         snap.policy = dict(previous.policy)
         snap.gauges = dict(previous.gauges)
+        snap.price_anchors = list(previous.price_anchors)
+        snap.btc_window = dict(previous.btc_window)
         snap.liquidations = previous.liquidations
         snap.geo = list(previous.geo)
         snap.flows = list(previous.flows)
@@ -622,6 +747,10 @@ def merge(previous: Snapshot | None, fresh: Snapshot) -> Snapshot:
         fresh.quotes.setdefault(key, q)
     for key, g in previous.gauges.items():
         fresh.gauges.setdefault(key, g)
+    if not fresh.price_anchors:
+        fresh.price_anchors = list(previous.price_anchors)
+    if not fresh.btc_window:
+        fresh.btc_window = dict(previous.btc_window)
     if fresh.liquidations is None:
         fresh.liquidations = previous.liquidations
     if not fresh.geo:
