@@ -98,7 +98,8 @@ def build_parser() -> argparse.ArgumentParser:
                     "what it knows; everything else is UNKNOWN.",
     )
     p.add_argument("command",
-                   choices=sorted(CLI_TO_COMMAND) + ["demo", "selftest", "coverage", "board"],
+                   choices=sorted(CLI_TO_COMMAND)
+                           + ["demo", "selftest", "coverage", "board", "terminal", "live"],
                    help="command to run")
     p.add_argument("arg", nargs="?", help="argument (e.g. a release code for pre-event)")
     p.add_argument("--state", help="path to a market-state JSON file")
@@ -114,6 +115,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "selftest":
         return _selftest()
+    if args.command == "terminal":
+        from .terminal import main as term_main
+        return term_main(args.arg or "board/macro-desk-live.html")
+    if args.command == "live":
+        return _live(args.arg)
     if args.command == "board":
         from .board import main as board_main
         return board_main(args.arg or "board/cold-start-terminal.html")
@@ -151,6 +157,47 @@ def main(argv: list[str] | None = None) -> int:
         with open(args.html, "w", encoding="utf-8") as fh:
             fh.write(html)
         print(f"\n# HTML terminal written to {args.html}", file=sys.stderr)
+    return 0
+
+
+def _live(arg: str | None) -> int:
+    """Refresh the snapshot from primary sources, then regenerate the terminal.
+
+    `--once` semantics by default. Pass an integer to loop with that interval in
+    seconds (the 24/7 daemon); Ctrl-C stops it cleanly.
+    """
+    import time
+
+    from . import live as live_mod
+    from . import seed as seed_mod
+    from .terminal import main as term_main
+
+    path = "state/snapshot.json"
+    interval = None
+    if arg and arg.strip().isdigit():
+        interval = max(30, int(arg.strip()))
+
+    def cycle() -> None:
+        prev = live_mod.load(path) or seed_mod.build()
+        fresh = live_mod.merge(prev, live_mod.scan(prev))
+        live_mod.save(fresh, path)
+        term_main("board/macro-desk-live.html", path)
+        if fresh.errors:
+            print(f"  {len(fresh.errors)} source(s) unreachable; prior values kept "
+                  "with their original timestamps", file=sys.stderr)
+            for err in fresh.errors[:6]:
+                print(f"    - {err}", file=sys.stderr)
+
+    if interval is None:
+        cycle()
+        return 0
+    print(f"live daemon: polling every {interval}s, Ctrl-C to stop", file=sys.stderr)
+    try:
+        while True:
+            cycle()
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        print("\nstopped", file=sys.stderr)
     return 0
 
 

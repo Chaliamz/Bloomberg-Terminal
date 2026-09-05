@@ -6,7 +6,7 @@ classification, derived cross-asset transmission maps, ICT-style market
 structure, and an R:R-gated setup engine — behind a Bloomberg-style command
 surface.
 
-Python 3.11+, **standard library only**, 192 tests.
+Python 3.11+, **standard library only**, 249 tests.
 
 ## The one design rule
 
@@ -31,6 +31,35 @@ That rule is enforced in code, not asserted in prose:
 The practical consequence: a freshly started radar tells you almost nothing,
 and every blank is labelled. That is the intended behaviour. A dashboard full
 of confident numbers you cannot trace is worth less than an honest blank.
+
+## The live terminal
+
+`python -m macro terminal` renders `board/macro-desk-live.html` from
+`state/snapshot.json`: a cross-asset board, a tiered and deduplicated news feed,
+countdowns to the next primary releases, and a source-and-freshness audit of
+every figure on the page.
+
+```bash
+python -m macro live            # one scan cycle, then regenerate
+python -m macro live 60         # 24/7 daemon, polling every 60s
+python3 tools/verify_terminal.py
+```
+
+The scanner (`macro/live.py`) polls **primary agency endpoints first** and wires
+second, because a statistical release is public at the agency URL the instant the
+embargo lifts &mdash; typically before wire coverage clears. That is the whole of
+the latency edge, it is public, and no privileged access is claimed.
+
+Two invariants make the terminal safe to trust:
+
+- **A quote without a source is not representable.** `Quote` rejects a missing
+  source, unit, tier or timestamp at construction.
+- **An unreachable source never restamps stale data.** The prior value survives
+  with its *original* timestamp and the page's age counter keeps climbing, so it
+  can never look fresher than it is.
+
+Where two outlets disagreed, the higher tier is carried at reduced confidence and
+the disagreement is printed on the page rather than resolved away.
 
 ## The board
 
@@ -172,11 +201,15 @@ macro/            engines (see table above)
 macro/data/       FRED, US Treasury, snapshot store
 macro/render/     single-file HTML terminal
 macro/board.py    module registry -> board + architecture doc
-board/            generated board (standalone + embeddable fragment)
+macro/live.py     snapshot schema + 24/7 primary-source scanner
+macro/terminal.py the live cross-asset terminal
+macro/seed.py     captured market snapshot, fully attributed
+board/            generated pages (standalone + embeddable fragments)
+state/            snapshot.json, the terminal's data source
 prompts/          operating system prompt for LLM-driven use
 docs/             spec coverage map, architecture document
 tools/            headless-browser verification for the board
-tests/            192 tests, stdlib unittest
+tests/            249 tests, stdlib unittest
 state.example.json
 ```
 
