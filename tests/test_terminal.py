@@ -102,8 +102,10 @@ class TestDataIntegrity(unittest.TestCase):
         self.assertIn(">DERIVED<", self.doc)
 
     def test_ticker_is_doubled_for_a_seamless_loop(self):
-        # the ticker carries quoted values only; the derived cell is grid-only
-        self.assertEqual(self.doc.count('class="tk"'), 2 * len(self.snap.quotes))
+        # count only inside the tape: the derived cell is grid-only
+        tape = re.search(r'<div class="tape-run">(.*?)</div></div>', self.doc, re.S)
+        self.assertIsNotNone(tape)
+        self.assertEqual(tape.group(1).count('class="tk"'), 2 * len(self.snap.quotes))
 
     def test_derived_cell_inherits_the_weaker_legs_confidence(self):
         two, ten = self.snap.q("US2Y"), self.snap.q("US10Y")
@@ -193,36 +195,34 @@ class TestDataIntegrity(unittest.TestCase):
                                           self.doc)]
         self.assertEqual(sev, sorted(sev, reverse=True))
 
-    def test_heatmap_payload_matches_the_rendered_canvas(self):
+    def _payload(self):
         import json
         m = re.search(r"window\.__TERM__=(\{.*?\});", self.doc, re.S)
-        self.assertIsNotNone(m)
-        data = json.loads(m.group(1).replace("<\\/", "</"))
-        self.assertIsNotNone(data["heat"], "heat payload missing")
-        heat = data["heat"]
-        cv = re.search(r'id="hm-canvas" width="(\d+)"\s+height="(\d+)" data-cell="(\d+)"',
-                       self.doc)
+        self.assertIsNotNone(m, "payload missing")
+        return json.loads(m.group(1).replace("<\\/", "</"))
+
+    def test_heatmap_canvas_is_rendered(self):
+        cv = re.search(r'id="hm-canvas" width="(\d+)" height="(\d+)"', self.doc)
         self.assertIsNotNone(cv, "heatmap canvas not rendered")
-        cell = int(cv.group(3))
-        self.assertGreaterEqual(cell, 2, "cell scale too small for a crisp price line")
-        self.assertEqual(int(cv.group(1)), heat["cols"] * cell)
-        self.assertEqual(int(cv.group(2)), heat["rows"] * cell)
-        self.assertEqual(len(heat["grid"]), heat["cols"])
-        self.assertTrue(all(len(c) == heat["rows"] for c in heat["grid"]))
+        self.assertGreaterEqual(int(cv.group(1)), 400)
+        self.assertGreaterEqual(int(cv.group(2)), 300)
 
     def test_heatmap_anchors_are_only_observed_prices(self):
-        import json
-        data = json.loads(re.search(r"window\.__TERM__=(\{.*?\});", self.doc, re.S)
-                          .group(1).replace("<\\/", "</"))
+        data = self._payload()
         observed = {round(a.price, 2) for a in self.snap.price_anchors}
-        self.assertEqual({round(a["price"], 2) for a in data["heat"]["anchors"]}, observed)
+        self.assertEqual({round(a["price"], 2) for a in data["anchors"]}, observed)
+        self.assertEqual(len(data["anchors"]), len(self.snap.price_anchors))
+        for a in data["anchors"]:
+            self.assertTrue(a["source"].strip(), "anchor shipped without a source")
 
-    def test_heatmap_ramp_shipped_matches_the_module(self):
-        import json
-        from macro.live import HEAT_RAMP
-        data = json.loads(re.search(r"window\.__TERM__=(\{.*?\});", self.doc, re.S)
-                          .group(1).replace("<\\/", "</"))
-        self.assertEqual(data["ramp"], list(HEAT_RAMP))
+    def test_all_ramps_shipped_match_the_module(self):
+        from macro.live import HEAT_RAMPS
+        data = self._payload()
+        self.assertEqual({k: list(v) for k, v in HEAT_RAMPS.items()}, data["ramps"])
+
+    def test_no_precomputed_grid_is_shipped(self):
+        """The browser recomputes from anchors, so a stale grid must not ride along."""
+        self.assertNotIn('"grid"', self.doc)
 
     def test_heatmap_states_its_method_and_its_limits(self):
         flat = " ".join(self.doc.split())
@@ -231,9 +231,54 @@ class TestDataIntegrity(unittest.TestCase):
         self.assertIn("not</b> open-interest weighted", flat)
 
     def test_heatmap_axis_bounds_come_from_the_sourced_window(self):
+        """Axes are drawn client-side, so the sourced bounds must reach the payload."""
         w = self.snap.btc_window
-        self.assertIn(f'{w["lo"]:,.0f}', self.doc)
-        self.assertIn(f'{w["hi"]:,.0f}', self.doc)
+        data = self._payload()
+        self.assertAlmostEqual(data["window"]["lo"], w["lo"], places=6)
+        self.assertAlmostEqual(data["window"]["hi"], w["hi"], places=6)
+        for a in self.snap.price_anchors:
+            self.assertGreaterEqual(a.price, data["window"]["lo"])
+            self.assertLessEqual(a.price, data["window"]["hi"])
+
+    def test_heatmap_controls_are_present_and_wired(self):
+        for attr in ("data-tf", "data-lev", "data-res", "data-scheme"):
+            self.assertIn(attr, self.doc, attr)
+        for el in ("hm-thr", "hm-zin", "hm-zout", "hm-reset", "hm-peak", "hm-price",
+                   "hm-time", "hm-meta"):
+            self.assertIn(f'id="{el}"', self.doc, el)
+        self.assertIn("heatmapCompute", terminal.JS)
+
+    def test_leverage_control_cannot_empty_the_model(self):
+        self.assertIn("an empty model is not a view of anything", terminal.JS)
+
+    def test_equity_ticker_does_not_reuse_the_tape_class(self):
+        """.tk is the ticker-tape item: reusing it puts flex and padding on equities."""
+        self.assertNotIn('class="tk">', re.sub(r'<div class="tape-run">.*?</div>\s*</div>',
+                                               "", self.doc, flags=re.S)
+                         .split('class="eq"')[-1])
+        self.assertIn('class="eqt"', self.doc)
+
+    def test_every_equity_and_earning_renders_with_provenance(self):
+        import html as _h
+        self.assertEqual(self.doc.count('class="eqc"'), len(self.snap.equities))
+        self.assertEqual(self.doc.count('class="er"'), len(self.snap.earnings))
+        for x in self.snap.equities:
+            self.assertIn(_h.escape(x.source, quote=True), self.doc)
+        for x in self.snap.earnings:
+            self.assertIn(_h.escape(x.source, quote=True), self.doc)
+
+    def test_earnings_countdown_precision_matches_the_source(self):
+        """A date-only source must render a day countdown, never a clock."""
+        for x in self.snap.earnings:
+            if x.status == "REPORTED":
+                continue
+            if x.when and not x.time_confirmed:
+                self.assertIn(f'data-days="{x.when}"', self.doc)
+                self.assertNotIn(f'data-when="{x.when}"', self.doc)
+            elif x.when:
+                self.assertIn(f'data-when="{x.when}"', self.doc)
+            else:
+                self.assertIn(x.window, self.doc)
 
     def test_every_geo_event_shows_when_it_happened(self):
         stamps = re.findall(r'data-ago="([^"]+)"', self.doc)

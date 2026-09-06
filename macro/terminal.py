@@ -16,7 +16,7 @@ import html
 import json
 from datetime import datetime, timezone
 
-from .live import Snapshot
+from .live import HEAT_RAMPS, Snapshot
 from .reaction import ASSETS, build_matrix
 from .regime import MacroRegime
 from .surprise import Impulse
@@ -356,23 +356,72 @@ noscript .ns{display:block;margin:14px 18px;padding:12px;border:1px solid var(--
 .statusbar b{color:var(--ink-2);font-weight:500}
 
 /* ---------- liquidation heatmap ---------- */
-.hm-wrap{display:grid;grid-template-columns:64px minmax(0,1fr);gap:0 8px;
-  font-family:var(--mono);font-size:10.5px}
-.hm-y{display:flex;flex-direction:column-reverse;justify-content:space-between;
-  color:var(--faint);text-align:right;padding:1px 0}
-.hm{position:relative;border:1px solid var(--edge);background:var(--h0);
-  width:100%;display:block;aspect-ratio:36/22}
-.hm-x{grid-column:2;display:flex;justify-content:space-between;color:var(--faint);
-  padding-top:5px}
-.hm-legend{grid-column:1/-1;display:flex;align-items:center;gap:9px;padding-top:9px;
-  color:var(--faint)}
-.hm-legend .bar{flex:1 1 auto;height:9px;border-radius:2px;border:1px solid var(--edge);
-  background:linear-gradient(90deg,var(--h0),var(--h1),var(--h2),var(--h3),
-    var(--h4),var(--h5),var(--h6),var(--h7))}
-.hm-key{display:flex;gap:12px;flex-wrap:wrap;color:var(--faint);
-  font-family:var(--mono);font-size:10.5px;padding-top:4px}
+.hm-ctl{display:flex;flex-wrap:wrap;gap:7px 18px;align-items:center;
+  padding:9px 11px;border:1px solid var(--edge);border-radius:3px;
+  background:var(--raise);font-family:var(--mono);font-size:10.5px}
+.ctl-g{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.ctl-g>b{color:var(--faint);letter-spacing:.18em;font-weight:400;margin-right:2px}
+.ctl-v{font-style:normal;color:var(--gold);min-width:34px;text-align:right;
+  font-variant-numeric:tabular-nums}
+.pill{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;padding:3px 9px;
+  border-radius:2px;border:1px solid var(--edge-hi);background:var(--panel);
+  color:var(--dim);cursor:pointer;transition:all .14s ease}
+.pill:hover{color:var(--ink);border-color:var(--gold-dim)}
+.pill[data-on]{background:var(--gold);border-color:var(--gold);color:#05060A;
+  font-weight:700}
+.sw-btn{padding:2px;border:1px solid var(--edge-hi);background:var(--panel);
+  border-radius:2px;cursor:pointer;line-height:0}
+.sw-btn i{display:block;width:34px;height:12px;border-radius:1px}
+.sw-btn[data-on]{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+input[type=range]{width:104px;accent-color:var(--gold);cursor:pointer}
+
+.hm-stage{display:grid;grid-template-columns:42px minmax(0,1fr) 70px;
+  grid-template-rows:auto auto;gap:0 8px;font-family:var(--mono);font-size:10.5px}
+.hm-scale{grid-row:1;display:flex;flex-direction:column;align-items:stretch;gap:4px;
+  color:var(--faint);text-align:right;font-size:9.5px}
+.hm-scale i{font-style:normal;white-space:nowrap}
+.hm-bar{flex:1 1 auto;border:1px solid var(--edge);border-radius:2px;min-height:60px}
+.hm{grid-row:1;border:1px solid var(--edge);background:#440154;width:100%;
+  display:block;aspect-ratio:1152/832}
+.hm-price{grid-row:1;display:flex;flex-direction:column;justify-content:space-between;
+  color:var(--faint);padding:1px 0;font-size:10px;text-align:left}
+.hm-time{grid-column:2;grid-row:2;display:flex;justify-content:space-between;
+  color:var(--faint);padding-top:5px;font-size:10px;overflow:hidden}
+.hm-time span{white-space:nowrap}
+.hm-key{display:flex;gap:14px;flex-wrap:wrap;color:var(--faint);
+  font-family:var(--mono);font-size:10.5px;padding-top:2px}
 .hm-key i{font-style:normal;display:inline-flex;align-items:center;gap:5px}
-.hm-key .sw{width:14px;height:3px;border-radius:2px;display:inline-block}
+.hm-key .sw{width:16px;height:3px;border-radius:2px;display:inline-block}
+
+/* ---------- stocks & earnings ---------- */
+.eq{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
+  background:var(--edge)}
+.eqc{background:var(--panel);padding:9px 11px;display:flex;flex-direction:column;gap:2px}
+.eqc .eqt{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ink);
+  letter-spacing:.06em}
+.eqc .nm2{font-size:11px;color:var(--dim)}
+.eqc .cap{font-family:var(--mono);font-size:18px;color:var(--gold);
+  font-variant-numeric:tabular-nums;line-height:1.15}
+.eqc .mv{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums}
+.eqc .sr{font-family:var(--mono);font-size:9.5px;color:var(--faint);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.earn{display:flex;flex-direction:column}
+.er{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:4px 12px;
+  padding:10px 0;border-bottom:1px dashed rgba(23,28,42,.9);align-items:baseline}
+.er:last-child{border-bottom:0}
+.er .etk{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ink)}
+.er .enm{font-size:13px;color:var(--ink-2)}
+.er .ecd{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--gold);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.er .ecd.soon{color:var(--down);animation:blink 1.2s steps(2,end) infinite}
+.er .ecd.done{color:var(--faint);font-weight:400}
+.er .ecd.win{color:var(--amber);font-size:12px;font-weight:500}
+.er .esub{grid-column:1/-1;font-family:var(--mono);font-size:10px;color:var(--faint);
+  overflow-wrap:anywhere}
+.er .esub a{color:var(--live-dim);text-decoration:none}
+.er .esub a:hover{color:var(--live)}
+.ses{font-family:var(--mono);font-size:9px;letter-spacing:.1em;padding:1px 5px;
+  border-radius:2px;border:1px solid var(--edge-hi);color:var(--ink-2)}
 
 /* ---------- geo time badge ---------- */
 .when{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:none;
@@ -432,6 +481,18 @@ function tick(){
     if(st){st.textContent=lab;
       st.style.color=(cls===""?"var(--up)":(cls==="stale"?"var(--gold)":"var(--down)"));}
   }
+  /* day-granularity countdowns: date published, hour not */
+  var dayEls=document.querySelectorAll("[data-days]");
+  for(var k=0;k<dayEls.length;k++){
+    var dt=Date.parse(dayEls[k].getAttribute("data-days"));
+    if(isNaN(dt)){dayEls[k].textContent="UNKNOWN";continue;}
+    var ds=Math.floor((dt-d.getTime())/86400000);
+    if(dt-d.getTime()<=0){dayEls[k].textContent="DUE";dayEls[k].className="ecd soon";}
+    else{
+      dayEls[k].textContent=ds+"d";
+      dayEls[k].className="ecd"+(ds<=2?" soon":"");
+    }
+  }
   /* release countdowns */
   var rows=document.querySelectorAll("[data-when]");
   for(var j=0;j<rows.length;j++){
@@ -447,51 +508,226 @@ function tick(){
 }
 tick();setInterval(tick,1000);
 
-/* ---- liquidation heatmap: paint the grid, overlay the observed price line ---- */
-(function(){
-  var cv=q("hm-canvas"); if(!cv||!cv.getContext||!D.heat) return;
-  var g=cv.getContext("2d"); if(!g) return;
-  var H=D.heat, ramp=D.ramp||[];
-  function hex(h){return [parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),
-                          parseInt(h.substr(5,2),16)];}
-  var stops=ramp.map(hex);
-  function colour(v){
-    if(v<=0) return stops[0];
-    var f=Math.min(1,Math.max(0,Math.pow(v,0.55)))*(stops.length-1);
-    var i=Math.floor(f), t=f-i, a=stops[i], b=stops[Math.min(i+1,stops.length-1)];
-    return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+
+/* ---- liquidation heatmap engine: a direct port of macro/live.py.
+   tests/test_live.py runs this in node against the Python implementation and
+   fails if the two grids diverge, so the controls below cannot drift from the
+   reference model. ---- */
+function heatmapCompute(anchors, opts){
+  opts = opts || {};
+  var levels = opts.levels || [10,25,50,100];
+  var columns = opts.columns || 36, rows = opts.rows || 34;
+  var pts = anchors.slice().sort(function(a,b){return a.date < b.date ? -1 : 1;});
+  if(pts.length < 2 || columns < 2 || rows < 2)
+    return {ok:false, reason:"need at least two dated price anchors"};
+  var prices = pts.map(function(a){return a.price;});
+  var lo = opts.lo != null ? opts.lo : Math.min.apply(null, prices)*0.97;
+  var hi = opts.hi != null ? opts.hi : Math.max.apply(null, prices)*1.03;
+  if(hi <= lo) return {ok:false, reason:"degenerate price range"};
+  var t0 = Date.parse(pts[0].date), t1 = Date.parse(pts[pts.length-1].date);
+  var span = (t1 - t0)/1000;
+  if(!(span > 0)) return {ok:false, reason:"all anchors share one timestamp"};
+
+  function colOf(iso){
+    var f = ((Date.parse(iso)-t0)/1000)/span;
+    return Math.max(0, Math.min(columns-1, Math.floor(f*(columns-1)+0.5)));
   }
-  /* Cells are drawn as rects at 8x so the price line can be stroked crisply on
-     top instead of being pixelated along with the heat field. */
-  var S=parseInt(cv.getAttribute("data-cell"),10)||8;
-  for(var x=0;x<H.cols;x++){
-    for(var y=0;y<H.rows;y++){
-      var c=colour(H.grid[x][y]);
-      g.fillStyle="rgb("+(c[0]|0)+","+(c[1]|0)+","+(c[2]|0)+")";
-      /* canvas row 0 is the TOP; price row 0 is the LOWEST, so flip y */
-      g.fillRect(x*S,(H.rows-1-y)*S,S,S);
+  function rowOf(p){
+    var f = (p-lo)/(hi-lo);
+    return Math.max(0, Math.min(rows-1, Math.floor(f*rows)));
+  }
+  var grid = [], x, y;
+  for(x=0;x<columns;x++){ grid.push(new Array(rows).fill(0)); }
+  var pending = [], lastPrice = pts[0].price, anchorAt = {};
+  pts.forEach(function(a){ anchorAt[colOf(a.date)] = a; });
+
+  for(var c=0;c<columns;c++){
+    var a = anchorAt[c];
+    if(a){
+      var sLo = Math.min(lastPrice,a.price), sHi = Math.max(lastPrice,a.price);
+      pending = pending.filter(function(p){ return !(sLo <= p[0] && p[0] <= sHi); });
+      levels.forEach(function(n){
+        pending.push([a.price*(1-1/n), n, "long"]);
+        pending.push([a.price*(1+1/n), n, "short"]);
+      });
+      lastPrice = a.price;
+    }
+    for(var k=0;k<pending.length;k++){
+      var lv = pending[k][0], n2 = pending[k][1];
+      if(lv >= lo && lv <= hi) grid[c][rowOf(lv)] += n2/10.0;
     }
   }
-  /* observed closes: markers, dashed connector where nothing was observed */
-  var pts=H.anchors.map(function(a){
-    return [(a.col+0.5)*S,(H.rows-0.5-a.row)*S];
+  var peak = 0;
+  for(x=0;x<columns;x++) for(y=0;y<rows;y++) if(grid[x][y]>peak) peak=grid[x][y];
+  if(!(peak > 0)) return {ok:false, reason:"no pending levels fell inside the price range"};
+  var norm = grid.map(function(col){
+    return col.map(function(v){ return Math.round(v/peak*1e4)/1e4; });
   });
-  g.save();
-  g.lineJoin="round"; g.lineCap="round";
-  g.strokeStyle="rgba(5,6,10,0.85)"; g.lineWidth=6; g.setLineDash([13,9]);
-  g.beginPath();
-  pts.forEach(function(p,i){ i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]); });
-  g.stroke();
-  g.strokeStyle="#2EC5CF"; g.lineWidth=2.6;
-  g.beginPath();
-  pts.forEach(function(p,i){ i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]); });
-  g.stroke(); g.setLineDash([]);
-  pts.forEach(function(p){
-    g.beginPath(); g.arc(p[0],p[1],5.5,0,6.283);
-    g.fillStyle="#05060A"; g.fill();
-    g.lineWidth=2.4; g.strokeStyle="#2EC5CF"; g.stroke();
+  return {ok:true, columns:columns, rows:rows, lo:lo, hi:hi, grid:norm, peak:peak,
+          levels:levels, t0:pts[0].date, t1:pts[pts.length-1].date,
+          anchors: pts.map(function(a){
+            return {col:colOf(a.date), row:rowOf(a.price), price:a.price,
+                    date:a.date, source:a.source, tier:a.tier};
+          })};
+}
+
+/* ---- heatmap controller: every control recomputes the model ---- */
+(function(){
+  var cv=q("hm-canvas"); if(!cv||!cv.getContext||!D.anchors||D.anchors.length<2) return;
+  var g=cv.getContext("2d"); if(!g) return;
+  var BASE={lo:D.window&&D.window.lo, hi:D.window&&D.window.hi};
+  var ST={days:0, levels:[10,25,50,100], cols:72, rows:52,
+          scheme:"viridis", thr:0, zoom:1, pan:0};
+
+  function hex(h){return [parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),
+                          parseInt(h.substr(5,2),16)];}
+  function ramp(){ return (D.ramps[ST.scheme]||D.ramps.viridis).map(hex); }
+  function colour(v,st){
+    if(v<=ST.thr) return st[0];
+    var t=(v-ST.thr)/(1-ST.thr||1);
+    var f=Math.min(1,Math.max(0,Math.pow(t,0.55)))*(st.length-1);
+    var i=Math.floor(f), k=f-i, A=st[i], B=st[Math.min(i+1,st.length-1)];
+    return [A[0]+(B[0]-A[0])*k, A[1]+(B[1]-A[1])*k, A[2]+(B[2]-A[2])*k];
+  }
+  function windowed(){
+    var all=D.anchors;
+    if(!ST.days) return all;
+    var last=Date.parse(all[all.length-1].date);
+    var cut=last-ST.days*86400000;
+    return all.filter(function(a){return Date.parse(a.date)>=cut;});
+  }
+  function bounds(){
+    if(BASE.lo==null||BASE.hi==null) return {};
+    var mid=(BASE.lo+BASE.hi)/2 + ST.pan*(BASE.hi-BASE.lo);
+    var half=(BASE.hi-BASE.lo)/2/ST.zoom;
+    return {lo:mid-half, hi:mid+half};
+  }
+  function fmt(n){
+    return n>=1000 ? n.toLocaleString("en-US",{maximumFractionDigits:0})
+                   : n.toFixed(2);
+  }
+  function draw(){
+    var pts=windowed();
+    var meta=q("hm-meta"), price=q("hm-price"), time=q("hm-time");
+    if(pts.length<2){
+      g.fillStyle="#0A0C14"; g.fillRect(0,0,cv.width,cv.height);
+      g.fillStyle="#66738C"; g.font="20px monospace"; g.textAlign="center";
+      g.fillText("only "+pts.length+" sourced anchor in this window",
+                 cv.width/2, cv.height/2);
+      g.textAlign="left";
+      if(meta) meta.textContent="window too short for the data held";
+      if(price) price.innerHTML=""; if(time) time.innerHTML="";
+      return;
+    }
+    var bb=bounds();
+    var H=heatmapCompute(pts,{levels:ST.levels, columns:ST.cols, rows:ST.rows,
+                              lo:bb.lo, hi:bb.hi});
+    if(!H.ok){
+      g.fillStyle="#0A0C14"; g.fillRect(0,0,cv.width,cv.height);
+      g.fillStyle="#66738C"; g.font="18px monospace"; g.textAlign="center";
+      g.fillText(H.reason, cv.width/2, cv.height/2); g.textAlign="left";
+      if(meta) meta.textContent=H.reason;
+      return;
+    }
+    var st=ramp(), CW=cv.width/H.columns, CH=cv.height/H.rows, x, y;
+    for(x=0;x<H.columns;x++){
+      for(y=0;y<H.rows;y++){
+        var c=colour(H.grid[x][y],st);
+        g.fillStyle="rgb("+(c[0]|0)+","+(c[1]|0)+","+(c[2]|0)+")";
+        g.fillRect(Math.floor(x*CW),Math.floor((H.rows-1-y)*CH),
+                   Math.ceil(CW),Math.ceil(CH));
+      }
+    }
+    var P=H.anchors.map(function(a){
+      return [(a.col+0.5)*CW,(H.rows-0.5-a.row)*CH];
+    });
+    g.save(); g.lineJoin="round"; g.lineCap="round";
+    g.strokeStyle="rgba(5,6,10,0.8)"; g.lineWidth=9; g.setLineDash([16,11]);
+    g.beginPath(); P.forEach(function(p,i){i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]);});
+    g.stroke();
+    g.strokeStyle="#2EC5CF"; g.lineWidth=3.4;
+    g.beginPath(); P.forEach(function(p,i){i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]);});
+    g.stroke(); g.setLineDash([]);
+    P.forEach(function(p){
+      g.beginPath(); g.arc(p[0],p[1],8,0,6.283);
+      g.fillStyle="#05060A"; g.fill();
+      g.lineWidth=3; g.strokeStyle="#2EC5CF"; g.stroke();
+    });
+    g.restore();
+
+    if(price){
+      var out="";
+      for(var i=6;i>=0;i--) out+="<span>"+fmt(H.lo+(H.hi-H.lo)*i/6)+"</span>";
+      price.innerHTML=out;
+    }
+    if(time){
+      var t0=H.t0.slice(5,10), t1=H.t1.slice(5,10);
+      var m0=Date.parse(H.t0), m1=Date.parse(H.t1), tout="";
+      for(var j=0;j<5;j++){
+        var d2=new Date(m0+(m1-m0)*j/4);
+        tout+="<span>"+String(d2.getUTCMonth()+1).padStart(2,"0")+"-"+
+              String(d2.getUTCDate()).padStart(2,"0")+"</span>";
+      }
+      time.innerHTML=tout;
+    }
+    var bar=q("hm-bar");
+    if(bar) bar.style.background="linear-gradient(0deg,"+
+      (D.ramps[ST.scheme]||D.ramps.viridis).join(",")+")";
+    setText("hm-peak",H.peak.toFixed(1));
+    if(meta) meta.textContent=pts.length+" sourced anchors · "+
+      H.columns+"×"+H.rows+" grid · "+ST.levels.join("x/")+"x · "+
+      fmt(H.lo)+"-"+fmt(H.hi);
+  }
+
+  function bindPills(sel, fn){
+    document.querySelectorAll(sel).forEach(function(b){
+      b.addEventListener("click",function(){ fn(b); draw(); });
+    });
+  }
+  bindPills("[data-tf]",function(b){
+    document.querySelectorAll("[data-tf]").forEach(function(o){o.removeAttribute("data-on");});
+    b.setAttribute("data-on","1"); ST.days=parseInt(b.getAttribute("data-tf"),10);
   });
-  g.restore();
+  bindPills("[data-res]",function(b){
+    document.querySelectorAll("[data-res]").forEach(function(o){o.removeAttribute("data-on");});
+    b.setAttribute("data-on","1");
+    var r=b.getAttribute("data-res").split("x");
+    ST.cols=parseInt(r[0],10); ST.rows=parseInt(r[1],10);
+  });
+  bindPills("[data-scheme]",function(b){
+    document.querySelectorAll("[data-scheme]").forEach(function(o){o.removeAttribute("data-on");});
+    b.setAttribute("data-on","1"); ST.scheme=b.getAttribute("data-scheme");
+  });
+  bindPills("[data-lev]",function(b){
+    var n=parseInt(b.getAttribute("data-lev"),10);
+    var on=b.hasAttribute("data-on");
+    /* never allow every tier off: an empty model is not a view of anything */
+    if(on && ST.levels.length<=1) return;
+    if(on){ b.removeAttribute("data-on"); ST.levels=ST.levels.filter(function(v){return v!==n;}); }
+    else { b.setAttribute("data-on","1"); ST.levels.push(n); ST.levels.sort(function(a,c){return a-c;}); }
+  });
+  var thr=q("hm-thr");
+  if(thr) thr.addEventListener("input",function(){
+    ST.thr=parseInt(thr.value,10)/100;
+    setText("hm-thr-v",ST.thr.toFixed(2)); draw();
+  });
+  function zoom(f){ ST.zoom=Math.min(12,Math.max(1,ST.zoom*f)); draw(); }
+  var zi=q("hm-zin"), zo=q("hm-zout"), pu=q("hm-pan-up"), pd=q("hm-pan-dn"),
+      rs=q("hm-reset");
+  if(zi) zi.addEventListener("click",function(){zoom(1.5);});
+  if(zo) zo.addEventListener("click",function(){zoom(1/1.5);});
+  if(pu) pu.addEventListener("click",function(){ST.pan=Math.min(1,ST.pan+0.12/ST.zoom);draw();});
+  if(pd) pd.addEventListener("click",function(){ST.pan=Math.max(-1,ST.pan-0.12/ST.zoom);draw();});
+  if(rs) rs.addEventListener("click",function(){
+    ST.zoom=1; ST.pan=0; ST.thr=0;
+    if(thr){thr.value=0; setText("hm-thr-v","0.00");}
+    draw();
+  });
+  /* scroll to zoom the price axis, as on a real chart */
+  cv.addEventListener("wheel",function(ev){
+    ev.preventDefault(); zoom(ev.deltaY<0?1.18:1/1.18);
+  },{passive:false});
+  draw();
 })();
 
 /* ---- relative time on the geopolitical board, recomputed every tick ---- */
@@ -797,50 +1033,133 @@ def render_liquidations(snap) -> str:
 
 
 def render_heatmap(snap) -> str:
-    """CoinGlass-form liquidation heatmap: price x time, magnitude as colour."""
-    from .live import liquidation_heatmap
+    """CoinGlass-form heatmap with live controls.
 
+    The grid is recomputed in the browser by a direct port of
+    ``macro.live.liquidation_heatmap``; a cross-implementation test runs the two
+    against each other so the controls cannot drift from the reference model.
+    """
     if len(snap.price_anchors) < 2:
         return ('<p class="note">Heatmap UNAVAILABLE &mdash; needs at least two dated '
                 'price anchors, and they are not interpolated into existence.</p>')
-    win = snap.btc_window or {}
-    lo, hi = win.get("lo"), win.get("hi")
-    hm = liquidation_heatmap(snap.price_anchors, lo=lo, hi=hi)
-    if not hm.get("ok"):
-        return f'<p class="note">Heatmap UNAVAILABLE &mdash; {e(hm.get("reason", ""))}.</p>'
 
-    ylabels = "".join(
-        f"<span>{lo_v:,.0f}</span>" for lo_v in
-        [hm["lo"] + (hm["hi"] - hm["lo"]) * i / 4 for i in range(5)]
+    tf = "".join(
+        f'<button class="pill" data-tf="{d}"{" data-on=1" if d == 0 else ""}>'
+        f'{"ALL" if d == 0 else str(d) + "D"}</button>'
+        for d in (7, 14, 30, 0)
     )
-    xlabels = "".join(f"<span>{d}</span>" for d in
-                      (hm["t0"][5:10], "", "", hm["t1"][5:10]))
+    lev = "".join(
+        f'<button class="pill lv" data-lev="{n}"'
+        f'{" data-on=1" if n in (10, 25, 50, 100) else ""}>{n}&times;</button>'
+        for n in (5, 10, 25, 50, 100)
+    )
+    schemes = "".join(
+        f'<button class="sw-btn" data-scheme="{k}" title="{k}"'
+        f'{" data-on=1" if k == "viridis" else ""}>'
+        f'<i style="background:linear-gradient(90deg,{",".join(v)})"></i></button>'
+        for k, v in HEAT_RAMPS.items()
+    )
+    res = "".join(
+        f'<button class="pill" data-res="{c}x{r}"{" data-on=1" if c == 72 else ""}>'
+        f'{lbl}</button>'
+        for c, r, lbl in ((36, 34, "COARSE"), (72, 52, "MED"), (140, 80, "FINE"))
+    )
     return (
-        f'<div class="hm-wrap">'
-        f'<div class="hm-y">{ylabels}</div>'
-        f'<canvas class="hm" id="hm-canvas" width="{hm["columns"] * 8}" '
-        f'height="{hm["rows"] * 8}" data-cell="8" role="img" '
-        f'aria-label="Liquidation intensity by price and time, '
-        f'{hm["lo"]:,.0f} to {hm["hi"]:,.0f}"></canvas>'
-        f'<div class="hm-x">{xlabels}</div>'
-        f'<div class="hm-legend"><span>low</span><span class="bar"></span>'
-        f'<span>high leverage density</span></div>'
-        f'<div class="hm-key" style="grid-column:1/-1">'
-        f'<i><span class="sw" style="background:var(--gold)"></span>observed close</i>'
-        f'<i><span class="sw" style="background:repeating-linear-gradient(90deg,'
-        f'var(--gold) 0 3px,transparent 3px 6px)"></span>no observation between</i>'
-        f'<i>leverage tiers {", ".join(str(x) + "x" for x in hm["levels"])}</i>'
-        f'<i>{len(snap.price_anchors)} sourced anchors</i></div>'
-        f'</div>'
-        f'<p class="note warn"><b>Computed by the published method, on real prices.</b> '
-        f'At each observed close, positions opened there liquidate at '
-        f'price&times;(1&minus;1/N) and price&times;(1+1/N); those levels stay pending '
-        f'until price sweeps through them. Between two observations nothing is known, '
-        f'so the field is held and the price line is drawn dashed &mdash; no price is '
-        f'ever interpolated. It is <b>not</b> open-interest weighted: that needs '
-        f'per-exchange position data, and the time resolution here is the data\'s, not '
-        f'the renderer\'s.</p>'
+        '<div class="hm-ctl">'
+        f'<span class="ctl-g"><b>WINDOW</b>{tf}</span>'
+        f'<span class="ctl-g"><b>LEVERAGE</b>{lev}</span>'
+        f'<span class="ctl-g"><b>GRID</b>{res}</span>'
+        f'<span class="ctl-g"><b>SCHEME</b>{schemes}</span>'
+        '<span class="ctl-g"><b>THRESHOLD</b>'
+        '<input id="hm-thr" type="range" min="0" max="90" value="0" step="5" '
+        'aria-label="Intensity threshold">'
+        '<i id="hm-thr-v" class="ctl-v">0.00</i></span>'
+        '<span class="ctl-g"><b>ZOOM</b>'
+        '<button class="pill" id="hm-zin" title="Zoom in on price">+</button>'
+        '<button class="pill" id="hm-zout" title="Zoom out">&minus;</button>'
+        '<button class="pill" id="hm-pan-up" title="Pan up">&uarr;</button>'
+        '<button class="pill" id="hm-pan-dn" title="Pan down">&darr;</button>'
+        '<button class="pill" id="hm-reset">RESET</button></span>'
+        '</div>'
+        '<div class="hm-stage">'
+        '<div class="hm-scale"><i id="hm-peak">&mdash;</i>'
+        '<span class="hm-bar" id="hm-bar"></span><i>0</i></div>'
+        '<canvas class="hm" id="hm-canvas" width="1152" height="832" role="img" '
+        'aria-label="Liquidation leverage density by price and time"></canvas>'
+        '<div class="hm-price" id="hm-price"></div>'
+        '<div class="hm-time" id="hm-time"></div>'
+        '</div>'
+        '<div class="hm-key">'
+        '<i><span class="sw" style="background:var(--gold)"></span>observed close</i>'
+        '<i><span class="sw" style="background:repeating-linear-gradient(90deg,'
+        'var(--gold) 0 3px,transparent 3px 6px)"></span>no observation between</i>'
+        '<i id="hm-meta">&mdash;</i></div>'
+        '<p class="note warn"><b>Computed by the published method, on real prices.</b> '
+        'At each observed close, positions opened there liquidate at '
+        'price&times;(1&minus;1/N) and price&times;(1+1/N); those levels stay pending '
+        'until price sweeps through them. Between two observations nothing is known, '
+        'so the field is held and the price line is drawn dashed &mdash; no price is '
+        'ever interpolated, and no candle is drawn because no OHLC bars are sourced. '
+        'It is <b>not</b> open-interest weighted: that needs per-exchange position '
+        'data. Every control below recomputes the model rather than restyling a '
+        'picture of it.</p>'
     )
+
+
+def render_equities(snap) -> str:
+    if not snap.equities:
+        return '<p class="note">No equity data in this snapshot.</p>'
+    cells = []
+    for x in sorted(snap.equities,
+                    key=lambda v: -(v.mktcap_usd or 0)):
+        cap = (f"${x.mktcap_usd / 1e12:,.2f}T" if x.mktcap_usd and x.mktcap_usd >= 1e12
+               else (f"${x.mktcap_usd / 1e9:,.0f}B" if x.mktcap_usd else "cap UNKNOWN"))
+        if x.change_pct is None:
+            mv, cls = "move UNKNOWN", "flat"
+        else:
+            cls = "up" if x.change_pct > 0 else ("down" if x.change_pct < 0 else "flat")
+            arrow = "\u25b2" if x.change_pct > 0 else ("\u25bc" if x.change_pct < 0 else "\u25ac")
+            mv = f"{arrow} {abs(x.change_pct):.2f}%"
+        cells.append(
+            f'<div class="eqc" title="{e(x.note)}"><span class="eqt">{e(x.ticker)}</span>'
+            f'<span class="nm2">{e(x.name)}</span>'
+            f'<span class="cap">{e(cap)}</span>'
+            f'<span class="mv {cls}">{mv}</span>'
+            f'<span class="sr">{e(x.source)} &middot; T{x.tier} &middot; '
+            f'{e(x.as_of[11:16])}Z</span></div>'
+        )
+    return f'<div class="eq">{"".join(cells)}</div>'
+
+
+def render_earnings(snap) -> str:
+    if not snap.earnings:
+        return '<p class="note">No earnings events in this snapshot.</p>'
+    rows = []
+    order = {"SCHEDULED": 0, "REPORTED": 1}
+    for x in sorted(snap.earnings, key=lambda v: (order.get(v.status, 2), v.when or "z")):
+        if x.status == "REPORTED":
+            cd = f'<span class="ecd done">REPORTED</span>'
+        elif x.when:
+            # day granularity unless the hour is actually published
+            cd = (f'<span class="ecd" data-when="{e(x.when)}">&mdash;</span>'
+                  if x.time_confirmed else
+                  f'<span class="ecd" data-days="{e(x.when)}">&mdash;</span>')
+        else:
+            cd = f'<span class="ecd win">{e(x.window)}</span>'
+        when_txt = (f'{x.when[:10]}' if x.when else e(x.window))
+        prec = ("exact time published" if x.time_confirmed else
+                ("date published, hour not" if x.when else "window only, no date"))
+        rows.append(
+            f'<div class="er"><span class="etk">{e(x.ticker)}</span>'
+            f'<span class="enm">{e(x.name)} '
+            f'<span class="ses">{e(x.session)}</span></span>{cd}'
+            f'<span class="esub">{e(when_txt)} &middot; {prec} &middot; '
+            f'{e(x.source)} &middot; T{x.tier} &middot; '
+            f'<a href="{e(x.url)}" target="_blank" rel="noopener noreferrer">source</a>'
+            + (f' &middot; {e(x.note)}' if x.note else "")
+            + '</span></div>'
+        )
+    return f'<div class="earn">{"".join(rows)}</div>'
 
 
 def render_geo(snap) -> str:
@@ -1025,6 +1344,8 @@ def render(snap: Snapshot, standalone: bool = True) -> str:
                    or '<p class="note">No sentiment gauges in this snapshot.</p>')
     liq_html = render_liquidations(snap)
     heat_html = render_heatmap(snap)
+    eq_html = render_equities(snap)
+    earn_html = render_earnings(snap)
     geo_html = render_geo(snap)
     flows_html = render_flows(snap)
 
@@ -1102,16 +1423,12 @@ def render(snap: Snapshot, standalone: bool = True) -> str:
         for q in quotes
     )
 
-    from .live import HEAT_RAMP, liquidation_heatmap
-    _win = snap.btc_window or {}
-    _hm = liquidation_heatmap(
-        snap.price_anchors, lo=_win.get("lo"), hi=_win.get("hi"),
-    ) if len(snap.price_anchors) >= 2 else {"ok": False}
     payload = json.dumps({
         "captured": snap.captured,
-        "ramp": list(HEAT_RAMP),
-        "heat": ({"grid": _hm["grid"], "cols": _hm["columns"], "rows": _hm["rows"],
-                  "anchors": _hm["anchors"]} if _hm.get("ok") else None),
+        "ramps": {k: list(v) for k, v in HEAT_RAMPS.items()},
+        "window": snap.btc_window or {},
+        "anchors": [{"date": a.date, "price": a.price, "source": a.source,
+                     "tier": a.tier} for a in snap.price_anchors],
     }, ensure_ascii=False).replace("</", "<\\/")
 
     head = (f'<title>Macro Desk Live</title>\n'
@@ -1182,8 +1499,8 @@ timing field stays blank.</span></noscript>
     </div>
   </section>
 
-  <section class="card c7">
-    <h2>BTC liquidation heatmap <em>price &times; time &middot; leverage density</em></h2>
+  <section class="card c12">
+    <h2>BTC liquidation heatmap <em>price &times; time &middot; leverage density &middot; every control recomputes the model</em></h2>
     <div class="bd">{heat_html}</div>
   </section>
 
@@ -1192,9 +1509,24 @@ timing field stays blank.</span></noscript>
     <div class="bd">{liq_html}</div>
   </section>
 
-  <section class="card c12">
+  <section class="card c7">
     <h2>Geopolitical board <em>event &rarr; channel &rarr; asset &middot; with time of occurrence</em></h2>
     <div class="bd flush" style="padding:0 13px">{geo_html}</div>
+  </section>
+
+  <section class="card c7">
+    <h2>Mega-cap board <em>largest listings by market value</em></h2>
+    <div class="bd flush"><div style="padding:0">{eq_html}</div></div>
+  </section>
+
+  <section class="card c5">
+    <h2>Earnings <em>countdown at the precision the source supports</em></h2>
+    <div class="bd">{earn_html}
+      <p class="note">A published <b>date</b> gets a day countdown; a published
+      <b>hour</b> would get a clock. Where only a week is known there is no
+      countdown at all &mdash; an invented hour on an earnings print is exactly the
+      kind of false precision that gets someone positioned into the wrong session.</p>
+    </div>
   </section>
 
   <section class="card c4">

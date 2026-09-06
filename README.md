@@ -6,7 +6,7 @@ classification, derived cross-asset transmission maps, ICT-style market
 structure, and an R:R-gated setup engine — behind a Bloomberg-style command
 surface.
 
-Python 3.11+, **standard library only**, 284 tests.
+Python 3.11+, **standard library only**, 295 tests.
 
 ## The one design rule
 
@@ -46,10 +46,16 @@ python3 tools/verify_terminal.py
 ```
 
 Panels: cross-asset board, timestamped squawk wire, equity and crypto Fear &
-Greed gauges, a BTC liquidation heatmap, a geopolitical board that states each
-event's transmission channel and when it happened, ETF flows, release
-countdowns, curve, policy, cross-asset transmission, and a source-and-freshness
-audit of every figure — under a function-key command bar and a status line.
+Greed gauges, an interactive BTC liquidation heatmap, a geopolitical board that
+states each event's transmission channel and when it happened, a mega-cap board,
+earnings countdowns, ETF flows, release countdowns, curve, policy, cross-asset
+transmission, and a source-and-freshness audit of every figure — under a
+function-key command bar and a status line.
+
+Earnings countdowns run **at the precision the source supports**: a published
+date gets a day countdown, a published hour would get a clock, and a source that
+gives only a week gets no countdown at all. An invented hour on an earnings
+print is exactly the false precision that puts someone in the wrong session.
 
 The chrome follows professional-terminal convention (density, monospace grids,
 hard panel divisions, a command line) but **not** amber-on-black: that scheme is
@@ -67,8 +73,16 @@ published form. It is computed, not observed, and the page says so:
 3. Between two observations nothing is known, so the field is held constant and
    the price line is drawn dashed. **No price is ever interpolated.**
 
-The colour ramp is a sequential magnitude scale verified monotonic in OKLab
-lightness (step gaps 0.086–0.110, 15.9:1 contrast at the top) — asserted by
+Every control — window, leverage tiers, grid resolution, colour scheme,
+intensity threshold, price zoom and pan — **recomputes the model** rather than
+restyling a picture of it. The browser runs a direct port of
+`macro.live.liquidation_heatmap`, and a cross-implementation test executes that
+port in node against the Python reference across five configurations, failing
+if a single cell diverges. The leverage control refuses to switch off its last
+tier: an empty model is not a view of anything.
+
+The four colour schemes are sequential magnitude scales, each verified monotonic
+in OKLab lightness with step-gap ratios under 2.0 — asserted by
 `tests/test_live.py`, not eyeballed. The field is *not* open-interest weighted;
 that needs per-exchange position data this terminal does not have, and it is not
 guessed. Time resolution is the data's, not the renderer's: feed it a real price
@@ -241,7 +255,7 @@ state/            snapshot.json, the terminal's data source
 prompts/          operating system prompt for LLM-driven use
 docs/             spec coverage map, architecture document
 tools/            headless-browser verification for the board
-tests/            284 tests, stdlib unittest
+tests/            295 tests, stdlib unittest
 state.example.json
 ```
 

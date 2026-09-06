@@ -7,6 +7,7 @@ stale data is the single most dangerous failure this pipeline can have.
 
 import json
 import os
+import re
 import tempfile
 import threading
 import unittest
@@ -389,6 +390,114 @@ class TestHeatmap(unittest.TestCase):
         for r in liquidation_ladder(p, levels=(10, 25)):
             self.assertAlmostEqual(r["long_liq"], p * (1 - 1 / r["leverage"]), places=6)
             self.assertAlmostEqual(r["short_liq"], p * (1 + 1 / r["leverage"]), places=6)
+
+
+class TestCrossImplementation(unittest.TestCase):
+    """The browser recomputes the heatmap live for the controls. If its port
+    drifts from the Python reference the page silently shows a different model,
+    so the two are compared directly."""
+
+    def test_js_engine_matches_python_exactly(self):
+        import json
+        import shutil
+        import subprocess
+        import tempfile
+
+        if shutil.which("node") is None:
+            self.skipTest("node not available")
+        from macro import seed as seed_mod
+        from macro import terminal
+
+        m = re.search(r"(function heatmapCompute\(anchors, opts\)\{.*?\n\})\n",
+                      terminal.JS, re.S)
+        self.assertIsNotNone(m, "heatmapCompute not found in the shipped JS")
+        anchors = [{"date": a.date, "price": a.price, "source": a.source,
+                    "tier": a.tier} for a in seed_mod.build().price_anchors]
+        cases = [
+            dict(lo=62553.7, hi=82178.6, columns=36, rows=34, levels=[10, 25, 50, 100]),
+            dict(lo=62553.7, hi=82178.6, columns=90, rows=60, levels=[5, 10, 25, 50, 100]),
+            dict(columns=12, rows=8, levels=[25]),
+            dict(lo=70000, hi=85000, columns=48, rows=40, levels=[10, 50]),
+            dict(lo=1.0, hi=2.0, columns=20, rows=20, levels=[10]),   # refuses
+        ]
+        prog = (m.group(1) + "\nconst A=" + json.dumps(anchors) +
+                ";\nconst C=" + json.dumps(cases) +
+                ";\nconsole.log(JSON.stringify(C.map(o=>heatmapCompute(A,o))));")
+        with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as fh:
+            fh.write(prog)
+            path = fh.name
+        try:
+            out = subprocess.run(["node", path], capture_output=True, text=True,
+                                 timeout=60)
+        finally:
+            os.unlink(path)
+        self.assertEqual(out.returncode, 0, out.stderr[:400])
+        js = json.loads(out.stdout)
+
+        py_anchors = seed_mod.build().price_anchors
+        for i, c in enumerate(cases):
+            py = liquidation_heatmap(py_anchors, **c)
+            self.assertEqual(py["ok"], js[i]["ok"], f"case {i}: ok differs")
+            if not py["ok"]:
+                continue
+            for k in ("columns", "rows"):
+                self.assertEqual(py[k], js[i][k], f"case {i}: {k}")
+            for k in ("lo", "hi"):
+                self.assertAlmostEqual(py[k], js[i][k], places=9, msg=f"case {i}: {k}")
+            for x in range(py["columns"]):
+                for y in range(py["rows"]):
+                    self.assertAlmostEqual(
+                        py["grid"][x][y], js[i]["grid"][x][y], places=9,
+                        msg=f"case {i}: grid[{x}][{y}] diverges")
+            self.assertEqual([(a["col"], a["row"]) for a in py["anchors"]],
+                             [(a["col"], a["row"]) for a in js[i]["anchors"]],
+                             f"case {i}: anchor placement differs")
+
+
+class TestEquitiesAndEarnings(unittest.TestCase):
+    def test_equity_contract(self):
+        from macro.live import Equity
+        for bad in (dict(ticker="", name="n", as_of="2026-09-04T20:00:00Z",
+                         source="s", tier=1),
+                    dict(ticker="X", name="n", as_of="2026-09-04T20:00:00Z",
+                         source=" ", tier=1),
+                    dict(ticker="X", name="n", as_of="2026-09-04T20:00:00Z",
+                         source="s", tier=7),
+                    dict(ticker="X", name="n", as_of="2026-09-04T20:00:00Z",
+                         source="s", tier=1, mktcap_usd=0)):
+            with self.assertRaises(ValueError):
+                Equity(**bad)
+
+    def test_earning_needs_a_time_or_a_window(self):
+        from macro.live import Earning
+        with self.assertRaises(ValueError):
+            Earning(ticker="X", name="n", source="s", tier=1)
+        with self.assertRaises(ValueError):
+            Earning(ticker="X", name="n", source="s", tier=1,
+                    when="2026-09-10T00:00:00Z", session="LUNCHTIME")
+        self.assertTrue(Earning(ticker="X", name="n", source="s", tier=1,
+                                window="week of 7-11 September").window)
+
+    def test_seed_equities_and_earnings_are_sourced(self):
+        snap = seed.build()
+        self.assertGreaterEqual(len(snap.equities), 4)
+        self.assertGreaterEqual(len(snap.earnings), 3)
+        for x in snap.equities:
+            self.assertTrue(x.source.strip())
+            self.assertTrue(x.url.startswith("https://"))
+        for x in snap.earnings:
+            self.assertTrue(x.source.strip())
+            self.assertTrue(x.url.startswith("https://"))
+            self.assertTrue(x.when or x.window)
+
+    def test_no_earning_claims_an_unconfirmed_time(self):
+        """A date-only source must never produce an hour-precise countdown."""
+        for x in seed.build().earnings:
+            if x.time_confirmed:
+                self.assertTrue(x.when, f"{x.ticker}: time_confirmed without a datetime")
+            elif x.when:
+                self.assertTrue(x.when.endswith("T00:00:00Z"),
+                                f"{x.ticker}: unconfirmed time must sit at midnight UTC")
 
 
 class TestSeed(unittest.TestCase):

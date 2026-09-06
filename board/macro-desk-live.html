@@ -331,23 +331,72 @@ noscript .ns{display:block;margin:14px 18px;padding:12px;border:1px solid var(--
 .statusbar b{color:var(--ink-2);font-weight:500}
 
 /* ---------- liquidation heatmap ---------- */
-.hm-wrap{display:grid;grid-template-columns:64px minmax(0,1fr);gap:0 8px;
-  font-family:var(--mono);font-size:10.5px}
-.hm-y{display:flex;flex-direction:column-reverse;justify-content:space-between;
-  color:var(--faint);text-align:right;padding:1px 0}
-.hm{position:relative;border:1px solid var(--edge);background:var(--h0);
-  width:100%;display:block;aspect-ratio:36/22}
-.hm-x{grid-column:2;display:flex;justify-content:space-between;color:var(--faint);
-  padding-top:5px}
-.hm-legend{grid-column:1/-1;display:flex;align-items:center;gap:9px;padding-top:9px;
-  color:var(--faint)}
-.hm-legend .bar{flex:1 1 auto;height:9px;border-radius:2px;border:1px solid var(--edge);
-  background:linear-gradient(90deg,var(--h0),var(--h1),var(--h2),var(--h3),
-    var(--h4),var(--h5),var(--h6),var(--h7))}
-.hm-key{display:flex;gap:12px;flex-wrap:wrap;color:var(--faint);
-  font-family:var(--mono);font-size:10.5px;padding-top:4px}
+.hm-ctl{display:flex;flex-wrap:wrap;gap:7px 18px;align-items:center;
+  padding:9px 11px;border:1px solid var(--edge);border-radius:3px;
+  background:var(--raise);font-family:var(--mono);font-size:10.5px}
+.ctl-g{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.ctl-g>b{color:var(--faint);letter-spacing:.18em;font-weight:400;margin-right:2px}
+.ctl-v{font-style:normal;color:var(--gold);min-width:34px;text-align:right;
+  font-variant-numeric:tabular-nums}
+.pill{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;padding:3px 9px;
+  border-radius:2px;border:1px solid var(--edge-hi);background:var(--panel);
+  color:var(--dim);cursor:pointer;transition:all .14s ease}
+.pill:hover{color:var(--ink);border-color:var(--gold-dim)}
+.pill[data-on]{background:var(--gold);border-color:var(--gold);color:#05060A;
+  font-weight:700}
+.sw-btn{padding:2px;border:1px solid var(--edge-hi);background:var(--panel);
+  border-radius:2px;cursor:pointer;line-height:0}
+.sw-btn i{display:block;width:34px;height:12px;border-radius:1px}
+.sw-btn[data-on]{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+input[type=range]{width:104px;accent-color:var(--gold);cursor:pointer}
+
+.hm-stage{display:grid;grid-template-columns:42px minmax(0,1fr) 70px;
+  grid-template-rows:auto auto;gap:0 8px;font-family:var(--mono);font-size:10.5px}
+.hm-scale{grid-row:1;display:flex;flex-direction:column;align-items:stretch;gap:4px;
+  color:var(--faint);text-align:right;font-size:9.5px}
+.hm-scale i{font-style:normal;white-space:nowrap}
+.hm-bar{flex:1 1 auto;border:1px solid var(--edge);border-radius:2px;min-height:60px}
+.hm{grid-row:1;border:1px solid var(--edge);background:#440154;width:100%;
+  display:block;aspect-ratio:1152/832}
+.hm-price{grid-row:1;display:flex;flex-direction:column;justify-content:space-between;
+  color:var(--faint);padding:1px 0;font-size:10px;text-align:left}
+.hm-time{grid-column:2;grid-row:2;display:flex;justify-content:space-between;
+  color:var(--faint);padding-top:5px;font-size:10px;overflow:hidden}
+.hm-time span{white-space:nowrap}
+.hm-key{display:flex;gap:14px;flex-wrap:wrap;color:var(--faint);
+  font-family:var(--mono);font-size:10.5px;padding-top:2px}
 .hm-key i{font-style:normal;display:inline-flex;align-items:center;gap:5px}
-.hm-key .sw{width:14px;height:3px;border-radius:2px;display:inline-block}
+.hm-key .sw{width:16px;height:3px;border-radius:2px;display:inline-block}
+
+/* ---------- stocks & earnings ---------- */
+.eq{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
+  background:var(--edge)}
+.eqc{background:var(--panel);padding:9px 11px;display:flex;flex-direction:column;gap:2px}
+.eqc .eqt{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ink);
+  letter-spacing:.06em}
+.eqc .nm2{font-size:11px;color:var(--dim)}
+.eqc .cap{font-family:var(--mono);font-size:18px;color:var(--gold);
+  font-variant-numeric:tabular-nums;line-height:1.15}
+.eqc .mv{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums}
+.eqc .sr{font-family:var(--mono);font-size:9.5px;color:var(--faint);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.earn{display:flex;flex-direction:column}
+.er{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:4px 12px;
+  padding:10px 0;border-bottom:1px dashed rgba(23,28,42,.9);align-items:baseline}
+.er:last-child{border-bottom:0}
+.er .etk{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ink)}
+.er .enm{font-size:13px;color:var(--ink-2)}
+.er .ecd{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--gold);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.er .ecd.soon{color:var(--down);animation:blink 1.2s steps(2,end) infinite}
+.er .ecd.done{color:var(--faint);font-weight:400}
+.er .ecd.win{color:var(--amber);font-size:12px;font-weight:500}
+.er .esub{grid-column:1/-1;font-family:var(--mono);font-size:10px;color:var(--faint);
+  overflow-wrap:anywhere}
+.er .esub a{color:var(--live-dim);text-decoration:none}
+.er .esub a:hover{color:var(--live)}
+.ses{font-family:var(--mono);font-size:9px;letter-spacing:.1em;padding:1px 5px;
+  border-radius:2px;border:1px solid var(--edge-hi);color:var(--ink-2)}
 
 /* ---------- geo time badge ---------- */
 .when{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:none;
@@ -412,7 +461,7 @@ timing field stays blank.</span></noscript>
 
   <section class="card c8">
     <h2>Squawk <em>timestamped wire &middot; newest first &middot; impact rail</em></h2>
-    <div class="bd flush"><div class="sq"><article class="sqr"><span class="sqt">09-05<br>08:00Z</span><span class="sqrail" style="background:var(--gold)"></span><span class="sqb"><h3>OPEC+ meets Saturday 5 September; any output surprise repricies crude into an already-tight geopolitical bid</h3><p>The single unpriced catalyst inside 24 hours. Publication time is not scheduled, so it cannot be counted down - only watched.</p><span class="meta"><span class="imp" style="color:var(--gold);font-size:13px;display:inline">84</span><span class="t t3">T3</span><span>Rio Times briefing</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://www.riotimesonline.com/global-economy-briefing-september-5-2026/" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Brent</span><span class="chip">WTI</span><span class="chip">Breakevens</span><span class="chip">CAD</span><span class="chip">NOK</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>21:00Z</span><span class="sqrail" style="background:var(--ink-2)"></span><span class="sqb"><h3>Gold falls 1.14% to $4,429 as real yields back up on the payrolls beat</h3><p>Gold trading as a real-rate asset here, not as a haven - which is the read to carry into any geopolitical escalation.</p><span class="meta"><span class="imp" style="color:var(--ink-2);font-size:13px;display:inline">60</span><span class="t t3">T3</span><span>Rio Times briefing</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://www.riotimesonline.com/global-economy-briefing-september-5-2026/" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Gold</span><span class="chip">US10Y real</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>21:00Z</span><span class="sqrail" style="background:var(--ink-2)"></span><span class="sqb"><h3>Equity sentiment reads Fear at 42 while crypto sentiment reads Greed at 61</h3><p>The two are measuring different clocks: crypto priced the pre-payrolls dovish story, equities closed on the post-payrolls hawkish one.</p><span class="meta"><span class="imp" style="color:var(--ink-2);font-size:13px;display:inline">58</span><span class="t t3">T3</span><span>CNN / Crypto Fear &amp; Greed</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://cfgi.io/" target="_blank" rel="noopener noreferrer">source</a><span class="chip">S&amp;P 500</span><span class="chip">BTC</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>18:30Z</span><span class="sqrail" style="background:var(--down)"></span><span class="sqb"><h3>Treasury yields jump after payrolls beat; 2-year breaches 4.416%, highest since January 2025</h3><p>Front-end led selloff: an 8bp move in the 2y against a broadly unchanged 10y is a textbook bear flattening.</p><span class="meta"><span class="imp" style="color:var(--down);font-size:13px;display:inline">88</span><span class="t t2">T2</span><span>CNBC</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://www.cnbc.com/2026/09/04/treasurys-bonds-nonfarm-payrolls-unemployment-data.html" target="_blank" rel="noopener noreferrer">source</a><span class="chip">UST 2Y</span><span class="chip">UST 10Y</span><span class="chip">2s10s</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>18:00Z</span><span class="sqrail" style="background:var(--down)"></span><span class="sqb"><h3>September Fed hike odds roughly double to the mid-60s from ~36% since Chair Warsh&#x27;s Jackson Hole speech</h3><p>The market is now pricing a hike as more likely than not into the 15-16 September meeting.</p><span class="meta"><span class="imp" style="color:var(--down);font-size:13px;display:inline">92</span><span class="t t2">T2</span><span>Investing.com</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://au.investing.com/news/stock-market-news/global-macro-outlook-hormuz-fed-hike-odds-and-the-bond-rout--week-of-september-4-2026-93CH-4630470" target="_blank" rel="noopener noreferrer">source</a><span class="chip">UST 2Y</span><span class="chip">USD</span><span class="chip">S&amp;P 500</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>17:00Z</span><span class="sqrail" style="background:var(--ink-2)"></span><span class="sqb"><h3>El-Erian: expect the global government bond selloff to continue</h3><p>Named commentary, not new information. Ranked accordingly.</p><span class="meta"><span class="imp" style="color:var(--ink-2);font-size:13px;display:inline">45</span><span class="t t3">T3</span><span>Mohamed El-Erian via CNBC</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://www.cnbc.com/2026/09/02/bond-market-selloff-rates-fixed-income-treasury-yields.html" target="_blank" rel="noopener noreferrer">source</a><span class="chip">UST 10Y</span><span class="chip">Bunds</span><span class="chip">JGBs</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>16:00Z</span><span class="sqrail" style="background:var(--down)"></span><span class="sqb"><h3>New wave of US strikes on Iran lifts crude to its highest since July; Brent +7% on the week to $97.62</h3><p>Energy is now an active inflation channel, not a base effect. Hormuz risk sits under the whole complex.</p><span class="meta"><span class="imp" style="color:var(--down);font-size:13px;display:inline">90</span><span class="t t2">T2</span><span>Investing.com</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://au.investing.com/news/stock-market-news/global-macro-outlook-hormuz-fed-hike-odds-and-the-bond-rout--week-of-september-4-2026-93CH-4630470" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Brent</span><span class="chip">WTI</span><span class="chip">Breakevens</span><span class="chip">EUR</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>14:00Z</span><span class="sqrail" style="background:var(--gold)"></span><span class="sqb"><h3>US spot bitcoin ETFs take $731m, the largest inflow day since 14 January; BlackRock&#x27;s IBIT captured $454m of it</h3><p>Attributed to Waller&#x27;s dovish remarks. Three-week cumulative inflow of $3.8bn is the biggest streak of 2026.</p><span class="meta"><span class="imp" style="color:var(--gold);font-size:13px;display:inline">78</span><span class="t t2">T2</span><span>The Block</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://www.theblock.co/news/markets/2026-09-04-us-bitcoin-etfs-largest-inflow-day-since-january-413515" target="_blank" rel="noopener noreferrer">source</a><span class="chip">BTC</span><span class="chip">ETH</span><span class="chip">Crypto</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>14:00Z</span><span class="sqrail" style="background:var(--ink-2)"></span><span class="sqb"><h3>Diesel prices hold near April highs, adding to near-term inflation pressure</h3><p>Distillate is the cleanest read on freight-cost pass-through.</p><span class="meta"><span class="imp" style="color:var(--ink-2);font-size:13px;display:inline">62</span><span class="t t2">T2</span><span>Investing.com</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://au.investing.com/news/stock-market-news/global-macro-outlook-hormuz-fed-hike-odds-and-the-bond-rout--week-of-september-4-2026-93CH-4630470" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Breakevens</span><span class="chip">WTI</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>12:30Z</span><span class="sqrail" style="background:var(--down)"></span><span class="sqb"><h3>August payrolls +162k versus +53k expected; unemployment steady at 4.1%</h3><p>A roughly 3x upside surprise on payrolls. This is the print that repriced the September meeting.</p><span class="meta"><span class="imp" style="color:var(--down);font-size:13px;display:inline">95</span><span class="t t1">T1</span><span>BLS Employment Situation (via CNBC)</span><span class="chip" style="color:var(--up);border-color:var(--up-dim)">PRIMARY</span><a href="https://www.cnbc.com/2026/09/04/treasurys-bonds-nonfarm-payrolls-unemployment-data.html" target="_blank" rel="noopener noreferrer">source</a><span class="chip">UST 2Y</span><span class="chip">USD</span><span class="chip">S&amp;P 500</span><span class="chip">Gold</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>10:00Z</span><span class="sqrail" style="background:var(--down)"></span><span class="sqb"><h3>ECB seen hiking 25bp to 2.50% as euro-area inflation rises to 3.3% y/y in August from 2.9%</h3><p>Euro-area inflation is re-accelerating. Lagarde primed a September move at the July press conference.</p><span class="meta"><span class="imp" style="color:var(--down);font-size:13px;display:inline">85</span><span class="t t2">T2</span><span>CNBC / ECB</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://www.cnbc.com/2026/07/23/interest-rate-hike-iran-european-central-bank.html" target="_blank" rel="noopener noreferrer">source</a><span class="chip">EURUSD</span><span class="chip">Bunds</span><span class="chip">EUR rates</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>03:52Z</span><span class="sqrail" style="background:var(--gold)"></span><span class="sqb"><h3>Crypto liquidations hit $468.6m in 24 hours with 87% on the short side; bitcoin alone accounted for $272.6m, 92% short</h3><p>A short squeeze, not spot demand. Forced buybacks were the fuel, which is a mechanically different move from an accumulation rally.</p><span class="meta"><span class="imp" style="color:var(--gold);font-size:13px;display:inline">72</span><span class="t t3">T3</span><span>CoinGlass via COINOTAG</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://en.coinotag.com/bitcoin-leads-468-million-crypto-liquidations-24-hours" target="_blank" rel="noopener noreferrer">source</a><span class="chip">BTC</span><span class="chip">ETH</span></span></span></article><article class="sqr"><span class="sqt">09-03<br>15:00Z</span><span class="sqrail" style="background:var(--gold)"></span><span class="sqb"><h3>Fed&#x27;s Waller: would support holding rates if price pressures continue to ease</h3><p>The dovish counterweight to the payrolls print, and the reason the hike is priced in the sixties rather than the nineties.</p><span class="meta"><span class="imp" style="color:var(--gold);font-size:13px;display:inline">74</span><span class="t t1">T1</span><span>Federal Reserve</span><span class="chip" style="color:var(--up);border-color:var(--up-dim)">PRIMARY</span><a href="https://www.federalreserve.gov/newsevents/speeches.htm" target="_blank" rel="noopener noreferrer">source</a><span class="chip">UST 2Y</span><span class="chip">USD</span></span></span></article><article class="sqr"><span class="sqt">09-02<br>18:00Z</span><span class="sqrail" style="background:var(--gold)"></span><span class="sqb"><h3>Beige Book: manufacturers and construction firms report price pressures from energy, raw materials and transport</h3><p>Corroborates the energy pass-through the CPI print has not yet shown.</p><span class="meta"><span class="imp" style="color:var(--gold);font-size:13px;display:inline">68</span><span class="t t1">T1</span><span>Federal Reserve</span><span class="chip" style="color:var(--up);border-color:var(--up-dim)">PRIMARY</span><a href="https://www.federalreserve.gov/monetarypolicy/beige-book-default.htm" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Breakevens</span><span class="chip">UST 10Y</span></span></span></article><article class="sqr"><span class="sqt">09-02<br>12:00Z</span><span class="sqrail" style="background:var(--down)"></span><span class="sqb"><h3>Washington revokes the licence permitting limited Iranian oil sales; tanker damage reported near Oman</h3><p>Sanctions tightening plus physical shipping risk. Hormuz transits are running far below normal.</p><span class="meta"><span class="imp" style="color:var(--down);font-size:13px;display:inline">86</span><span class="t t3">T3</span><span>Foreign Affairs Forum</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://www.faf.ae/home/2026/9/1/irans-war-returns-hormuz-bleeds-and-the-worlds-bond-markets-brace-for-a-geopolitical-inflation-shock" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Brent</span><span class="chip">WTI</span><span class="chip">Freight</span></span></span></article><article class="sqr"><span class="sqt">09-01<br>12:00Z</span><span class="sqrail" style="background:var(--down)"></span><span class="sqb"><h3>US strikes Iranian launch positions on Larak Island; Iran responds with missile attacks on US forces in Jordan</h3><p>Direct military exchange has resumed. This is the supply-side engine under the whole inflation leg.</p><span class="meta"><span class="imp" style="color:var(--down);font-size:13px;display:inline">93</span><span class="t t3">T3</span><span>Foreign Affairs Forum</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://www.faf.ae/home/2026/9/1/irans-war-returns-hormuz-bleeds-and-the-worlds-bond-markets-brace-for-a-geopolitical-inflation-shock" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Brent</span><span class="chip">WTI</span><span class="chip">Gold</span><span class="chip">CHF</span><span class="chip">Breakevens</span></span></span></article><article class="sqr"><span class="sqt">07-29<br>18:00Z</span><span class="sqrail" style="background:var(--gold)"></span><span class="sqb"><h3>FOMC held the target range at 3.50-3.75% on a 9-3 vote in July; all three dissents favoured a 25bp hike</h3><p>Dissents pointing at a hike, not a cut, is the single clearest signal of which regime this is.</p><span class="meta"><span class="imp" style="color:var(--gold);font-size:13px;display:inline">80</span><span class="t t1">T1</span><span>Federal Reserve</span><span class="chip" style="color:var(--up);border-color:var(--up-dim)">PRIMARY</span><a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20260729a.htm" target="_blank" rel="noopener noreferrer">source</a><span class="chip">UST 2Y</span><span class="chip">USD</span></span></span></article></div></div>
+    <div class="bd flush"><div class="sq"><article class="sqr"><span class="sqt">09-05<br>08:00Z</span><span class="sqrail" style="background:var(--gold)"></span><span class="sqb"><h3>OPEC+ meets Saturday 5 September; any output surprise repricies crude into an already-tight geopolitical bid</h3><p>The single unpriced catalyst inside 24 hours. Publication time is not scheduled, so it cannot be counted down - only watched.</p><span class="meta"><span class="imp" style="color:var(--gold);font-size:13px;display:inline">84</span><span class="t t3">T3</span><span>Rio Times briefing</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://www.riotimesonline.com/global-economy-briefing-september-5-2026/" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Brent</span><span class="chip">WTI</span><span class="chip">Breakevens</span><span class="chip">CAD</span><span class="chip">NOK</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>21:00Z</span><span class="sqrail" style="background:var(--ink-2)"></span><span class="sqb"><h3>Gold falls 1.14% to $4,429 as real yields back up on the payrolls beat</h3><p>Gold trading as a real-rate asset here, not as a haven - which is the read to carry into any geopolitical escalation.</p><span class="meta"><span class="imp" style="color:var(--ink-2);font-size:13px;display:inline">60</span><span class="t t3">T3</span><span>Rio Times briefing</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://www.riotimesonline.com/global-economy-briefing-september-5-2026/" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Gold</span><span class="chip">US10Y real</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>21:00Z</span><span class="sqrail" style="background:var(--ink-2)"></span><span class="sqb"><h3>Equity sentiment reads Fear at 42 while crypto sentiment reads Greed at 61</h3><p>The two are measuring different clocks: crypto priced the pre-payrolls dovish story, equities closed on the post-payrolls hawkish one.</p><span class="meta"><span class="imp" style="color:var(--ink-2);font-size:13px;display:inline">58</span><span class="t t3">T3</span><span>CNN / Crypto Fear &amp; Greed</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://cfgi.io/" target="_blank" rel="noopener noreferrer">source</a><span class="chip">S&amp;P 500</span><span class="chip">BTC</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>20:00Z</span><span class="sqrail" style="background:var(--gold)"></span><span class="sqb"><h3>NVIDIA rises 1.8% on a $12.9bn acquisition of AI platform Hugging Face</h3><p>The largest listed company in the world buying the default open-source model hub. Consolidation at the platform layer, not the chip layer.</p><span class="meta"><span class="imp" style="color:var(--gold);font-size:13px;display:inline">76</span><span class="t t2">T2</span><span>CNBC</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://www.cnbc.com/2026/09/03/stock-market-today-live-updates.html" target="_blank" rel="noopener noreferrer">source</a><span class="chip">NVDA</span><span class="chip">Nasdaq</span><span class="chip">AI complex</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>20:00Z</span><span class="sqrail" style="background:var(--gold)"></span><span class="sqb"><h3>Tesla falls more than 6% after the Cybercab launch, its worst session since 23 July</h3><p>A single-name event, but a large one: Tesla is a meaningful index weight and the move was the day&#x27;s biggest mega-cap dislocation.</p><span class="meta"><span class="imp" style="color:var(--gold);font-size:13px;display:inline">70</span><span class="t t2">T2</span><span>CNBC</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://www.cnbc.com/2026/09/03/stock-market-today-live-updates.html" target="_blank" rel="noopener noreferrer">source</a><span class="chip">TSLA</span><span class="chip">Nasdaq</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>18:30Z</span><span class="sqrail" style="background:var(--down)"></span><span class="sqb"><h3>Treasury yields jump after payrolls beat; 2-year breaches 4.416%, highest since January 2025</h3><p>Front-end led selloff: an 8bp move in the 2y against a broadly unchanged 10y is a textbook bear flattening.</p><span class="meta"><span class="imp" style="color:var(--down);font-size:13px;display:inline">88</span><span class="t t2">T2</span><span>CNBC</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://www.cnbc.com/2026/09/04/treasurys-bonds-nonfarm-payrolls-unemployment-data.html" target="_blank" rel="noopener noreferrer">source</a><span class="chip">UST 2Y</span><span class="chip">UST 10Y</span><span class="chip">2s10s</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>18:00Z</span><span class="sqrail" style="background:var(--down)"></span><span class="sqb"><h3>September Fed hike odds roughly double to the mid-60s from ~36% since Chair Warsh&#x27;s Jackson Hole speech</h3><p>The market is now pricing a hike as more likely than not into the 15-16 September meeting.</p><span class="meta"><span class="imp" style="color:var(--down);font-size:13px;display:inline">92</span><span class="t t2">T2</span><span>Investing.com</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://au.investing.com/news/stock-market-news/global-macro-outlook-hormuz-fed-hike-odds-and-the-bond-rout--week-of-september-4-2026-93CH-4630470" target="_blank" rel="noopener noreferrer">source</a><span class="chip">UST 2Y</span><span class="chip">USD</span><span class="chip">S&amp;P 500</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>17:00Z</span><span class="sqrail" style="background:var(--ink-2)"></span><span class="sqb"><h3>El-Erian: expect the global government bond selloff to continue</h3><p>Named commentary, not new information. Ranked accordingly.</p><span class="meta"><span class="imp" style="color:var(--ink-2);font-size:13px;display:inline">45</span><span class="t t3">T3</span><span>Mohamed El-Erian via CNBC</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://www.cnbc.com/2026/09/02/bond-market-selloff-rates-fixed-income-treasury-yields.html" target="_blank" rel="noopener noreferrer">source</a><span class="chip">UST 10Y</span><span class="chip">Bunds</span><span class="chip">JGBs</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>16:00Z</span><span class="sqrail" style="background:var(--down)"></span><span class="sqb"><h3>New wave of US strikes on Iran lifts crude to its highest since July; Brent +7% on the week to $97.62</h3><p>Energy is now an active inflation channel, not a base effect. Hormuz risk sits under the whole complex.</p><span class="meta"><span class="imp" style="color:var(--down);font-size:13px;display:inline">90</span><span class="t t2">T2</span><span>Investing.com</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://au.investing.com/news/stock-market-news/global-macro-outlook-hormuz-fed-hike-odds-and-the-bond-rout--week-of-september-4-2026-93CH-4630470" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Brent</span><span class="chip">WTI</span><span class="chip">Breakevens</span><span class="chip">EUR</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>14:00Z</span><span class="sqrail" style="background:var(--gold)"></span><span class="sqb"><h3>US spot bitcoin ETFs take $731m, the largest inflow day since 14 January; BlackRock&#x27;s IBIT captured $454m of it</h3><p>Attributed to Waller&#x27;s dovish remarks. Three-week cumulative inflow of $3.8bn is the biggest streak of 2026.</p><span class="meta"><span class="imp" style="color:var(--gold);font-size:13px;display:inline">78</span><span class="t t2">T2</span><span>The Block</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://www.theblock.co/news/markets/2026-09-04-us-bitcoin-etfs-largest-inflow-day-since-january-413515" target="_blank" rel="noopener noreferrer">source</a><span class="chip">BTC</span><span class="chip">ETH</span><span class="chip">Crypto</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>14:00Z</span><span class="sqrail" style="background:var(--ink-2)"></span><span class="sqb"><h3>Diesel prices hold near April highs, adding to near-term inflation pressure</h3><p>Distillate is the cleanest read on freight-cost pass-through.</p><span class="meta"><span class="imp" style="color:var(--ink-2);font-size:13px;display:inline">62</span><span class="t t2">T2</span><span>Investing.com</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://au.investing.com/news/stock-market-news/global-macro-outlook-hormuz-fed-hike-odds-and-the-bond-rout--week-of-september-4-2026-93CH-4630470" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Breakevens</span><span class="chip">WTI</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>12:30Z</span><span class="sqrail" style="background:var(--down)"></span><span class="sqb"><h3>August payrolls +162k versus +53k expected; unemployment steady at 4.1%</h3><p>A roughly 3x upside surprise on payrolls. This is the print that repriced the September meeting.</p><span class="meta"><span class="imp" style="color:var(--down);font-size:13px;display:inline">95</span><span class="t t1">T1</span><span>BLS Employment Situation (via CNBC)</span><span class="chip" style="color:var(--up);border-color:var(--up-dim)">PRIMARY</span><a href="https://www.cnbc.com/2026/09/04/treasurys-bonds-nonfarm-payrolls-unemployment-data.html" target="_blank" rel="noopener noreferrer">source</a><span class="chip">UST 2Y</span><span class="chip">USD</span><span class="chip">S&amp;P 500</span><span class="chip">Gold</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>10:00Z</span><span class="sqrail" style="background:var(--down)"></span><span class="sqb"><h3>ECB seen hiking 25bp to 2.50% as euro-area inflation rises to 3.3% y/y in August from 2.9%</h3><p>Euro-area inflation is re-accelerating. Lagarde primed a September move at the July press conference.</p><span class="meta"><span class="imp" style="color:var(--down);font-size:13px;display:inline">85</span><span class="t t2">T2</span><span>CNBC / ECB</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://www.cnbc.com/2026/07/23/interest-rate-hike-iran-european-central-bank.html" target="_blank" rel="noopener noreferrer">source</a><span class="chip">EURUSD</span><span class="chip">Bunds</span><span class="chip">EUR rates</span></span></span></article><article class="sqr"><span class="sqt">09-04<br>03:52Z</span><span class="sqrail" style="background:var(--gold)"></span><span class="sqb"><h3>Crypto liquidations hit $468.6m in 24 hours with 87% on the short side; bitcoin alone accounted for $272.6m, 92% short</h3><p>A short squeeze, not spot demand. Forced buybacks were the fuel, which is a mechanically different move from an accumulation rally.</p><span class="meta"><span class="imp" style="color:var(--gold);font-size:13px;display:inline">72</span><span class="t t3">T3</span><span>CoinGlass via COINOTAG</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://en.coinotag.com/bitcoin-leads-468-million-crypto-liquidations-24-hours" target="_blank" rel="noopener noreferrer">source</a><span class="chip">BTC</span><span class="chip">ETH</span></span></span></article><article class="sqr"><span class="sqt">09-03<br>15:00Z</span><span class="sqrail" style="background:var(--gold)"></span><span class="sqb"><h3>Fed&#x27;s Waller: would support holding rates if price pressures continue to ease</h3><p>The dovish counterweight to the payrolls print, and the reason the hike is priced in the sixties rather than the nineties.</p><span class="meta"><span class="imp" style="color:var(--gold);font-size:13px;display:inline">74</span><span class="t t1">T1</span><span>Federal Reserve</span><span class="chip" style="color:var(--up);border-color:var(--up-dim)">PRIMARY</span><a href="https://www.federalreserve.gov/newsevents/speeches.htm" target="_blank" rel="noopener noreferrer">source</a><span class="chip">UST 2Y</span><span class="chip">USD</span></span></span></article><article class="sqr"><span class="sqt">09-02<br>18:00Z</span><span class="sqrail" style="background:var(--gold)"></span><span class="sqb"><h3>Beige Book: manufacturers and construction firms report price pressures from energy, raw materials and transport</h3><p>Corroborates the energy pass-through the CPI print has not yet shown.</p><span class="meta"><span class="imp" style="color:var(--gold);font-size:13px;display:inline">68</span><span class="t t1">T1</span><span>Federal Reserve</span><span class="chip" style="color:var(--up);border-color:var(--up-dim)">PRIMARY</span><a href="https://www.federalreserve.gov/monetarypolicy/beige-book-default.htm" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Breakevens</span><span class="chip">UST 10Y</span></span></span></article><article class="sqr"><span class="sqt">09-02<br>12:00Z</span><span class="sqrail" style="background:var(--down)"></span><span class="sqb"><h3>Washington revokes the licence permitting limited Iranian oil sales; tanker damage reported near Oman</h3><p>Sanctions tightening plus physical shipping risk. Hormuz transits are running far below normal.</p><span class="meta"><span class="imp" style="color:var(--down);font-size:13px;display:inline">86</span><span class="t t3">T3</span><span>Foreign Affairs Forum</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://www.faf.ae/home/2026/9/1/irans-war-returns-hormuz-bleeds-and-the-worlds-bond-markets-brace-for-a-geopolitical-inflation-shock" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Brent</span><span class="chip">WTI</span><span class="chip">Freight</span></span></span></article><article class="sqr"><span class="sqt">09-01<br>12:00Z</span><span class="sqrail" style="background:var(--down)"></span><span class="sqb"><h3>US strikes Iranian launch positions on Larak Island; Iran responds with missile attacks on US forces in Jordan</h3><p>Direct military exchange has resumed. This is the supply-side engine under the whole inflation leg.</p><span class="meta"><span class="imp" style="color:var(--down);font-size:13px;display:inline">93</span><span class="t t3">T3</span><span>Foreign Affairs Forum</span><span class="chip" style="color:var(--gold);border-color:var(--gold-dim)">REPORTED</span><a href="https://www.faf.ae/home/2026/9/1/irans-war-returns-hormuz-bleeds-and-the-worlds-bond-markets-brace-for-a-geopolitical-inflation-shock" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Brent</span><span class="chip">WTI</span><span class="chip">Gold</span><span class="chip">CHF</span><span class="chip">Breakevens</span></span></span></article><article class="sqr"><span class="sqt">07-29<br>18:00Z</span><span class="sqrail" style="background:var(--gold)"></span><span class="sqb"><h3>FOMC held the target range at 3.50-3.75% on a 9-3 vote in July; all three dissents favoured a 25bp hike</h3><p>Dissents pointing at a hike, not a cut, is the single clearest signal of which regime this is.</p><span class="meta"><span class="imp" style="color:var(--gold);font-size:13px;display:inline">80</span><span class="t t1">T1</span><span>Federal Reserve</span><span class="chip" style="color:var(--up);border-color:var(--up-dim)">PRIMARY</span><a href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20260729a.htm" target="_blank" rel="noopener noreferrer">source</a><span class="chip">UST 2Y</span><span class="chip">USD</span></span></span></article></div></div>
   </section>
 
   <section class="card c4">
@@ -427,9 +476,9 @@ timing field stays blank.</span></noscript>
     </div>
   </section>
 
-  <section class="card c7">
-    <h2>BTC liquidation heatmap <em>price &times; time &middot; leverage density</em></h2>
-    <div class="bd"><div class="hm-wrap"><div class="hm-y"><span>62,554</span><span>67,460</span><span>72,366</span><span>77,272</span><span>82,179</span></div><canvas class="hm" id="hm-canvas" width="288" height="272" data-cell="8" role="img" aria-label="Liquidation intensity by price and time, 62,554 to 82,179"></canvas><div class="hm-x"><span>08-04</span><span></span><span></span><span>09-04</span></div><div class="hm-legend"><span>low</span><span class="bar"></span><span>high leverage density</span></div><div class="hm-key" style="grid-column:1/-1"><i><span class="sw" style="background:var(--gold)"></span>observed close</i><i><span class="sw" style="background:repeating-linear-gradient(90deg,var(--gold) 0 3px,transparent 3px 6px)"></span>no observation between</i><i>leverage tiers 10x, 25x, 50x, 100x</i><i>4 sourced anchors</i></div></div><p class="note warn"><b>Computed by the published method, on real prices.</b> At each observed close, positions opened there liquidate at price&times;(1&minus;1/N) and price&times;(1+1/N); those levels stay pending until price sweeps through them. Between two observations nothing is known, so the field is held and the price line is drawn dashed &mdash; no price is ever interpolated. It is <b>not</b> open-interest weighted: that needs per-exchange position data, and the time resolution here is the data's, not the renderer's.</p></div>
+  <section class="card c12">
+    <h2>BTC liquidation heatmap <em>price &times; time &middot; leverage density &middot; every control recomputes the model</em></h2>
+    <div class="bd"><div class="hm-ctl"><span class="ctl-g"><b>WINDOW</b><button class="pill" data-tf="7">7D</button><button class="pill" data-tf="14">14D</button><button class="pill" data-tf="30">30D</button><button class="pill" data-tf="0" data-on=1>ALL</button></span><span class="ctl-g"><b>LEVERAGE</b><button class="pill lv" data-lev="5">5&times;</button><button class="pill lv" data-lev="10" data-on=1>10&times;</button><button class="pill lv" data-lev="25" data-on=1>25&times;</button><button class="pill lv" data-lev="50" data-on=1>50&times;</button><button class="pill lv" data-lev="100" data-on=1>100&times;</button></span><span class="ctl-g"><b>GRID</b><button class="pill" data-res="36x34">COARSE</button><button class="pill" data-res="72x52" data-on=1>MED</button><button class="pill" data-res="140x80">FINE</button></span><span class="ctl-g"><b>SCHEME</b><button class="sw-btn" data-scheme="viridis" title="viridis" data-on=1><i style="background:linear-gradient(90deg,#440154,#482878,#3E4A89,#31688E,#26828E,#1F9E89,#35B779,#6DCD59,#B4DE2C,#FDE725)"></i></button><button class="sw-btn" data-scheme="magma" title="magma"><i style="background:linear-gradient(90deg,#000004,#1C1044,#4F127B,#812581,#B5367A,#E55064,#FB8761,#FEC287,#FCFDBF)"></i></button><button class="sw-btn" data-scheme="ice" title="ice"><i style="background:linear-gradient(90deg,#04122B,#0B2C55,#12497E,#1A69A0,#2E8BB8,#54ACC9,#8ACBD8,#C6E6EC)"></i></button><button class="sw-btn" data-scheme="ember" title="ember"><i style="background:linear-gradient(90deg,#180A12,#3E1030,#6B1240,#9A2140,#C44536,#E27235,#F2A93C,#FADF6B)"></i></button></span><span class="ctl-g"><b>THRESHOLD</b><input id="hm-thr" type="range" min="0" max="90" value="0" step="5" aria-label="Intensity threshold"><i id="hm-thr-v" class="ctl-v">0.00</i></span><span class="ctl-g"><b>ZOOM</b><button class="pill" id="hm-zin" title="Zoom in on price">+</button><button class="pill" id="hm-zout" title="Zoom out">&minus;</button><button class="pill" id="hm-pan-up" title="Pan up">&uarr;</button><button class="pill" id="hm-pan-dn" title="Pan down">&darr;</button><button class="pill" id="hm-reset">RESET</button></span></div><div class="hm-stage"><div class="hm-scale"><i id="hm-peak">&mdash;</i><span class="hm-bar" id="hm-bar"></span><i>0</i></div><canvas class="hm" id="hm-canvas" width="1152" height="832" role="img" aria-label="Liquidation leverage density by price and time"></canvas><div class="hm-price" id="hm-price"></div><div class="hm-time" id="hm-time"></div></div><div class="hm-key"><i><span class="sw" style="background:var(--gold)"></span>observed close</i><i><span class="sw" style="background:repeating-linear-gradient(90deg,var(--gold) 0 3px,transparent 3px 6px)"></span>no observation between</i><i id="hm-meta">&mdash;</i></div><p class="note warn"><b>Computed by the published method, on real prices.</b> At each observed close, positions opened there liquidate at price&times;(1&minus;1/N) and price&times;(1+1/N); those levels stay pending until price sweeps through them. Between two observations nothing is known, so the field is held and the price line is drawn dashed &mdash; no price is ever interpolated, and no candle is drawn because no OHLC bars are sourced. It is <b>not</b> open-interest weighted: that needs per-exchange position data. Every control below recomputes the model rather than restyling a picture of it.</p></div>
   </section>
 
   <section class="card c5">
@@ -437,9 +486,24 @@ timing field stays blank.</span></noscript>
     <div class="bd"><div class="spotline"><span>observed &middot; 24h to 03:52 UTC, 4 September 2026</span><span>$468.6m total</span></div><div class="liqbar"><span class="ls" style="flex:0 0 87.09%">SHORTS 87.1% &middot; $408m</span><span class="ll" style="flex:0 0 12.91%">LONGS 12.9%</span></div><dl class="kv"><dt>Bitcoin</dt><dd>$272.6m &middot; 92% short</dd><dt>Longs</dt><dd>$60.5m</dd><dt>Source</dt><dd>CoinGlass via COINOTAG &middot; T3</dd></dl><p class="note">Two other windows were reported the same day - $544.85m and a $415m shorts-only figure - covering different periods and scopes. The window is stated here rather than the largest number being chosen.</p><div class="spotline" style="margin-top:6px"><span>computed ladder</span><span>spot 81,240 &middot; 11:21Z</span></div><div class="ladder"><div class="lr"><span class="lev">5&times;</span><span class="rng"><span class="seg dn" style="left:10.00%;width:40.00%"></span><span class="seg upl" style="left:50%;width:40.00%"></span><span class="mid"></span></span><span class="lev" style="color:var(--dim)">&plusmn;20%</span></div><div class="lr" style="border-bottom:0;padding-top:0"><span class="px dn">64,992</span><span class="rng" style="border:0;height:0"></span><span class="px up">97,488</span></div><div class="lr"><span class="lev">10&times;</span><span class="rng"><span class="seg dn" style="left:30.00%;width:20.00%"></span><span class="seg upl" style="left:50%;width:20.00%"></span><span class="mid"></span></span><span class="lev" style="color:var(--dim)">&plusmn;10%</span></div><div class="lr" style="border-bottom:0;padding-top:0"><span class="px dn">73,116</span><span class="rng" style="border:0;height:0"></span><span class="px up">89,364</span></div><div class="lr"><span class="lev">25&times;</span><span class="rng"><span class="seg dn" style="left:42.00%;width:8.00%"></span><span class="seg upl" style="left:50%;width:8.00%"></span><span class="mid"></span></span><span class="lev" style="color:var(--dim)">&plusmn;4%</span></div><div class="lr" style="border-bottom:0;padding-top:0"><span class="px dn">77,991</span><span class="rng" style="border:0;height:0"></span><span class="px up">84,490</span></div><div class="lr"><span class="lev">50&times;</span><span class="rng"><span class="seg dn" style="left:46.00%;width:4.00%"></span><span class="seg upl" style="left:50%;width:4.00%"></span><span class="mid"></span></span><span class="lev" style="color:var(--dim)">&plusmn;2%</span></div><div class="lr" style="border-bottom:0;padding-top:0"><span class="px dn">79,615</span><span class="rng" style="border:0;height:0"></span><span class="px up">82,865</span></div><div class="lr"><span class="lev">100&times;</span><span class="rng"><span class="seg dn" style="left:48.00%;width:2.00%"></span><span class="seg upl" style="left:50%;width:2.00%"></span><span class="mid"></span></span><span class="lev" style="color:var(--dim)">&plusmn;1%</span></div><div class="lr" style="border-bottom:0;padding-top:0"><span class="px dn">80,428</span><span class="rng" style="border:0;height:0"></span><span class="px up">82,053</span></div></div><p class="note warn"><b>Computed, not observed.</b> These are the exact liquidation prices for a position opened at spot &mdash; price &times; (1 &minus; 1/N) for a long, price &times; (1 + 1/N) for a short. They exclude maintenance margin and fees, so a venue triggers marginally earlier. This is <b>not</b> a heatmap of where open interest actually sits: that needs per-exchange position data this terminal does not have, and it is not guessed.</p></div>
   </section>
 
-  <section class="card c12">
+  <section class="card c7">
     <h2>Geopolitical board <em>event &rarr; channel &rarr; asset &middot; with time of occurrence</em></h2>
     <div class="bd flush" style="padding:0 13px"><div class="geo"><article class="ge"><div class="sev" style="color:var(--down)">93<small>SEVERITY</small></div><div><h4>US strikes on Iranian launch positions, Larak Island</h4><p class="ch">Military action -&gt; tanker insurance and transit risk -&gt; crude supply premium -&gt; headline CPI -&gt; breakevens -&gt; the policy path</p><div class="meta"><span class="stat esc">ESCALATING</span><span class="chip">Strait of Hormuz</span><span class="t t3">T3</span><span>Foreign Affairs Forum</span><a href="https://www.faf.ae/home/2026/9/1/irans-war-returns-hormuz-bleeds-and-the-worlds-bond-markets-brace-for-a-geopolitical-inflation-shock" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Brent</span><span class="chip">WTI</span><span class="chip">Gold</span><span class="chip">CHF</span><span class="chip">Breakevens</span></div></div><div class="when"><span class="abs">09-01 12:00Z</span><span class="ago" data-ago="2026-09-01T12:00:00Z">&mdash;</span></div></article><article class="ge"><div class="sev" style="color:var(--down)">88<small>SEVERITY</small></div><div><h4>Iranian missile attacks on US forces in Jordan</h4><p class="ch">Direct exchange raises the probability of a sustained campaign, which is what turns a risk premium into a supply disruption</p><div class="meta"><span class="stat esc">ESCALATING</span><span class="chip">Levant</span><span class="t t3">T3</span><span>Foreign Affairs Forum</span><a href="https://www.faf.ae/home/2026/9/1/irans-war-returns-hormuz-bleeds-and-the-worlds-bond-markets-brace-for-a-geopolitical-inflation-shock" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Brent</span><span class="chip">Defence</span><span class="chip">Gold</span></div></div><div class="when"><span class="abs">09-01 18:00Z</span><span class="ago" data-ago="2026-09-01T18:00:00Z">&mdash;</span></div></article><article class="ge"><div class="sev" style="color:var(--down)">85<small>SEVERITY</small></div><div><h4>Tanker damage near Oman; Hormuz transits far below normal</h4><p class="ch">Physical chokepoint risk -&gt; freight and insurance rates -&gt; delivered energy cost -&gt; goods inflation with a lag</p><div class="meta"><span class="stat ong">ONGOING</span><span class="chip">Strait of Hormuz</span><span class="t t3">T3</span><span>Foreign Affairs Forum</span><a href="https://www.faf.ae/home/2026/9/1/irans-war-returns-hormuz-bleeds-and-the-worlds-bond-markets-brace-for-a-geopolitical-inflation-shock" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Brent</span><span class="chip">Freight</span><span class="chip">Breakevens</span></div></div><div class="when"><span class="abs">09-02 12:00Z</span><span class="ago" data-ago="2026-09-02T12:00:00Z">&mdash;</span></div></article><article class="ge"><div class="sev" style="color:var(--gold)">84<small>SEVERITY</small></div><div><h4>OPEC+ meets Saturday 5 September</h4><p class="ch">An output surprise lands on top of an already-tight geopolitical bid. No publication time is scheduled, so it can be watched but not counted down</p><div class="meta"><span class="stat act">TODAY - TIME NOT PUBLISHED</span><span class="chip">OPEC+</span><span class="t t3">T3</span><span>Rio Times briefing</span><a href="https://www.riotimesonline.com/global-economy-briefing-september-5-2026/" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Brent</span><span class="chip">WTI</span><span class="chip">CAD</span><span class="chip">NOK</span></div></div><div class="when"><span class="abs">09-05 08:00Z</span><span class="ago" data-ago="2026-09-05T08:00:00Z">&mdash;</span></div></article><article class="ge"><div class="sev" style="color:var(--gold)">80<small>SEVERITY</small></div><div><h4>Licence for limited Iranian oil sales revoked</h4><p class="ch">Sanctions tightening removes barrels from the legal market: a direct, quantifiable supply subtraction rather than a sentiment effect</p><div class="meta"><span class="stat act">ACTIVE</span><span class="chip">Policy</span><span class="t t3">T3</span><span>Foreign Affairs Forum</span><a href="https://www.faf.ae/home/2026/9/1/irans-war-returns-hormuz-bleeds-and-the-worlds-bond-markets-brace-for-a-geopolitical-inflation-shock" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Brent</span><span class="chip">WTI</span></div></div><div class="when"><span class="abs">09-02 12:00Z</span><span class="ago" data-ago="2026-09-02T12:00:00Z">&mdash;</span></div></article><article class="ge"><div class="sev" style="color:var(--ink-2)">68<small>SEVERITY</small></div><div><h4>Red Sea shipping attacks continue</h4><p class="ch">Rerouting round the Cape adds voyage days: a supply-chain cost shock that reaches CPI months after it reaches freight rates</p><div class="meta"><span class="stat ong">ONGOING</span><span class="chip">Red Sea</span><span class="t t2">T2</span><span>Investing.com</span><a href="https://au.investing.com/news/stock-market-news/global-macro-outlook-hormuz-fed-hike-odds-and-the-bond-rout--week-of-september-4-2026-93CH-4630470" target="_blank" rel="noopener noreferrer">source</a><span class="chip">Freight</span><span class="chip">Breakevens</span></div></div><div class="when"><span class="abs">09-04 12:00Z</span><span class="ago" data-ago="2026-09-04T12:00:00Z">&mdash;</span></div></article></div></div>
+  </section>
+
+  <section class="card c7">
+    <h2>Mega-cap board <em>largest listings by market value</em></h2>
+    <div class="bd flush"><div style="padding:0"><div class="eq"><div class="eqc" title="Rose on the announced $12.9bn acquisition of AI developer platform Hugging Face. Largest listed company in the world."><span class="eqt">NVDA</span><span class="nm2">NVIDIA</span><span class="cap">$5.58T</span><span class="mv up">▲ 1.80%</span><span class="sr">Motley Fool / CNBC &middot; T3 &middot; 20:00Z</span></div><div class="eqc" title="Session move not sourced; the market cap is."><span class="eqt">AAPL</span><span class="nm2">Apple</span><span class="cap">$4.70T</span><span class="mv flat">move UNKNOWN</span><span class="sr">Motley Fool &middot; T3 &middot; 20:00Z</span></div><div class="eqc" title="Session move not sourced; the market cap is."><span class="eqt">GOOGL</span><span class="nm2">Alphabet</span><span class="cap">$4.10T</span><span class="mv flat">move UNKNOWN</span><span class="sr">Motley Fool &middot; T3 &middot; 20:00Z</span></div><div class="eqc" title="Session move not sourced; the market cap is."><span class="eqt">MSFT</span><span class="nm2">Microsoft</span><span class="cap">$3.71T</span><span class="mv flat">move UNKNOWN</span><span class="sr">Motley Fool &middot; T3 &middot; 20:00Z</span></div><div class="eqc" title="Fell more than 6% after the Cybercab launch, its worst session since 23 July. Market cap not sourced at this timestamp."><span class="eqt">TSLA</span><span class="nm2">Tesla</span><span class="cap">cap UNKNOWN</span><span class="mv down">▼ 6.00%</span><span class="sr">CNBC &middot; T2 &middot; 20:00Z</span></div></div></div></div>
+  </section>
+
+  <section class="card c5">
+    <h2>Earnings <em>countdown at the precision the source supports</em></h2>
+    <div class="bd"><div class="earn"><div class="er"><span class="etk">ORCL</span><span class="enm">Oracle <span class="ses">UNKNOWN</span></span><span class="ecd" data-days="2026-09-10T00:00:00Z">&mdash;</span><span class="esub">2026-09-10 &middot; date published, hour not &middot; Investing.com &middot; T3 &middot; <a href="https://www.investing.com/equities/oracle-corp-earnings" target="_blank" rel="noopener noreferrer">source</a> &middot; Date published; the hour is not, so the countdown is day-granularity.</span></div><div class="er"><span class="etk">NVDA</span><span class="enm">NVIDIA <span class="ses">AMC</span></span><span class="ecd" data-days="2026-11-17T00:00:00Z">&mdash;</span><span class="esub">2026-11-17 &middot; date published, hour not &middot; Wall Street Horizon &middot; T3 &middot; <a href="https://www.wallstreethorizon.com/nvidia-earnings-calendar" target="_blank" rel="noopener noreferrer">source</a> &middot; Confirmed for Tuesday 17 November, after market. The largest single scheduled equity event on the board.</span></div><div class="er"><span class="etk">ADBE</span><span class="enm">Adobe <span class="ses">UNKNOWN</span></span><span class="ecd win">week of 7-11 September 2026</span><span class="esub">week of 7-11 September 2026 &middot; window only, no date &middot; MarketScreener &middot; T3 &middot; <a href="https://www.marketscreener.com/news/weekly-earnings-calendar-oracle-vs-adobe-a-battle-of-old-hands-ce785bdad08cf02d" target="_blank" rel="noopener noreferrer">source</a> &middot; Only the week is published. No countdown is shown for a window.</span></div><div class="er"><span class="etk">AVGO</span><span class="enm">Broadcom <span class="ses">AMC</span></span><span class="ecd done">REPORTED</span><span class="esub">2026-09-02 &middot; date published, hour not &middot; Broadcom investor relations &middot; T1 &middot; <a href="https://investors.broadcom.com/news-releases/news-release-details/broadcom-inc-announce-third-quarter-fiscal-year-2026-financial" target="_blank" rel="noopener noreferrer">source</a> &middot; Q3 FY2026, announced by the company itself - Tier 1.</span></div></div>
+      <p class="note">A published <b>date</b> gets a day countdown; a published
+      <b>hour</b> would get a clock. Where only a week is known there is no
+      countdown at all &mdash; an invented hour on an earnings print is exactly the
+      kind of false precision that gets someone positioned into the wrong session.</p>
+    </div>
   </section>
 
   <section class="card c4">
@@ -537,7 +601,7 @@ timing field stays blank.</span></noscript>
 <div class="statusbar">
   <span>SRC <b id="sb-src">T2:7 T3:5</b></span>
   <span>QUOTES <b>12</b></span>
-  <span>WIRE <b>17</b></span>
+  <span>WIRE <b>19</b></span>
   <span>GEO <b>6</b></span>
   <span>CONFLICTS <b>8</b></span>
   <span>REGIME <b>INFLATION-DOMINANT</b></span>
@@ -557,7 +621,7 @@ timing field stays blank.</span></noscript>
 </footer>
 </div>
 
-<script>window.__TERM__={"captured": "2026-09-05T13:00:00Z", "ramp": ["#0D1030", "#241A5E", "#28407F", "#22698C", "#2A9284", "#63B85C", "#C8CC46", "#F2E85C"], "heat": {"grid": [[0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.8, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.4, 0.0, 0.8, 0.0, 0.8, 0.0, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.4, 0.0, 0.8, 0.0, 0.8, 0.0, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.4, 0.0, 0.8, 0.0, 0.8, 0.0, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.4, 0.0, 0.8, 0.0, 0.8, 0.0, 0.4, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0], [0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.4, 0.2, 0.8, 0.0, 0.4, 0.0, 0.8, 0.0, 1.0, 0.0, 0.4, 0.0, 0.2], [0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.4, 0.2, 0.8, 0.0, 0.4, 0.0, 0.8, 0.0, 1.0, 0.0, 0.4, 0.0, 0.2], [0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.4, 0.2, 0.8, 0.0, 0.4, 0.0, 0.8, 0.0, 1.0, 0.0, 0.4, 0.0, 0.2], [0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.4, 0.2, 0.8, 0.0, 0.4, 0.0, 0.8, 0.0, 1.0, 0.0, 0.4, 0.0, 0.2], [0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.4, 0.2, 0.8, 0.0, 0.4, 0.0, 0.8, 0.0, 1.0, 0.0, 0.4, 0.0, 0.2], [0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.4, 0.2, 0.8, 0.0, 0.4, 0.0, 0.8, 0.0, 1.0, 0.0, 0.4, 0.0, 0.2], [0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.4, 0.2, 0.8, 0.0, 0.4, 0.0, 0.8, 0.0, 1.0, 0.0, 0.4, 0.0, 0.2], [0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.4, 0.2, 0.8, 0.0, 0.4, 0.0, 0.8, 0.0, 1.0, 0.0, 0.4, 0.0, 0.2], [0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.4, 0.2, 0.8, 0.0, 0.4, 0.0, 0.8, 0.0, 1.0, 0.0, 0.4, 0.0, 0.2], [0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.4, 0.2, 0.8, 0.0, 0.4, 0.0, 0.8, 0.0, 1.0, 0.0, 0.4, 0.0, 0.2], [0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.4, 0.2, 0.8, 0.0, 0.4, 0.0, 0.8, 0.0, 1.0, 0.0, 0.4, 0.0, 0.2], [0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.4, 0.2, 0.8, 0.0, 0.4, 0.0, 0.8, 0.0, 1.0, 0.0, 0.4, 0.0, 0.2], [0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, 0.08, 0.2, 0.0, 0.4, 0.2, 0.8, 0.0, 0.4, 0.2, 0.8, 0.0, 0.4, 0.8, 0.0, 0.0, 1.0]], "cols": 36, "rows": 34, "anchors": [{"col": 0, "row": 1, "price": 63465.2, "date": "2026-08-04T20:00:00Z", "source": "YCharts", "tier": 3}, {"col": 19, "row": 24, "price": 76712.47, "date": "2026-08-21T20:00:00Z", "source": "Fortune", "tier": 3}, {"col": 23, "row": 28, "price": 78976.18, "date": "2026-08-24T20:00:00Z", "source": "Fortune", "tier": 3}, {"col": 35, "row": 32, "price": 81240.29, "date": "2026-09-04T11:21:00Z", "source": "Yahoo Finance", "tier": 2}]}};</script>
+<script>window.__TERM__={"captured": "2026-09-05T13:00:00Z", "ramps": {"viridis": ["#440154", "#482878", "#3E4A89", "#31688E", "#26828E", "#1F9E89", "#35B779", "#6DCD59", "#B4DE2C", "#FDE725"], "magma": ["#000004", "#1C1044", "#4F127B", "#812581", "#B5367A", "#E55064", "#FB8761", "#FEC287", "#FCFDBF"], "ice": ["#04122B", "#0B2C55", "#12497E", "#1A69A0", "#2E8BB8", "#54ACC9", "#8ACBD8", "#C6E6EC"], "ember": ["#180A12", "#3E1030", "#6B1240", "#9A2140", "#C44536", "#E27235", "#F2A93C", "#FADF6B"]}, "window": {"lo": 62553.7, "hi": 82178.6, "avg": 71773.9, "span": "5 August - 5 September 2026", "source": "StatMuse", "tier": 3, "url": "https://www.statmuse.com/money/ask/bitcoin-price-history-august-2026"}, "anchors": [{"date": "2026-08-04T20:00:00Z", "price": 63465.2, "source": "YCharts", "tier": 3}, {"date": "2026-08-21T20:00:00Z", "price": 76712.47, "source": "Fortune", "tier": 3}, {"date": "2026-08-24T20:00:00Z", "price": 78976.18, "source": "Fortune", "tier": 3}, {"date": "2026-09-04T11:21:00Z", "price": 81240.29, "source": "Yahoo Finance", "tier": 2}]};</script>
 <script>
 (function(){
 "use strict";
@@ -601,6 +665,18 @@ function tick(){
     if(st){st.textContent=lab;
       st.style.color=(cls===""?"var(--up)":(cls==="stale"?"var(--gold)":"var(--down)"));}
   }
+  /* day-granularity countdowns: date published, hour not */
+  var dayEls=document.querySelectorAll("[data-days]");
+  for(var k=0;k<dayEls.length;k++){
+    var dt=Date.parse(dayEls[k].getAttribute("data-days"));
+    if(isNaN(dt)){dayEls[k].textContent="UNKNOWN";continue;}
+    var ds=Math.floor((dt-d.getTime())/86400000);
+    if(dt-d.getTime()<=0){dayEls[k].textContent="DUE";dayEls[k].className="ecd soon";}
+    else{
+      dayEls[k].textContent=ds+"d";
+      dayEls[k].className="ecd"+(ds<=2?" soon":"");
+    }
+  }
   /* release countdowns */
   var rows=document.querySelectorAll("[data-when]");
   for(var j=0;j<rows.length;j++){
@@ -616,51 +692,226 @@ function tick(){
 }
 tick();setInterval(tick,1000);
 
-/* ---- liquidation heatmap: paint the grid, overlay the observed price line ---- */
-(function(){
-  var cv=q("hm-canvas"); if(!cv||!cv.getContext||!D.heat) return;
-  var g=cv.getContext("2d"); if(!g) return;
-  var H=D.heat, ramp=D.ramp||[];
-  function hex(h){return [parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),
-                          parseInt(h.substr(5,2),16)];}
-  var stops=ramp.map(hex);
-  function colour(v){
-    if(v<=0) return stops[0];
-    var f=Math.min(1,Math.max(0,Math.pow(v,0.55)))*(stops.length-1);
-    var i=Math.floor(f), t=f-i, a=stops[i], b=stops[Math.min(i+1,stops.length-1)];
-    return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+
+/* ---- liquidation heatmap engine: a direct port of macro/live.py.
+   tests/test_live.py runs this in node against the Python implementation and
+   fails if the two grids diverge, so the controls below cannot drift from the
+   reference model. ---- */
+function heatmapCompute(anchors, opts){
+  opts = opts || {};
+  var levels = opts.levels || [10,25,50,100];
+  var columns = opts.columns || 36, rows = opts.rows || 34;
+  var pts = anchors.slice().sort(function(a,b){return a.date < b.date ? -1 : 1;});
+  if(pts.length < 2 || columns < 2 || rows < 2)
+    return {ok:false, reason:"need at least two dated price anchors"};
+  var prices = pts.map(function(a){return a.price;});
+  var lo = opts.lo != null ? opts.lo : Math.min.apply(null, prices)*0.97;
+  var hi = opts.hi != null ? opts.hi : Math.max.apply(null, prices)*1.03;
+  if(hi <= lo) return {ok:false, reason:"degenerate price range"};
+  var t0 = Date.parse(pts[0].date), t1 = Date.parse(pts[pts.length-1].date);
+  var span = (t1 - t0)/1000;
+  if(!(span > 0)) return {ok:false, reason:"all anchors share one timestamp"};
+
+  function colOf(iso){
+    var f = ((Date.parse(iso)-t0)/1000)/span;
+    return Math.max(0, Math.min(columns-1, Math.floor(f*(columns-1)+0.5)));
   }
-  /* Cells are drawn as rects at 8x so the price line can be stroked crisply on
-     top instead of being pixelated along with the heat field. */
-  var S=parseInt(cv.getAttribute("data-cell"),10)||8;
-  for(var x=0;x<H.cols;x++){
-    for(var y=0;y<H.rows;y++){
-      var c=colour(H.grid[x][y]);
-      g.fillStyle="rgb("+(c[0]|0)+","+(c[1]|0)+","+(c[2]|0)+")";
-      /* canvas row 0 is the TOP; price row 0 is the LOWEST, so flip y */
-      g.fillRect(x*S,(H.rows-1-y)*S,S,S);
+  function rowOf(p){
+    var f = (p-lo)/(hi-lo);
+    return Math.max(0, Math.min(rows-1, Math.floor(f*rows)));
+  }
+  var grid = [], x, y;
+  for(x=0;x<columns;x++){ grid.push(new Array(rows).fill(0)); }
+  var pending = [], lastPrice = pts[0].price, anchorAt = {};
+  pts.forEach(function(a){ anchorAt[colOf(a.date)] = a; });
+
+  for(var c=0;c<columns;c++){
+    var a = anchorAt[c];
+    if(a){
+      var sLo = Math.min(lastPrice,a.price), sHi = Math.max(lastPrice,a.price);
+      pending = pending.filter(function(p){ return !(sLo <= p[0] && p[0] <= sHi); });
+      levels.forEach(function(n){
+        pending.push([a.price*(1-1/n), n, "long"]);
+        pending.push([a.price*(1+1/n), n, "short"]);
+      });
+      lastPrice = a.price;
+    }
+    for(var k=0;k<pending.length;k++){
+      var lv = pending[k][0], n2 = pending[k][1];
+      if(lv >= lo && lv <= hi) grid[c][rowOf(lv)] += n2/10.0;
     }
   }
-  /* observed closes: markers, dashed connector where nothing was observed */
-  var pts=H.anchors.map(function(a){
-    return [(a.col+0.5)*S,(H.rows-0.5-a.row)*S];
+  var peak = 0;
+  for(x=0;x<columns;x++) for(y=0;y<rows;y++) if(grid[x][y]>peak) peak=grid[x][y];
+  if(!(peak > 0)) return {ok:false, reason:"no pending levels fell inside the price range"};
+  var norm = grid.map(function(col){
+    return col.map(function(v){ return Math.round(v/peak*1e4)/1e4; });
   });
-  g.save();
-  g.lineJoin="round"; g.lineCap="round";
-  g.strokeStyle="rgba(5,6,10,0.85)"; g.lineWidth=6; g.setLineDash([13,9]);
-  g.beginPath();
-  pts.forEach(function(p,i){ i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]); });
-  g.stroke();
-  g.strokeStyle="#2EC5CF"; g.lineWidth=2.6;
-  g.beginPath();
-  pts.forEach(function(p,i){ i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]); });
-  g.stroke(); g.setLineDash([]);
-  pts.forEach(function(p){
-    g.beginPath(); g.arc(p[0],p[1],5.5,0,6.283);
-    g.fillStyle="#05060A"; g.fill();
-    g.lineWidth=2.4; g.strokeStyle="#2EC5CF"; g.stroke();
+  return {ok:true, columns:columns, rows:rows, lo:lo, hi:hi, grid:norm, peak:peak,
+          levels:levels, t0:pts[0].date, t1:pts[pts.length-1].date,
+          anchors: pts.map(function(a){
+            return {col:colOf(a.date), row:rowOf(a.price), price:a.price,
+                    date:a.date, source:a.source, tier:a.tier};
+          })};
+}
+
+/* ---- heatmap controller: every control recomputes the model ---- */
+(function(){
+  var cv=q("hm-canvas"); if(!cv||!cv.getContext||!D.anchors||D.anchors.length<2) return;
+  var g=cv.getContext("2d"); if(!g) return;
+  var BASE={lo:D.window&&D.window.lo, hi:D.window&&D.window.hi};
+  var ST={days:0, levels:[10,25,50,100], cols:72, rows:52,
+          scheme:"viridis", thr:0, zoom:1, pan:0};
+
+  function hex(h){return [parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),
+                          parseInt(h.substr(5,2),16)];}
+  function ramp(){ return (D.ramps[ST.scheme]||D.ramps.viridis).map(hex); }
+  function colour(v,st){
+    if(v<=ST.thr) return st[0];
+    var t=(v-ST.thr)/(1-ST.thr||1);
+    var f=Math.min(1,Math.max(0,Math.pow(t,0.55)))*(st.length-1);
+    var i=Math.floor(f), k=f-i, A=st[i], B=st[Math.min(i+1,st.length-1)];
+    return [A[0]+(B[0]-A[0])*k, A[1]+(B[1]-A[1])*k, A[2]+(B[2]-A[2])*k];
+  }
+  function windowed(){
+    var all=D.anchors;
+    if(!ST.days) return all;
+    var last=Date.parse(all[all.length-1].date);
+    var cut=last-ST.days*86400000;
+    return all.filter(function(a){return Date.parse(a.date)>=cut;});
+  }
+  function bounds(){
+    if(BASE.lo==null||BASE.hi==null) return {};
+    var mid=(BASE.lo+BASE.hi)/2 + ST.pan*(BASE.hi-BASE.lo);
+    var half=(BASE.hi-BASE.lo)/2/ST.zoom;
+    return {lo:mid-half, hi:mid+half};
+  }
+  function fmt(n){
+    return n>=1000 ? n.toLocaleString("en-US",{maximumFractionDigits:0})
+                   : n.toFixed(2);
+  }
+  function draw(){
+    var pts=windowed();
+    var meta=q("hm-meta"), price=q("hm-price"), time=q("hm-time");
+    if(pts.length<2){
+      g.fillStyle="#0A0C14"; g.fillRect(0,0,cv.width,cv.height);
+      g.fillStyle="#66738C"; g.font="20px monospace"; g.textAlign="center";
+      g.fillText("only "+pts.length+" sourced anchor in this window",
+                 cv.width/2, cv.height/2);
+      g.textAlign="left";
+      if(meta) meta.textContent="window too short for the data held";
+      if(price) price.innerHTML=""; if(time) time.innerHTML="";
+      return;
+    }
+    var bb=bounds();
+    var H=heatmapCompute(pts,{levels:ST.levels, columns:ST.cols, rows:ST.rows,
+                              lo:bb.lo, hi:bb.hi});
+    if(!H.ok){
+      g.fillStyle="#0A0C14"; g.fillRect(0,0,cv.width,cv.height);
+      g.fillStyle="#66738C"; g.font="18px monospace"; g.textAlign="center";
+      g.fillText(H.reason, cv.width/2, cv.height/2); g.textAlign="left";
+      if(meta) meta.textContent=H.reason;
+      return;
+    }
+    var st=ramp(), CW=cv.width/H.columns, CH=cv.height/H.rows, x, y;
+    for(x=0;x<H.columns;x++){
+      for(y=0;y<H.rows;y++){
+        var c=colour(H.grid[x][y],st);
+        g.fillStyle="rgb("+(c[0]|0)+","+(c[1]|0)+","+(c[2]|0)+")";
+        g.fillRect(Math.floor(x*CW),Math.floor((H.rows-1-y)*CH),
+                   Math.ceil(CW),Math.ceil(CH));
+      }
+    }
+    var P=H.anchors.map(function(a){
+      return [(a.col+0.5)*CW,(H.rows-0.5-a.row)*CH];
+    });
+    g.save(); g.lineJoin="round"; g.lineCap="round";
+    g.strokeStyle="rgba(5,6,10,0.8)"; g.lineWidth=9; g.setLineDash([16,11]);
+    g.beginPath(); P.forEach(function(p,i){i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]);});
+    g.stroke();
+    g.strokeStyle="#2EC5CF"; g.lineWidth=3.4;
+    g.beginPath(); P.forEach(function(p,i){i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]);});
+    g.stroke(); g.setLineDash([]);
+    P.forEach(function(p){
+      g.beginPath(); g.arc(p[0],p[1],8,0,6.283);
+      g.fillStyle="#05060A"; g.fill();
+      g.lineWidth=3; g.strokeStyle="#2EC5CF"; g.stroke();
+    });
+    g.restore();
+
+    if(price){
+      var out="";
+      for(var i=6;i>=0;i--) out+="<span>"+fmt(H.lo+(H.hi-H.lo)*i/6)+"</span>";
+      price.innerHTML=out;
+    }
+    if(time){
+      var t0=H.t0.slice(5,10), t1=H.t1.slice(5,10);
+      var m0=Date.parse(H.t0), m1=Date.parse(H.t1), tout="";
+      for(var j=0;j<5;j++){
+        var d2=new Date(m0+(m1-m0)*j/4);
+        tout+="<span>"+String(d2.getUTCMonth()+1).padStart(2,"0")+"-"+
+              String(d2.getUTCDate()).padStart(2,"0")+"</span>";
+      }
+      time.innerHTML=tout;
+    }
+    var bar=q("hm-bar");
+    if(bar) bar.style.background="linear-gradient(0deg,"+
+      (D.ramps[ST.scheme]||D.ramps.viridis).join(",")+")";
+    setText("hm-peak",H.peak.toFixed(1));
+    if(meta) meta.textContent=pts.length+" sourced anchors · "+
+      H.columns+"×"+H.rows+" grid · "+ST.levels.join("x/")+"x · "+
+      fmt(H.lo)+"-"+fmt(H.hi);
+  }
+
+  function bindPills(sel, fn){
+    document.querySelectorAll(sel).forEach(function(b){
+      b.addEventListener("click",function(){ fn(b); draw(); });
+    });
+  }
+  bindPills("[data-tf]",function(b){
+    document.querySelectorAll("[data-tf]").forEach(function(o){o.removeAttribute("data-on");});
+    b.setAttribute("data-on","1"); ST.days=parseInt(b.getAttribute("data-tf"),10);
   });
-  g.restore();
+  bindPills("[data-res]",function(b){
+    document.querySelectorAll("[data-res]").forEach(function(o){o.removeAttribute("data-on");});
+    b.setAttribute("data-on","1");
+    var r=b.getAttribute("data-res").split("x");
+    ST.cols=parseInt(r[0],10); ST.rows=parseInt(r[1],10);
+  });
+  bindPills("[data-scheme]",function(b){
+    document.querySelectorAll("[data-scheme]").forEach(function(o){o.removeAttribute("data-on");});
+    b.setAttribute("data-on","1"); ST.scheme=b.getAttribute("data-scheme");
+  });
+  bindPills("[data-lev]",function(b){
+    var n=parseInt(b.getAttribute("data-lev"),10);
+    var on=b.hasAttribute("data-on");
+    /* never allow every tier off: an empty model is not a view of anything */
+    if(on && ST.levels.length<=1) return;
+    if(on){ b.removeAttribute("data-on"); ST.levels=ST.levels.filter(function(v){return v!==n;}); }
+    else { b.setAttribute("data-on","1"); ST.levels.push(n); ST.levels.sort(function(a,c){return a-c;}); }
+  });
+  var thr=q("hm-thr");
+  if(thr) thr.addEventListener("input",function(){
+    ST.thr=parseInt(thr.value,10)/100;
+    setText("hm-thr-v",ST.thr.toFixed(2)); draw();
+  });
+  function zoom(f){ ST.zoom=Math.min(12,Math.max(1,ST.zoom*f)); draw(); }
+  var zi=q("hm-zin"), zo=q("hm-zout"), pu=q("hm-pan-up"), pd=q("hm-pan-dn"),
+      rs=q("hm-reset");
+  if(zi) zi.addEventListener("click",function(){zoom(1.5);});
+  if(zo) zo.addEventListener("click",function(){zoom(1/1.5);});
+  if(pu) pu.addEventListener("click",function(){ST.pan=Math.min(1,ST.pan+0.12/ST.zoom);draw();});
+  if(pd) pd.addEventListener("click",function(){ST.pan=Math.max(-1,ST.pan-0.12/ST.zoom);draw();});
+  if(rs) rs.addEventListener("click",function(){
+    ST.zoom=1; ST.pan=0; ST.thr=0;
+    if(thr){thr.value=0; setText("hm-thr-v","0.00");}
+    draw();
+  });
+  /* scroll to zoom the price axis, as on a real chart */
+  cv.addEventListener("wheel",function(ev){
+    ev.preventDefault(); zoom(ev.deltaY<0?1.18:1/1.18);
+  },{passive:false});
+  draw();
 })();
 
 /* ---- relative time on the geopolitical board, recomputed every tick ---- */

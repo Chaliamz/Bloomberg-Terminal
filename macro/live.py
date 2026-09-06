@@ -32,6 +32,7 @@ __all__ = [
     "Quote", "Headline", "Gauge", "Liquidations", "GeoEvent", "Snapshot",
     "SOURCES", "RELEASE_CLOCK", "load", "save", "scan", "merge", "age_seconds",
     "liquidation_ladder", "liquidation_heatmap", "PriceAnchor", "HEAT_RAMP",
+    "HEAT_RAMPS", "Equity", "Earning",
 ]
 
 UA = "macro-radar/1.1 (institutional macro terminal; contact: operator)"
@@ -232,11 +233,20 @@ class PriceAnchor:
         datetime.strptime(self.date, "%Y-%m-%dT%H:%M:%SZ")
 
 
-# Perceptually-ordered magnitude ramp, verified monotonic in OKLab lightness with
-# near-uniform steps (0.086-0.110) and 15.9:1 contrast at the top against the
-# terminal ground. Sequential, because the heatmap encodes magnitude.
-HEAT_RAMP = ("#0D1030", "#241A5E", "#28407F", "#22698C",
-             "#2A9284", "#63B85C", "#C8CC46", "#F2E85C")
+# Sequential magnitude ramps. Every one is verified monotonic in OKLab lightness
+# with step-gap ratios under 2.0 (tests/test_live.py asserts it). Sequential is
+# the right family here because the heatmap encodes magnitude, not identity.
+HEAT_RAMPS: dict[str, tuple[str, ...]] = {
+    "viridis": ("#440154", "#482878", "#3E4A89", "#31688E", "#26828E",
+                "#1F9E89", "#35B779", "#6DCD59", "#B4DE2C", "#FDE725"),
+    "magma": ("#000004", "#1C1044", "#4F127B", "#812581", "#B5367A",
+              "#E55064", "#FB8761", "#FEC287", "#FCFDBF"),
+    "ice": ("#04122B", "#0B2C55", "#12497E", "#1A69A0", "#2E8BB8",
+            "#54ACC9", "#8ACBD8", "#C6E6EC"),
+    "ember": ("#180A12", "#3E1030", "#6B1240", "#9A2140", "#C44536",
+              "#E27235", "#F2A93C", "#FADF6B"),
+}
+HEAT_RAMP = HEAT_RAMPS["viridis"]
 
 
 def liquidation_heatmap(
@@ -284,7 +294,10 @@ def liquidation_heatmap(
     def col_of(dt_iso: str) -> int:
         t = datetime.strptime(dt_iso, "%Y-%m-%dT%H:%M:%SZ")
         f = (t - t0).total_seconds() / span
-        return max(0, min(columns - 1, int(round(f * (columns - 1)))))
+        # floor(x + 0.5), NOT round(): Python rounds halves to even and
+        # JavaScript rounds them up, so round() would make the two
+        # implementations disagree on exact .5 boundaries.
+        return max(0, min(columns - 1, int(f * (columns - 1) + 0.5)))
 
     def row_of(price: float) -> int:
         f = (price - lo) / (hi - lo)
@@ -326,6 +339,67 @@ def liquidation_heatmap(
     }
 
 
+@dataclass(frozen=True)
+class Equity:
+    """A large-cap listing with its market value and session move."""
+
+    ticker: str
+    name: str
+    as_of: str
+    source: str
+    tier: int
+    mktcap_usd: float | None = None
+    change_pct: float | None = None
+    url: str = ""
+    note: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.ticker.strip():
+            raise ValueError("equity needs a ticker")
+        if not self.source.strip():
+            raise ValueError(f"{self.ticker}: an equity without a source is not representable")
+        if self.tier not in (1, 2, 3, 4):
+            raise ValueError(f"{self.ticker}: tier must be 1-4")
+        if self.mktcap_usd is not None and self.mktcap_usd <= 0:
+            raise ValueError(f"{self.ticker}: market cap must be positive")
+        datetime.strptime(self.as_of, "%Y-%m-%dT%H:%M:%SZ")
+
+
+@dataclass(frozen=True)
+class Earning:
+    """A scheduled or reported earnings event.
+
+    ``when`` is empty when the exact datetime is not published: the board then
+    shows the stated window and no countdown, rather than inventing an hour.
+    """
+
+    ticker: str
+    name: str
+    source: str
+    tier: int
+    when: str = ""             # ISO8601 Z, or "" when only a window is known
+    window: str = ""           # human window, e.g. "week of 7-11 September"
+    session: str = "UNKNOWN"   # BMO | AMC | UNKNOWN
+    status: str = "SCHEDULED"  # SCHEDULED | REPORTED
+    time_confirmed: bool = False   # False => day-granularity countdown only
+    url: str = ""
+    note: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.ticker.strip():
+            raise ValueError("earnings event needs a ticker")
+        if not self.source.strip():
+            raise ValueError(f"{self.ticker}: earnings without a source is not representable")
+        if self.tier not in (1, 2, 3, 4):
+            raise ValueError(f"{self.ticker}: tier must be 1-4")
+        if self.session not in ("BMO", "AMC", "UNKNOWN"):
+            raise ValueError(f"{self.ticker}: session must be BMO, AMC or UNKNOWN")
+        if not self.when and not self.window:
+            raise ValueError(f"{self.ticker}: needs either an exact time or a window")
+        if self.when:
+            datetime.strptime(self.when, "%Y-%m-%dT%H:%M:%SZ")
+
+
 @dataclass
 class Snapshot:
     captured: str
@@ -336,6 +410,8 @@ class Snapshot:
     gauges: dict[str, Gauge] = field(default_factory=dict)
     price_anchors: list[PriceAnchor] = field(default_factory=list)
     btc_window: dict[str, Any] = field(default_factory=dict)
+    equities: list[Equity] = field(default_factory=list)
+    earnings: list[Earning] = field(default_factory=list)
     liquidations: Liquidations | None = None
     geo: list[GeoEvent] = field(default_factory=list)
     flows: list[dict[str, Any]] = field(default_factory=list)
@@ -357,6 +433,8 @@ class Snapshot:
             "gauges": {k: asdict(v) for k, v in self.gauges.items()},
             "price_anchors": [asdict(a) for a in self.price_anchors],
             "btc_window": self.btc_window,
+            "equities": [asdict(x) for x in self.equities],
+            "earnings": [asdict(x) for x in self.earnings],
             "liquidations": asdict(self.liquidations) if self.liquidations else None,
             "geo": [asdict(g) for g in self.geo],
             "flows": self.flows,
@@ -414,6 +492,12 @@ def load(path: str) -> Snapshot | None:
                                           if k in PriceAnchor.__dataclass_fields__})
                            for a in (raw.get("price_anchors") or [])],
             btc_window=dict(raw.get("btc_window") or {}),
+            equities=[Equity(**{k: v for k, v in x.items()
+                                if k in Equity.__dataclass_fields__})
+                      for x in (raw.get("equities") or [])],
+            earnings=[Earning(**{k: v for k, v in x.items()
+                                 if k in Earning.__dataclass_fields__})
+                      for x in (raw.get("earnings") or [])],
             liquidations=(_liq_from(raw["liquidations"])
                           if raw.get("liquidations") else None),
             geo=[_geo_from(g) for g in (raw.get("geo") or [])],
@@ -634,6 +718,8 @@ def scan(previous: Snapshot | None = None, *, now: datetime | None = None,
         snap.gauges = dict(previous.gauges)
         snap.price_anchors = list(previous.price_anchors)
         snap.btc_window = dict(previous.btc_window)
+        snap.equities = list(previous.equities)
+        snap.earnings = list(previous.earnings)
         snap.liquidations = previous.liquidations
         snap.geo = list(previous.geo)
         snap.flows = list(previous.flows)
@@ -751,6 +837,10 @@ def merge(previous: Snapshot | None, fresh: Snapshot) -> Snapshot:
         fresh.price_anchors = list(previous.price_anchors)
     if not fresh.btc_window:
         fresh.btc_window = dict(previous.btc_window)
+    if not fresh.equities:
+        fresh.equities = list(previous.equities)
+    if not fresh.earnings:
+        fresh.earnings = list(previous.earnings)
     if fresh.liquidations is None:
         fresh.liquidations = previous.liquidations
     if not fresh.geo:

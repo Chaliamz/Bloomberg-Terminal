@@ -108,6 +108,30 @@ STATIC = """() => {
     if (d[3] !== 255) bad.push("heatmap pixels not opaque");
   })();
 
+  // stocks + earnings
+  if (n(".eqc") < 4) bad.push("mega-cap board thin: " + n(".eqc"));
+  if (n(".er") < 3) bad.push("earnings board thin: " + n(".er"));
+  document.querySelectorAll(".er .ecd").forEach((el, i) => {
+    const t = el.textContent.trim();
+    if (!t || t === "\u2014") bad.push("earnings countdown " + i + " unresolved");
+    if (/^\d+d \d{2}:/.test(t))
+      bad.push("earnings " + i + " shows a clock for a date-only source: " + t);
+  });
+
+  // heatmap controls must exist
+  ["hm-thr","hm-zin","hm-zout","hm-reset","hm-peak","hm-price","hm-time","hm-meta"]
+    .forEach(id => { if (!document.getElementById(id)) bad.push("control " + id + " missing"); });
+  if (n("[data-tf]") < 3) bad.push("timeframe controls missing");
+  if (n("[data-lev]") < 4) bad.push("leverage controls missing");
+  if (n("[data-scheme]") < 3) bad.push("scheme controls missing");
+  if (!document.getElementById("hm-meta").textContent.trim() ||
+      document.getElementById("hm-meta").textContent.indexOf("\u2014") === 0)
+    bad.push("heatmap meta line never resolved");
+  if (document.querySelectorAll("#hm-price span").length < 3)
+    bad.push("price axis not drawn");
+  if (document.querySelectorAll("#hm-time span").length < 3)
+    bad.push("time axis not drawn");
+
   // geo events must each show a resolved relative time
   document.querySelectorAll("[data-ago]").forEach((el, i) => {
     const t = el.textContent.trim();
@@ -243,6 +267,90 @@ async def run(path: str) -> int:
                           f"state={res['state']}")
                 await page.close()
             await ctx.close()
+
+        # ---- controls: clicking must recompute, not restyle -----------------
+        page = await browser.new_page()
+        await page.set_viewport_size({"width": 1720, "height": 1050})
+        cerr: list[str] = []
+        page.on("pageerror", lambda ex: cerr.append(f"pageerror: {ex}"))
+        await page.goto(url, wait_until="load")
+        await page.wait_for_timeout(1500)
+
+        async def canvas_sig() -> int:
+            # Sample the WHOLE canvas with a stride. A corner crop lands in the
+            # region before the first anchor, which is uniform base colour and
+            # therefore identical across configurations - it would hide real
+            # changes and report false failures.
+            return await page.evaluate("""() => {
+              const c = document.getElementById("hm-canvas");
+              const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+              let s = 0;
+              for (let i = 0; i < d.length; i += 16)
+                s = (s + d[i] + d[i+1]*3 + d[i+2]*7) % 2147483647;
+              return s;
+            }""")
+
+        async def meta() -> str:
+            return await page.evaluate(
+                "() => document.getElementById('hm-meta').textContent")
+
+        ctl_bad = []
+        base_sig, base_meta = await canvas_sig(), await meta()
+        checks = [
+            ("scheme magma", '[data-scheme="magma"]'),
+            ("scheme ember", '[data-scheme="ember"]'),
+            ("grid COARSE", '[data-res="36x34"]'),
+            ("grid FINE", '[data-res="140x80"]'),
+            ("window 30D", '[data-tf="30"]'),
+            ("window ALL", '[data-tf="0"]'),
+            ("leverage 5x", '[data-lev="5"]'),
+            ("zoom in", "#hm-zin"),
+            ("pan up", "#hm-pan-up"),
+            ("reset", "#hm-reset"),
+        ]
+        prev = base_sig
+        for label, sel in checks:
+            await page.click(sel)
+            await page.wait_for_timeout(220)
+            sig = await canvas_sig()
+            if sig == prev:
+                ctl_bad.append(f"{label}: canvas unchanged after click")
+            prev = sig
+        # the window control must change the reported model, not just pixels
+        await page.click('[data-tf="7"]')
+        await page.wait_for_timeout(220)
+        if await meta() == base_meta:
+            ctl_bad.append("7D window did not change the model description")
+        await page.click('[data-tf="0"]')
+        await page.wait_for_timeout(200)
+        # threshold slider
+        await page.evaluate("""() => {
+          const r = document.getElementById("hm-thr");
+          r.value = 60; r.dispatchEvent(new Event("input", {bubbles:true}));
+        }""")
+        await page.wait_for_timeout(250)
+        if await canvas_sig() == prev:
+            ctl_bad.append("threshold slider had no effect")
+        # turning every leverage tier off must be refused
+        for lv in ("5", "10", "25", "50", "100"):
+            el = await page.query_selector(f'[data-lev="{lv}"]')
+            if await el.get_attribute("data-on"):
+                await page.click(f'[data-lev="{lv}"]')
+                await page.wait_for_timeout(60)
+        left = await page.evaluate(
+            "() => document.querySelectorAll('[data-lev][data-on]').length")
+        if left < 1:
+            ctl_bad.append("all leverage tiers could be switched off")
+        real_cerr = [x for x in cerr if "fonts.g" not in x and "ERR_" not in x]
+        if ctl_bad or real_cerr:
+            failures += 1
+            print("FAIL heatmap controls")
+            for x in ctl_bad + real_cerr:
+                print(f"       - {x}")
+        else:
+            print(f"PASS heatmap controls  {len(checks)} controls recompute, "
+                  f"threshold live, leverage floor held at {left}")
+        await page.close()
 
         # ---- live behaviour: the parts that only exist at runtime ----------
         page = await browser.new_page()

@@ -12,8 +12,8 @@ outbound network is available; the terminal always renders the true age.
 
 from __future__ import annotations
 
-from .live import (GeoEvent, Gauge, Headline, Liquidations, PriceAnchor,
-                   Quote, RELEASE_CLOCK, Snapshot)
+from .live import (Earning, Equity, GeoEvent, Gauge, Headline, Liquidations,
+                   PriceAnchor, Quote, RELEASE_CLOCK, Snapshot)
 
 __all__ = ["build"]
 
@@ -34,6 +34,8 @@ _YF = "https://finance.yahoo.com/personal-finance/investing/article/bitcoin-and-
 _BLOCK = "https://www.theblock.co/news/markets/2026-09-04-us-bitcoin-etfs-largest-inflow-day-since-january-413515"
 _COINOTAG = "https://en.coinotag.com/bitcoin-leads-468-million-crypto-liquidations-24-hours"
 _FAF = "https://www.faf.ae/home/2026/9/1/irans-war-returns-hormuz-bleeds-and-the-worlds-bond-markets-brace-for-a-geopolitical-inflation-shock"
+_FOOL = "https://www.fool.com/research/largest-companies-by-market-cap/"
+_CNBC_MKT = "https://www.cnbc.com/2026/09/03/stock-market-today-live-updates.html"
 
 _Q = [
     # ---- rates ----------------------------------------------------------
@@ -98,6 +100,17 @@ _Q = [
 ]
 
 _H = [
+    dict(title="Tesla falls more than 6% after the Cybercab launch, its worst session "
+               "since 23 July",
+         source="CNBC", tier=2, published="2026-09-04T20:00:00Z", url=_CNBC_MKT,
+         impact=70, assets=("TSLA", "Nasdaq"),
+         summary="A single-name event, but a large one: Tesla is a meaningful index "
+                 "weight and the move was the day's biggest mega-cap dislocation."),
+    dict(title="NVIDIA rises 1.8% on a $12.9bn acquisition of AI platform Hugging Face",
+         source="CNBC", tier=2, published="2026-09-04T20:00:00Z", url=_CNBC_MKT,
+         impact=76, assets=("NVDA", "Nasdaq", "AI complex"),
+         summary="The largest listed company in the world buying the default open-source "
+                 "model hub. Consolidation at the platform layer, not the chip layer."),
     dict(title="US spot bitcoin ETFs take $731m, the largest inflow day since 14 January; "
                "BlackRock's IBIT captured $454m of it",
          source="The Block", tier=2, published="2026-09-04T14:00:00Z", url=_BLOCK,
@@ -353,6 +366,52 @@ BTC_WINDOW = {"lo": 62553.7, "hi": 82178.6, "avg": 71773.9,
               "span": "5 August - 5 September 2026", "source": "StatMuse", "tier": 3,
               "url": "https://www.statmuse.com/money/ask/bitcoin-price-history-august-2026"}
 
+# Largest listings by market value, September 2026.
+EQUITIES = [
+    dict(ticker="NVDA", name="NVIDIA", mktcap_usd=5.58e12, change_pct=1.80,
+         as_of=CLOSE, source="Motley Fool / CNBC", tier=3, url=_FOOL,
+         note="Rose on the announced $12.9bn acquisition of AI developer platform "
+              "Hugging Face. Largest listed company in the world."),
+    dict(ticker="AAPL", name="Apple", mktcap_usd=4.70e12,
+         as_of=CLOSE, source="Motley Fool", tier=3, url=_FOOL,
+         note="Session move not sourced; the market cap is."),
+    dict(ticker="GOOGL", name="Alphabet", mktcap_usd=4.10e12,
+         as_of=CLOSE, source="Motley Fool", tier=3, url=_FOOL,
+         note="Session move not sourced; the market cap is."),
+    dict(ticker="MSFT", name="Microsoft", mktcap_usd=3.71e12,
+         as_of=CLOSE, source="Motley Fool", tier=3, url=_FOOL,
+         note="Session move not sourced; the market cap is."),
+    dict(ticker="TSLA", name="Tesla", change_pct=-6.00,
+         as_of=CLOSE, source="CNBC", tier=2, url=_CNBC_MKT,
+         note="Fell more than 6% after the Cybercab launch, its worst session since "
+              "23 July. Market cap not sourced at this timestamp."),
+]
+
+# Earnings. Where only a date is published the countdown runs at day granularity
+# and says so; where only a week is published there is no countdown at all.
+EARNINGS = [
+    dict(ticker="ORCL", name="Oracle", when="2026-09-10T00:00:00Z",
+         session="UNKNOWN", status="SCHEDULED", time_confirmed=False,
+         source="Investing.com", tier=3,
+         url="https://www.investing.com/equities/oracle-corp-earnings",
+         note="Date published; the hour is not, so the countdown is day-granularity."),
+    dict(ticker="ADBE", name="Adobe", window="week of 7-11 September 2026",
+         session="UNKNOWN", status="SCHEDULED", source="MarketScreener", tier=3,
+         url="https://www.marketscreener.com/news/weekly-earnings-calendar-oracle-vs-adobe-a-battle-of-old-hands-ce785bdad08cf02d",
+         note="Only the week is published. No countdown is shown for a window."),
+    dict(ticker="NVDA", name="NVIDIA", when="2026-11-17T00:00:00Z",
+         session="AMC", status="SCHEDULED", time_confirmed=False,
+         source="Wall Street Horizon", tier=3,
+         url="https://www.wallstreethorizon.com/nvidia-earnings-calendar",
+         note="Confirmed for Tuesday 17 November, after market. The largest single "
+              "scheduled equity event on the board."),
+    dict(ticker="AVGO", name="Broadcom", when="2026-09-02T00:00:00Z",
+         session="AMC", status="REPORTED", time_confirmed=False,
+         source="Broadcom investor relations", tier=1,
+         url="https://investors.broadcom.com/news-releases/news-release-details/broadcom-inc-announce-third-quarter-fiscal-year-2026-financial",
+         note="Q3 FY2026, announced by the company itself - Tier 1."),
+]
+
 FLOWS = [
     {"label": "US spot BTC ETFs", "value": "+$731m", "window": "3 September",
      "note": "Largest single day since 14 January. IBIT took $454m, over 60% of it.",
@@ -387,6 +446,8 @@ def build() -> Snapshot:
     snap.liquidations = Liquidations(**LIQUIDATIONS)
     snap.price_anchors = [PriceAnchor(**a) for a in PRICE_ANCHORS]
     snap.btc_window = dict(BTC_WINDOW)
+    snap.equities = [Equity(**x) for x in EQUITIES]
+    snap.earnings = [Earning(**x) for x in EARNINGS]
     snap.geo = [GeoEvent(**g) for g in GEO]
     snap.geo.sort(key=lambda g: -g.severity)
     snap.flows = list(FLOWS)
