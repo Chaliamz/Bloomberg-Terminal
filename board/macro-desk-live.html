@@ -7,7 +7,7 @@
 <title>Macro Desk Live</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Fira+Sans:wght@400;500;600&family=Fira+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
 <style>
 :root{
   --void:#05060A; --deep:#080A11; --panel:#0A0C14; --raise:#0F131D;
@@ -26,9 +26,12 @@
      step gaps 0.086-0.110, 15.9:1 contrast at the top against the ground. */
   --h0:#0D1030; --h1:#241A5E; --h2:#28407F; --h3:#22698C;
   --h4:#2A9284; --h5:#63B85C; --h6:#C8CC46; --h7:#F2E85C;
-  --mono:"Fira Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-  --body:"Fira Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --disp:"Saira Condensed","Fira Sans Condensed",system-ui,sans-serif;
+  /* JetBrains Mono carries the numbers: it has true tabular figures and a
+     slashed zero, which matters more here than anything else on the page.
+     Chakra Petch is the angular display face, IBM Plex Sans the reading face. */
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --disp:"Chakra Petch","Inter",system-ui,sans-serif;
 }
 *{box-sizing:border-box}
 html{background:var(--void)}
@@ -40,11 +43,43 @@ img{max-width:100%}
 #fx{position:fixed;inset:0;z-index:0;display:block;pointer-events:none}
 .veil{position:fixed;inset:0;z-index:1;pointer-events:none;
   background:
-    radial-gradient(1200px 700px at 8% -10%,rgba(46,197,207,.10),transparent 60%),
-    radial-gradient(1000px 600px at 95% 0%,rgba(122,108,240,.09),transparent 58%),
-    radial-gradient(1400px 900px at 50% 120%,rgba(99,184,92,.07),transparent 62%)}
+    radial-gradient(1200px 700px at 8% -10%,rgba(46,197,207,.13),transparent 60%),
+    radial-gradient(1000px 600px at 95% 0%,rgba(122,108,240,.12),transparent 58%),
+    radial-gradient(1400px 900px at 50% 120%,rgba(99,184,92,.08),transparent 62%),
+    radial-gradient(900px 900px at 20% 85%,rgba(232,163,60,.06),transparent 60%);
+  animation:drift 34s ease-in-out infinite alternate}
+@keyframes drift{
+  0%{transform:translate3d(0,0,0) scale(1);filter:hue-rotate(0deg)}
+  50%{transform:translate3d(-1.6%,1.2%,0) scale(1.05);filter:hue-rotate(-9deg)}
+  100%{transform:translate3d(1.8%,-1%,0) scale(1.03);filter:hue-rotate(7deg)}}
+/* slow chromatic wash: two counter-rotating conic sweeps, very low alpha, so it
+   reads as depth rather than as a moving object competing with the data */
+.aurora{position:fixed;inset:-25%;z-index:1;pointer-events:none;opacity:.30;
+  background:
+    conic-gradient(from 0deg at 30% 40%,rgba(46,197,207,.16),transparent 28%,
+      rgba(122,108,240,.15) 52%,transparent 74%,rgba(46,197,207,.16)),
+    conic-gradient(from 180deg at 72% 66%,transparent 12%,rgba(99,184,92,.12) 34%,
+      transparent 58%,rgba(232,163,60,.10) 80%,transparent);
+  filter:blur(74px);animation:swirl 58s linear infinite}
+@keyframes swirl{to{transform:rotate(360deg)}}
+/* a slow horizon sweep, the thing a live desk actually has moving on it */
+.sweep{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden}
+.sweep::before{content:"";position:absolute;top:0;bottom:0;width:36vw;left:-40vw;
+  background:linear-gradient(90deg,transparent,rgba(46,197,207,.055) 42%,
+    rgba(127,233,242,.085) 50%,rgba(46,197,207,.055) 58%,transparent);
+  animation:sweepx 17s cubic-bezier(.5,0,.5,1) infinite}
+@keyframes sweepx{0%{left:-40vw}62%,100%{left:112vw}}
+/* faint drifting lattice: gives the void a sense of scale behind the panels */
+.mesh{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.5;
+  background-image:
+    linear-gradient(rgba(46,197,207,.045) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(46,197,207,.045) 1px,transparent 1px);
+  background-size:64px 64px;animation:mesh 42s linear infinite}
+@keyframes mesh{to{background-position:64px 64px}}
 .scan{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.35;
-  background:repeating-linear-gradient(180deg,rgba(255,255,255,.022) 0 1px,transparent 1px 3px)}
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.022) 0 1px,transparent 1px 3px);
+  animation:roll-scan 7.5s linear infinite}
+@keyframes roll-scan{to{background-position:0 3px}}
 .shell{position:relative;z-index:3}
 
 /* ---------- masthead ---------- */
@@ -372,6 +407,24 @@ input[type=range]{width:104px;accent-color:var(--gold);cursor:pointer}
 .hm-key{display:flex;gap:14px;flex-wrap:wrap;color:var(--faint);
   font-family:var(--mono);font-size:10.5px;padding-top:2px}
 .hm-key i{font-style:normal;display:inline-flex;align-items:center;gap:5px}
+.hm-field{grid-row:1;position:relative;min-width:0}
+.hm-field .hm{width:100%}
+.hm-hair{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:3}
+.hm-hair::before,.hm-hair::after{content:"";position:absolute;background:rgba(234,246,255,.42)}
+.hm-hair::before{left:0;top:-4000px;width:1px;height:8000px}
+.hm-hair::after{top:0;left:-4000px;height:1px;width:8000px}
+.hm-tip{position:absolute;z-index:4;pointer-events:none;transform:translate(14px,-50%);
+  background:rgba(6,8,14,.94);border:1px solid var(--edge-hi);border-radius:3px;
+  padding:7px 10px;font-family:var(--mono);font-size:11px;line-height:1.5;
+  display:grid;grid-template-columns:auto auto;gap:1px 10px;white-space:nowrap;
+  box-shadow:0 8px 26px rgba(0,0,0,.6)}
+.hm-tip[data-flip="1"]{transform:translate(-100%,-50%) translateX(-14px)}
+.hm-tip b{color:var(--ink);font-variant-numeric:tabular-nums;font-weight:600}
+.hm-tip i{font-style:normal;color:var(--dim);letter-spacing:.08em}
+.hm-tip u{grid-column:1/-1;text-decoration:none;color:var(--faint);font-size:10px;
+  border-top:1px solid var(--edge);padding-top:3px;margin-top:2px}
+.hm-price{cursor:ns-resize;transition:color .15s ease}
+.hm-price:hover{color:var(--gold)}
 .hm-ctl .pill[data-off]{opacity:.3;cursor:not-allowed;text-decoration:line-through}
 .hm-key .sw{width:16px;height:3px;border-radius:2px;display:inline-block}
 
@@ -422,6 +475,9 @@ input[type=range]{width:104px;accent-color:var(--gold);cursor:pointer}
 </head>
 <body>
 <canvas id="fx" aria-hidden="true"></canvas>
+<div class="aurora" aria-hidden="true"></div>
+<div class="mesh" aria-hidden="true"></div>
+<div class="sweep" aria-hidden="true"></div>
 <div class="veil" aria-hidden="true"></div>
 <div class="scan" aria-hidden="true"></div>
 
@@ -462,7 +518,7 @@ timing field stays blank.</span></noscript>
 <main>
 
   <section class="card c12">
-    <h2>Cross-asset board <em>captured 2026-09-05 13:00:00Z &middot; every cell carries source, tier and time</em></h2>
+    <h2>Cross-asset board <em>captured 2026-09-06 17:40:00Z &middot; every cell carries source, tier and time</em></h2>
     <div class="bd flush"><div class="qgrid"><div class="q" title="Reported as an 8bp climb breaching 4.416%, highest since Jan 2025. A second, lower-tier report said +12bp to 4.35% - see conflicts."><span class="conf" style="background:var(--gold)"></span><span class="lab">UST 2Y<span class="t t2">T2</span></span><span class="val">4.42%</span><span class="dlt up">▲ 8bp</span><span class="src">CNBC &middot; 20:00Z &middot; conf 0.75</span></div><div class="q" title="Reported as 4.789% on the 5 September briefing, corroborating a second account of a climb to roughly 4.80% after payrolls. CNBC separately described the close as &#x27;little changed at 4.76%&#x27; - see conflicts."><span class="conf" style="background:var(--gold)"></span><span class="lab">UST 10Y<span class="t t3">T3</span></span><span class="val">4.79%</span><span class="dlt up">▲ 3bp</span><span class="src">Rio Times briefing &middot; 20:00Z &middot; conf 0.80</span></div><div class="q" title="S&amp;P 500"><span class="conf" style="background:var(--up)"></span><span class="lab">S&amp;P 500<span class="t t2">T2</span></span><span class="val">7,718.60</span><span class="dlt down">▼ 0.38%</span><span class="src">TheStreet &middot; 20:00Z &middot; conf 0.90</span></div><div class="q" title="Dow Jones"><span class="conf" style="background:var(--up)"></span><span class="lab">Dow Jones<span class="t t2">T2</span></span><span class="val">53,414.25</span><span class="dlt down">▼ 0.51%</span><span class="src">TheStreet &middot; 20:00Z &middot; conf 0.90</span></div><div class="q" title="Nasdaq Comp"><span class="conf" style="background:var(--up)"></span><span class="lab">Nasdaq Comp<span class="t t2">T2</span></span><span class="val">26,506.99</span><span class="dlt down">▼ 0.29%</span><span class="src">TheStreet &middot; 20:00Z &middot; conf 0.90</span></div><div class="q" title="Retrieved from an aggregated summary rather than a single primary quote page: the level is reliable, the last decimal is not. Notably low given the front-end repricing - the vol market is not pricing the hike risk the rates market is."><span class="conf" style="background:var(--down)"></span><span class="lab">VIX<span class="t t3">T3</span></span><span class="val">14.32</span><span class="dlt flat">&mdash;</span><span class="src">Search aggregate (Investing.com / Yahoo Finance) &middot; 20:00Z &middot; conf 0.65</span></div><div class="q" title="Reported as 99.157. An earlier aggregated summary gave 99.13; the two agree to within noise and the more precise figure is carried."><span class="conf" style="background:var(--gold)"></span><span class="lab">Dollar index<span class="t t3">T3</span></span><span class="val">99.16</span><span class="dlt up">▲ 0.25%</span><span class="src">Rio Times briefing &middot; 20:00Z &middot; conf 0.75</span></div><div class="q" title="~1.5-month high, roughly +7% on the week after a new wave of US strikes on Iran."><span class="conf" style="background:var(--up)"></span><span class="lab">Brent crude<span class="t t2">T2</span></span><span class="val">97.62</span><span class="dlt up">▲ 7.00%</span><span class="src">Investing.com &middot; 21:00Z &middot; conf 0.85</span></div><div class="q" title="Opened 91.69; ranged from lows near 80.18 to a high of 93.05."><span class="conf" style="background:var(--gold)"></span><span class="lab">WTI crude<span class="t t3">T3</span></span><span class="val">91.67</span><span class="dlt flat">&mdash;</span><span class="src">FXDailyReport &middot; 21:00Z &middot; conf 0.70</span></div><div class="q" title="CORRECTED. An earlier read carried gold at &#x27;near $4,500&#x27; from a descriptive summary; the 5 September briefing prints 4,429 and a -1.14% session. Real yields up on the payrolls beat is consistent with gold down."><span class="conf" style="background:var(--gold)"></span><span class="lab">Gold<span class="t t3">T3</span></span><span class="val">4,429</span><span class="dlt down">▼ 1.14%</span><span class="src">Rio Times briefing &middot; 20:00Z &middot; conf 0.80</span></div><div class="q" title="CORRECTED from an earlier Tier-4 read of &#x27;near $79K&#x27;. Priced at 07:21 ET - BEFORE the 08:30 ET payrolls print - so this rally belongs to the dovish Waller/ETF story, not to the hawkish payrolls story that set the equity and rates closes. The timestamps are not interchangeable."><span class="conf" style="background:var(--up)"></span><span class="lab">Bitcoin<span class="t t2">T2</span></span><span class="val">81,240</span><span class="dlt up">▲ 5.10%</span><span class="src">Yahoo Finance &middot; 11:21Z &middot; conf 0.85</span></div><div class="q" title="Friday open, +4.9% on Thursday&#x27;s open."><span class="conf" style="background:var(--up)"></span><span class="lab">Ethereum<span class="t t2">T2</span></span><span class="val">2,508</span><span class="dlt up">▲ 4.90%</span><span class="src">Yahoo Finance &middot; 11:21Z &middot; conf 0.85</span></div><div class="q derived" title="Computed from the two carried yields; inherits the weaker leg's confidence."><span class="conf" style="background:var(--gold)"></span><span class="lab">2s10s <span class="t t3">DERIVED</span></span><span class="val">+37 bp</span><span class="dlt up">positive</span><span class="src">computed &middot; UST 2Y &minus; 10Y &middot; conf 0.75</span></div></div></div>
   </section>
 
@@ -485,7 +541,7 @@ timing field stays blank.</span></noscript>
 
   <section class="card c12">
     <h2>BTC liquidation heatmap <em>price &times; time &middot; leverage density &middot; every control recomputes the model</em></h2>
-    <div class="bd"><div class="hm-ctl"><span class="ctl-g"><b>WINDOW</b><button class="pill" data-tf="3">3D</button><button class="pill" data-tf="7">7D</button><button class="pill" data-tf="14">14D</button><button class="pill" data-tf="21">21D</button><button class="pill" data-tf="30">30D</button><button class="pill" data-tf="0" data-on=1>ALL</button></span><span class="ctl-g"><b>LEVERAGE</b><button class="pill" data-lrange="2-125" data-on=1>ALL</button><button class="pill" data-lrange="2-10">LOW</button><button class="pill" data-lrange="10-50">MID</button><button class="pill" data-lrange="50-125">HIGH</button><button class="pill" data-lrange="100-125">EXTREME</button><input id="hm-lmin" type="number" min="2" max="125" value="2" aria-label="Minimum leverage"><i class="ctl-x">&ndash;</i><input id="hm-lmax" type="number" min="2" max="125" value="125" aria-label="Maximum leverage"><i class="ctl-v">&times;</i></span><span class="ctl-g"><b>GRID</b><button class="pill" data-res="60x40">COARSE</button><button class="pill" data-res="110x64">MED</button><button class="pill" data-res="160x90" data-on=1>FINE</button><button class="pill" data-res="240x130">ULTRA</button></span><span class="ctl-g"><b>SCHEME</b><button class="sw-btn" data-scheme="viridis" title="viridis" data-on=1><i style="background:linear-gradient(90deg,#440154,#482878,#3E4A89,#31688E,#26828E,#1F9E89,#35B779,#6DCD59,#B4DE2C,#FDE725)"></i></button><button class="sw-btn" data-scheme="magma" title="magma"><i style="background:linear-gradient(90deg,#000004,#1C1044,#4F127B,#812581,#B5367A,#E55064,#FB8761,#FEC287,#FCFDBF)"></i></button><button class="sw-btn" data-scheme="ice" title="ice"><i style="background:linear-gradient(90deg,#04122B,#0B2C55,#12497E,#1A69A0,#2E8BB8,#54ACC9,#8ACBD8,#C6E6EC)"></i></button><button class="sw-btn" data-scheme="ember" title="ember"><i style="background:linear-gradient(90deg,#180A12,#3E1030,#6B1240,#9A2140,#C44536,#E27235,#F2A93C,#FADF6B)"></i></button></span><span class="ctl-g"><b>THRESHOLD</b><input id="hm-thr" type="range" min="0" max="90" value="0" step="5" aria-label="Intensity threshold"><i id="hm-thr-v" class="ctl-v">0.00</i></span><span class="ctl-g"><b>ZOOM</b><button class="pill" id="hm-zin" title="Zoom in on price">+</button><button class="pill" id="hm-zout" title="Zoom out">&minus;</button><i id="hm-zv" class="ctl-v">1.00&times;</i><button class="pill" id="hm-pan-up" title="Pan up">&uarr;</button><button class="pill" id="hm-pan-dn" title="Pan down">&darr;</button><button class="pill" id="hm-fit" title="Fit to the sourced window">FIT</button><button class="pill" id="hm-reset">RESET</button></span></div><div class="hm-stage"><div class="hm-scale"><i id="hm-peak">&mdash;</i><span class="hm-bar" id="hm-bar"></span><i>0</i></div><canvas class="hm" id="hm-canvas" width="1152" height="832" role="img" aria-label="Liquidation leverage density by price and time"></canvas><div class="hm-price" id="hm-price"></div><div class="hm-time" id="hm-time"></div></div><div class="hm-key"><i><span class="sw" style="background:var(--gold)"></span>observed close</i><i><span class="sw" style="background:repeating-linear-gradient(90deg,var(--gold) 0 3px,transparent 3px 6px)"></span>no observation between</i><i id="hm-meta">&mdash;</i></div><p class="hm-hint">drag the field to pan &middot; scroll to zoom the price axis &middot; every control recomputes the model</p><p class="note warn"><b>Computed by the published method, on real prices.</b> At each observed close, positions opened there liquidate at price&times;(1&minus;1/N) and price&times;(1+1/N); those levels stay pending until price sweeps through them. Between two observations nothing is known, so the field is held and the price line is drawn dashed &mdash; no price is ever interpolated, and no candle is drawn because no OHLC bars are sourced. It is <b>not</b> open-interest weighted: that needs per-exchange position data. Every control below recomputes the model rather than restyling a picture of it.</p></div>
+    <div class="bd"><div class="hm-ctl"><span class="ctl-g"><b>WINDOW</b><button class="pill" data-tf="3">3D</button><button class="pill" data-tf="7">7D</button><button class="pill" data-tf="14">14D</button><button class="pill" data-tf="21">21D</button><button class="pill" data-tf="30">30D</button><button class="pill" data-tf="0" data-on=1>ALL</button></span><span class="ctl-g"><b>LEVERAGE</b><button class="pill" data-lrange="2-125" data-on=1>ALL</button><button class="pill" data-lrange="2-10">LOW</button><button class="pill" data-lrange="10-50">MID</button><button class="pill" data-lrange="50-125">HIGH</button><button class="pill" data-lrange="100-125">EXTREME</button><input id="hm-lmin" type="number" min="2" max="125" value="2" aria-label="Minimum leverage"><i class="ctl-x">&ndash;</i><input id="hm-lmax" type="number" min="2" max="125" value="125" aria-label="Maximum leverage"><i class="ctl-v">&times;</i></span><span class="ctl-g"><b>GRID</b><button class="pill" data-res="60x40">COARSE</button><button class="pill" data-res="110x64">MED</button><button class="pill" data-res="160x90" data-on=1>FINE</button><button class="pill" data-res="240x130">ULTRA</button></span><span class="ctl-g"><b>SCHEME</b><button class="sw-btn" data-scheme="viridis" title="viridis" data-on=1><i style="background:linear-gradient(90deg,#440154,#482878,#3E4A89,#31688E,#26828E,#1F9E89,#35B779,#6DCD59,#B4DE2C,#FDE725)"></i></button><button class="sw-btn" data-scheme="magma" title="magma"><i style="background:linear-gradient(90deg,#000004,#1C1044,#4F127B,#812581,#B5367A,#E55064,#FB8761,#FEC287,#FCFDBF)"></i></button><button class="sw-btn" data-scheme="ice" title="ice"><i style="background:linear-gradient(90deg,#04122B,#0B2C55,#12497E,#1A69A0,#2E8BB8,#54ACC9,#8ACBD8,#C6E6EC)"></i></button><button class="sw-btn" data-scheme="ember" title="ember"><i style="background:linear-gradient(90deg,#180A12,#3E1030,#6B1240,#9A2140,#C44536,#E27235,#F2A93C,#FADF6B)"></i></button></span><span class="ctl-g"><b>THRESHOLD</b><input id="hm-thr" type="range" min="0" max="90" value="0" step="5" aria-label="Intensity threshold"><i id="hm-thr-v" class="ctl-v">0.00</i></span><span class="ctl-g"><b>PRICE</b><button class="pill" data-ct="candle" data-on=1>CANDLES</button><button class="pill" data-ct="bar">OHLC BARS</button><button class="pill" data-ct="area">AREA</button><button class="pill" data-ct="line">LINE</button><button class="pill" data-ct="off">OFF</button></span><span class="ctl-g"><b>ZOOM</b><button class="pill" id="hm-zin" title="Zoom in on price">+</button><button class="pill" id="hm-zout" title="Zoom out">&minus;</button><i id="hm-zv" class="ctl-v">1.00&times;</i><button class="pill" id="hm-pan-up" title="Pan up">&uarr;</button><button class="pill" id="hm-pan-dn" title="Pan down">&darr;</button><button class="pill" id="hm-fit" title="Fit to the sourced window">FIT</button><button class="pill" id="hm-reset">RESET</button></span></div><div class="hm-stage"><div class="hm-scale"><i id="hm-peak">&mdash;</i><span class="hm-bar" id="hm-bar"></span><i>0</i></div><div class="hm-field"><canvas class="hm" id="hm-canvas" width="1152" height="832" role="img" aria-label="Liquidation leverage density by price and time"></canvas><i class="hm-hair" id="hm-hair" hidden></i><div class="hm-tip" id="hm-tip" hidden></div></div><div class="hm-price" id="hm-price"></div><div class="hm-time" id="hm-time"></div></div><div class="hm-key"><i><span class="sw" style="background:#EAF6FF"></span>up on the previous observation</i><i><span class="sw" style="background:#FF4D6D"></span>down on it</i><i><span class="sw" style="background:var(--gold)"></span>body spans observation to observation &mdash; the intrabar range was never observed, so no wick is drawn beyond it</i><i id="hm-meta">&mdash;</i></div><p class="hm-hint">drag the field to pan &middot; drag or scroll the price tags to rescale &middot; hover for the reading &middot; every control recomputes the model</p><p class="note warn"><b>Computed by the published method, on real prices.</b> At each observed price, positions opened there liquidate at price&times;(1&minus;1/N) and price&times;(1+1/N); those levels stay pending until price sweeps through them. Between two observations nothing is known, so the field is held and no price is ever interpolated. Each candle body spans one observation to the next, which is exactly what was observed; the intrabar high and low were never sourced, so no wick is drawn past the body and no OHLC range is invented. It is <b>not</b> open-interest weighted: that needs per-exchange position data. Every control below recomputes the model rather than restyling a picture of it.</p></div>
   </section>
 
   <section class="card c5">
@@ -594,7 +650,7 @@ timing field stays blank.</span></noscript>
 
   <section class="card c5">
     <h2>Integrity <em>conflicts and corrections are shown, not resolved away</em></h2>
-    <div class="bd"><p class="note warn">Bitcoin was initially carried at ~$79,000 from a Tier-4 description. That was WRONG: two Tier-2 sources price it at $81,240 after a 5% short squeeze. The corrected figure is carried and the error is recorded rather than erased.</p><p class="note warn">Gold was initially carried at ~$4,500 from a descriptive summary. The 5 September briefing prints 4,429 with a -1.14% session; the corrected figure is carried.</p><p class="note warn">US 10Y: CNBC described the close as &#x27;little changed at 4.76%&#x27;; the 5 September briefing prints 4.789%, corroborating a separate account of a climb toward 4.80% after payrolls. The higher, corroborated figure is carried at 0.80 confidence.</p><p class="note warn">The liquidation heatmap is built from four dated BTC closes, not a continuous series. Between anchors nothing is observed, so the pending-level field is held constant and the price line is drawn dashed. The time resolution is the data&#x27;s, not the renderer&#x27;s.</p><p class="note warn">Crypto liquidation totals were reported over at least three different windows the same day ($468.59m, $544.85m, and $415m of shorts). The window is stated on the board rather than the largest headline number being chosen.</p><p class="note warn">US 2Y level: CNBC reported +8bp breaching 4.416%; a lower-tier outlet reported +12bp to 4.35%. The Tier-2 figure is carried at reduced confidence and the disagreement is not resolved to the more convenient number.</p><p class="note warn">US 10Y: reported both as &#x27;little changed at 4.76%&#x27; at the close and as &#x27;climbing to roughly 4.80%&#x27; intraday after payrolls. Both can be true in sequence; the close is carried.</p><p class="note warn">Gold and BTC are carried from Tier 3/4 descriptions (&#x27;near $4,500&#x27;, &#x27;near $79K&#x27;). They are levels, not prints, and are marked at reduced confidence.</p><p class="note bad">Live scan unavailable in the capture environment: outbound egress policy rejects every market and news host. Values were retrieved through research tooling and carry their original source and timestamp.</p>
+    <div class="bd"><p class="note warn">Bitcoin was initially carried at ~$79,000 from a Tier-4 description. That was WRONG: two Tier-2 sources price it at $81,240 after a 5% short squeeze. The corrected figure is carried and the error is recorded rather than erased.</p><p class="note warn">Gold was initially carried at ~$4,500 from a descriptive summary. The 5 September briefing prints 4,429 with a -1.14% session; the corrected figure is carried.</p><p class="note warn">US 10Y: CNBC described the close as &#x27;little changed at 4.76%&#x27;; the 5 September briefing prints 4.789%, corroborating a separate account of a climb toward 4.80% after payrolls. The higher, corroborated figure is carried at 0.80 confidence.</p><p class="note warn">BTC 10 August: this capture reads Fortune&#x27;s article for that date at $65,003.57 (7:30 a.m. ET, quoted directly). An earlier capture carried $64,848.91 from the same outlet and date. Both cannot be the session&#x27;s price. The directly quoted, precisely timed figure is carried and the earlier one is recorded here rather than quietly overwritten.</p><p class="note warn">Fortune price articles were previously stamped 20:00Z as though they were closes. They are morning prints and each states its own Eastern time, ranging 4:00-9:00 a.m. ET across the series. Every stamp is now taken from its own article. The heatmap places anchors on a time axis, so an 8-hour error moved them.</p><p class="note warn">The liquidation heatmap is built from 21 dated BTC observations, not a continuous series. Between observations nothing is known, so the pending-level field is held constant and the price track marks only the instants actually observed. The time resolution is the data&#x27;s, not the renderer&#x27;s.</p><p class="note warn">BTC 4 September carries two observations: Fortune at 04:00 ET ($79,697) and Yahoo at 07:21 ET ($81,240.29). Both are pre-payrolls and both are kept - they are the only intraday range in the series, not a contradiction.</p><p class="note warn">Crypto liquidation totals were reported over at least three different windows the same day ($468.59m, $544.85m, and $415m of shorts). The window is stated on the board rather than the largest headline number being chosen.</p><p class="note warn">US 2Y level: CNBC reported +8bp breaching 4.416%; a lower-tier outlet reported +12bp to 4.35%. The Tier-2 figure is carried at reduced confidence and the disagreement is not resolved to the more convenient number.</p><p class="note warn">US 10Y: reported both as &#x27;little changed at 4.76%&#x27; at the close and as &#x27;climbing to roughly 4.80%&#x27; intraday after payrolls. Both can be true in sequence; the close is carried.</p><p class="note warn">Gold and BTC are carried from Tier 3/4 descriptions (&#x27;near $4,500&#x27;, &#x27;near $79K&#x27;). They are levels, not prints, and are marked at reduced confidence.</p><p class="note bad">Live scan unavailable in the capture environment: outbound egress policy rejects every market and news host. Values were retrieved through research tooling and carry their original source and timestamp.</p>
       <p class="note">Where two outlets disagreed, the higher tier is carried at
       reduced confidence and the disagreement is printed. Where an earlier value was
       simply wrong, the correction is recorded rather than erased. The alternative
@@ -610,7 +666,7 @@ timing field stays blank.</span></noscript>
   <span>QUOTES <b>12</b></span>
   <span>WIRE <b>19</b></span>
   <span>GEO <b>6</b></span>
-  <span>CONFLICTS <b>8</b></span>
+  <span>CONFLICTS <b>11</b></span>
   <span>REGIME <b>INFLATION-DOMINANT</b></span>
   <span>AGE <b id="sb-age">&mdash;</b></span>
   <span>UTC <b id="sb-clk">&mdash;</b></span>
@@ -620,7 +676,7 @@ timing field stays blank.</span></noscript>
   <strong>What is live and what is not.</strong> The clock, the session state, the
   data-age counter and every release countdown are computed in your browser and are
   genuinely live. The market data is a <em>captured snapshot</em> stamped
-  2026-09-05 13:00:00Z &mdash; the header says SNAPSHOT
+  2026-09-06 17:40:00Z &mdash; the header says SNAPSHOT
   and the age counter climbs, so the page can never look fresher than it is. Continuous
   refresh runs from <code>python -m macro live --daemon</code>, which polls the primary
   agency endpoints listed above and regenerates this page each cycle. Nothing here is
@@ -628,7 +684,7 @@ timing field stays blank.</span></noscript>
 </footer>
 </div>
 
-<script>window.__TERM__={"captured": "2026-09-05T13:00:00Z", "ramps": {"viridis": ["#440154", "#482878", "#3E4A89", "#31688E", "#26828E", "#1F9E89", "#35B779", "#6DCD59", "#B4DE2C", "#FDE725"], "magma": ["#000004", "#1C1044", "#4F127B", "#812581", "#B5367A", "#E55064", "#FB8761", "#FEC287", "#FCFDBF"], "ice": ["#04122B", "#0B2C55", "#12497E", "#1A69A0", "#2E8BB8", "#54ACC9", "#8ACBD8", "#C6E6EC"], "ember": ["#180A12", "#3E1030", "#6B1240", "#9A2140", "#C44536", "#E27235", "#F2A93C", "#FADF6B"]}, "window": {"lo": 62553.7, "hi": 82178.6, "avg": 71773.9, "span": "5 August - 5 September 2026", "source": "StatMuse", "tier": 3, "url": "https://www.statmuse.com/money/ask/bitcoin-price-history-august-2026"}, "anchors": [{"date": "2026-08-04T20:00:00Z", "price": 63465.2, "source": "YCharts", "tier": 3}, {"date": "2026-08-10T20:00:00Z", "price": 64848.91, "source": "Fortune", "tier": 3}, {"date": "2026-08-21T20:00:00Z", "price": 76712.47, "source": "Fortune", "tier": 3}, {"date": "2026-08-24T20:00:00Z", "price": 78976.18, "source": "Fortune", "tier": 3}, {"date": "2026-09-04T11:21:00Z", "price": 81240.29, "source": "Yahoo Finance", "tier": 2}]};</script>
+<script>window.__TERM__={"captured": "2026-09-06T17:40:00Z", "newest": "2026-09-05T18:27:00Z", "ramps": {"viridis": ["#440154", "#482878", "#3E4A89", "#31688E", "#26828E", "#1F9E89", "#35B779", "#6DCD59", "#B4DE2C", "#FDE725"], "magma": ["#000004", "#1C1044", "#4F127B", "#812581", "#B5367A", "#E55064", "#FB8761", "#FEC287", "#FCFDBF"], "ice": ["#04122B", "#0B2C55", "#12497E", "#1A69A0", "#2E8BB8", "#54ACC9", "#8ACBD8", "#C6E6EC"], "ember": ["#180A12", "#3E1030", "#6B1240", "#9A2140", "#C44536", "#E27235", "#F2A93C", "#FADF6B"]}, "window": {"lo": 61765.96, "hi": 82458.89, "avg": 72726.35, "span": "3 August - 5 September 2026", "source": "computed from 21 sourced observations", "tier": 3, "url": "https://fortune.com/article/price-of-bitcoin-09-04-2026/"}, "anchors": [{"date": "2026-08-03T11:00:00Z", "price": 62706.56, "source": "Fortune", "tier": 3}, {"date": "2026-08-04T20:00:00Z", "price": 63465.2, "source": "YCharts", "tier": 3}, {"date": "2026-08-05T09:45:00Z", "price": 64137.26, "source": "Fortune", "tier": 3}, {"date": "2026-08-10T11:30:00Z", "price": 65003.57, "source": "Fortune", "tier": 3}, {"date": "2026-08-14T10:45:00Z", "price": 62829.48, "source": "Fortune", "tier": 3}, {"date": "2026-08-17T10:15:00Z", "price": 63260.2, "source": "Fortune", "tier": 3}, {"date": "2026-08-18T10:45:00Z", "price": 64135.48, "source": "Fortune", "tier": 3}, {"date": "2026-08-19T10:30:00Z", "price": 64339.33, "source": "Fortune", "tier": 3}, {"date": "2026-08-20T10:15:00Z", "price": 71970.8, "source": "Fortune", "tier": 3}, {"date": "2026-08-21T12:00:00Z", "price": 76712.47, "source": "Fortune", "tier": 3}, {"date": "2026-08-24T13:00:00Z", "price": 78976.18, "source": "Fortune", "tier": 3}, {"date": "2026-08-26T11:15:00Z", "price": 78745.95, "source": "Fortune", "tier": 3}, {"date": "2026-08-27T11:15:00Z", "price": 79707.18, "source": "Fortune", "tier": 3}, {"date": "2026-08-28T10:30:00Z", "price": 79132.61, "source": "Fortune", "tier": 3}, {"date": "2026-08-31T12:30:00Z", "price": 78414.14, "source": "Fortune", "tier": 3}, {"date": "2026-09-01T12:00:00Z", "price": 78154.66, "source": "Fortune", "tier": 3}, {"date": "2026-09-02T12:00:00Z", "price": 76672.01, "source": "Fortune", "tier": 3}, {"date": "2026-09-03T12:00:00Z", "price": 77934.11, "source": "Fortune", "tier": 3}, {"date": "2026-09-04T08:00:00Z", "price": 79697.0, "source": "Fortune", "tier": 3}, {"date": "2026-09-04T11:21:00Z", "price": 81240.29, "source": "Yahoo Finance", "tier": 2}, {"date": "2026-09-05T18:27:00Z", "price": 80018.94, "source": "Search aggregate (Investing.com / YCharts)", "tier": 3}]};</script>
 <script>
 (function(){
 "use strict";
@@ -658,8 +714,9 @@ function tick(){
   setText("clk",pad(d.getUTCHours())+":"+pad(d.getUTCMinutes())+":"+pad(d.getUTCSeconds())+" UTC");
   setText("sess",sessionState(d));
   setText("sb-clk",pad(d.getUTCHours())+":"+pad(d.getUTCMinutes())+":"+pad(d.getUTCSeconds()));
-  /* data age, ticking upward from the real capture time */
-  var cap=Date.parse(D.captured);
+  /* Age ticks upward from the newest OBSERVATION, not from the capture time:
+     re-running a scan that fetched nothing must not reset this to zero. */
+  var cap=Date.parse(D.newest||D.captured);
   if(!isNaN(cap)){
     var s=Math.max(0,Math.floor((d.getTime()-cap)/1000));
     var dd=Math.floor(s/86400), hh=Math.floor(s%86400/3600), mm=Math.floor(s%3600/60);
@@ -774,7 +831,14 @@ function heatmapCompute(anchors, opts){
   var BASE={lo:D.window&&D.window.lo, hi:D.window&&D.window.hi};
   function tiers(a,b){var o=[];for(var i=a;i<=b;i++)o.push(i);return o;}
   var ST={days:0, lmin:2, lmax:125, cols:160, rows:90,
-          scheme:"viridis", thr:0, zoom:1, pan:0};
+          scheme:"viridis", thr:0, zoom:1, pan:0, chart:"candle"};
+  /* screen positions of the drawn observations, rebuilt on every draw and read
+     by the crosshair. Declared here so a crosshair move before the first draw
+     finds an empty array rather than throwing. */
+  var LAST=[];
+  /* the band currently painted, so the crosshair reports the price under the
+     cursor rather than the un-zoomed sourced band. */
+  var CUR={lo:0, hi:1};
 
   function hex(h){return [parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),
                           parseInt(h.substr(5,2),16)];}
@@ -812,6 +876,7 @@ function heatmapCompute(anchors, opts){
       g.fillText("only "+pts.length+" sourced anchor in this window",
                  cv.width/2, cv.height/2);
       g.textAlign="left";
+      LAST=[];
       if(meta) meta.textContent="window too short for the data held";
       if(price) price.innerHTML=""; if(time) time.innerHTML="";
       return;
@@ -823,9 +888,11 @@ function heatmapCompute(anchors, opts){
       g.fillStyle="#0A0C14"; g.fillRect(0,0,cv.width,cv.height);
       g.fillStyle="#66738C"; g.font="18px monospace"; g.textAlign="center";
       g.fillText(H.reason, cv.width/2, cv.height/2); g.textAlign="left";
+      LAST=[];
       if(meta) meta.textContent=H.reason;
       return;
     }
+    CUR={lo:H.lo, hi:H.hi};
     var st=ramp(), CW=cv.width/H.columns, CH=cv.height/H.rows, x, y;
     for(x=0;x<H.columns;x++){
       for(y=0;y<H.rows;y++){
@@ -835,21 +902,93 @@ function heatmapCompute(anchors, opts){
                    Math.ceil(CW),Math.ceil(CH));
       }
     }
-    var P=H.anchors.map(function(a){
-      return [(a.col+0.5)*CW,(H.rows-0.5-a.row)*CH];
+    /* ---- price series -------------------------------------------------
+       Positions are computed from the real timestamp and price, NOT from the
+       quantised grid cell the old overlay used: at COARSE resolution a cell is
+       five hours wide and the track visibly sat in the wrong place.
+
+       Candle bodies span observation to observation - open is the previous
+       observation, close is this one. That is exactly what is known. The
+       intrabar high and low were never observed, so the wick is drawn only to
+       the body extremes and never beyond: no invented range. Where a real
+       intraday range exists (4 September carries two prints) the body shows it.
+
+       Up is near-white and down is hot red rather than the usual green/red:
+       green disappears into the middle of every sequential ramp on the field
+       behind it, and a series you cannot see is not a series. */
+    var t0m=Date.parse(H.t0), t1m=Date.parse(H.t1), tspan=t1m-t0m;
+    function px(iso){ return tspan>0 ? (Date.parse(iso)-t0m)/tspan*cv.width : cv.width/2; }
+    function py(v){ return (1-(v-H.lo)/(H.hi-H.lo))*cv.height; }
+    LAST=H.anchors.map(function(a){
+      return {x:px(a.date), y:py(a.price), price:a.price, date:a.date,
+              source:a.source, tier:a.tier};
     });
-    g.save(); g.lineJoin="round"; g.lineCap="round";
-    g.strokeStyle="rgba(5,6,10,0.8)"; g.lineWidth=9; g.setLineDash([16,11]);
-    g.beginPath(); P.forEach(function(p,i){i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]);});
-    g.stroke();
-    g.strokeStyle="#2EC5CF"; g.lineWidth=3.4;
-    g.beginPath(); P.forEach(function(p,i){i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]);});
-    g.stroke(); g.setLineDash([]);
-    P.forEach(function(p){
-      g.beginPath(); g.arc(p[0],p[1],8,0,6.283);
-      g.fillStyle="#05060A"; g.fill();
-      g.lineWidth=3; g.strokeStyle="#2EC5CF"; g.stroke();
-    });
+    var gaps=[], i;
+    for(i=1;i<LAST.length;i++) gaps.push(LAST[i].x-LAST[i-1].x);
+    gaps.sort(function(a,b){return a-b;});
+    /* MEDIAN, not minimum: 4 September carries two prints 3h21m apart, and
+       sizing every candle to that one pair collapsed the series to hairlines. */
+    var gap=gaps.length?gaps[Math.floor(gaps.length/2)]:cv.width/12;
+    var bw=Math.max(3, Math.min(34, gap*0.68));
+
+    g.save(); g.lineJoin="round"; g.lineCap="butt";
+    if(ST.chart!=="off"){
+      if(ST.chart==="line"||ST.chart==="area"){
+        if(ST.chart==="area"){
+          var grd=g.createLinearGradient(0,0,0,cv.height);
+          grd.addColorStop(0,"rgba(46,197,207,.40)");
+          grd.addColorStop(1,"rgba(46,197,207,0)");
+          g.beginPath(); g.moveTo(LAST[0].x,cv.height);
+          LAST.forEach(function(p){g.lineTo(p.x,p.y);});
+          g.lineTo(LAST[LAST.length-1].x,cv.height); g.closePath();
+          g.fillStyle=grd; g.fill();
+        }
+        g.strokeStyle="rgba(5,6,10,.85)"; g.lineWidth=4.6;
+        g.beginPath(); LAST.forEach(function(p,k){k?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y);});
+        g.stroke();
+        g.strokeStyle="#7FE9F2"; g.lineWidth=1.9;
+        g.beginPath(); LAST.forEach(function(p,k){k?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y);});
+        g.stroke();
+      } else {
+        for(i=1;i<LAST.length;i++){
+          var a=LAST[i-1], b=LAST[i], up=b.price>=a.price;
+          var top=Math.min(a.y,b.y), bot=Math.max(a.y,b.y);
+          var cx=b.x, h=Math.max(1.5,bot-top);
+          g.strokeStyle="rgba(4,5,9,.92)";
+          if(ST.chart==="bar"){
+            g.lineWidth=Math.max(3.4,bw*0.30);
+            g.beginPath(); g.moveTo(cx,top); g.lineTo(cx,bot); g.stroke();
+            g.beginPath(); g.moveTo(cx-bw*0.5,a.y); g.lineTo(cx,a.y);
+            g.moveTo(cx,b.y); g.lineTo(cx+bw*0.5,b.y); g.stroke();
+            g.strokeStyle=up?"#EAF6FF":"#FF4D6D";
+            g.lineWidth=Math.max(1.6,bw*0.16);
+            g.beginPath(); g.moveTo(cx,top); g.lineTo(cx,bot); g.stroke();
+            g.beginPath(); g.moveTo(cx-bw*0.5,a.y); g.lineTo(cx,a.y);
+            g.moveTo(cx,b.y); g.lineTo(cx+bw*0.5,b.y); g.stroke();
+          } else {
+            g.lineWidth=Math.max(2.6,bw*0.22);
+            g.beginPath(); g.moveTo(cx,top); g.lineTo(cx,bot); g.stroke();
+            g.strokeStyle=up?"#EAF6FF":"#FF4D6D";
+            g.lineWidth=Math.max(1.2,bw*0.11);
+            g.beginPath(); g.moveTo(cx,top); g.lineTo(cx,bot); g.stroke();
+            g.fillStyle=up?"#EAF6FF":"#FF4D6D";
+            g.strokeStyle="rgba(4,5,9,.92)"; g.lineWidth=1.4;
+            g.beginPath(); g.rect(cx-bw/2,top,bw,h); g.fill(); g.stroke();
+          }
+        }
+        /* the first observation has no predecessor, so it is a mark, not a bar */
+        var f=LAST[0];
+        g.strokeStyle="rgba(4,5,9,.92)"; g.lineWidth=4.2;
+        g.beginPath(); g.moveTo(f.x-bw*0.5,f.y); g.lineTo(f.x+bw*0.5,f.y); g.stroke();
+        g.strokeStyle="#9FB2C9"; g.lineWidth=2;
+        g.beginPath(); g.moveTo(f.x-bw*0.5,f.y); g.lineTo(f.x+bw*0.5,f.y); g.stroke();
+      }
+      /* the latest observation, marked the way a chart marks last price */
+      var L=LAST[LAST.length-1];
+      g.setLineDash([5,5]); g.strokeStyle="rgba(127,233,242,.55)"; g.lineWidth=1;
+      g.beginPath(); g.moveTo(0,L.y); g.lineTo(cv.width,L.y); g.stroke();
+      g.setLineDash([]);
+    }
     g.restore();
 
     if(price){
@@ -1000,6 +1139,67 @@ function heatmapCompute(anchors, opts){
   cv.addEventListener("wheel",function(ev){
     ev.preventDefault(); zoom(ev.deltaY<0?1.18:1/1.18);
   },{passive:false});
+  bindPills("[data-ct]",function(b){
+    document.querySelectorAll("[data-ct]").forEach(function(o){o.removeAttribute("data-on");});
+    b.setAttribute("data-on","1"); ST.chart=b.getAttribute("data-ct");
+  });
+
+  /* ---- zoom from the price tags, the way a charting package does it -------
+     Drag the price axis down to compress the scale, up to expand it; the wheel
+     does the same in discrete steps. Without this the axis is decoration. */
+  /* q("hm-price") again, deliberately: `price` inside draw() is function-local
+     and referencing it here threw, which killed the whole controller. */
+  var axis=q("hm-price");
+  if(axis){
+    axis.setAttribute("title","drag or scroll the price axis to rescale");
+    var pdrag=false, pY=0;
+    axis.addEventListener("mousedown",function(ev){
+      pdrag=true; pY=ev.clientY; ev.preventDefault();
+    });
+    addEventListener("mouseup",function(){pdrag=false;});
+    addEventListener("mousemove",function(ev){
+      if(!pdrag) return;
+      var dy=ev.clientY-pY; pY=ev.clientY;
+      /* down widens the band (zoom out), up narrows it - matches every chart */
+      if(dy) zoom(Math.exp(-dy/140));
+    });
+    axis.addEventListener("wheel",function(ev){
+      ev.preventDefault(); zoom(ev.deltaY<0?1.12:1/1.12);
+    },{passive:false});
+  }
+
+  /* ---- crosshair + readout ------------------------------------------------ */
+  var hair=q("hm-hair"), tip=q("hm-tip");
+  function nearest(x){
+    var best=null, d=1e18;
+    for(var i=0;i<LAST.length;i++){
+      var dx=Math.abs(LAST[i].x-x);
+      if(dx<d){d=dx; best=LAST[i];}
+    }
+    return best;
+  }
+  cv.addEventListener("mousemove",function(ev){
+    if(!hair||!LAST.length) return;
+    var r=cv.getBoundingClientRect();
+    if(!r.width||!r.height) return;
+    var sx=(ev.clientX-r.left)/r.width, sy=(ev.clientY-r.top)/r.height;
+    hair.style.left=(sx*100)+"%"; hair.style.top=(sy*100)+"%"; hair.hidden=false;
+    var pr=CUR.hi-(CUR.hi-CUR.lo)*sy;
+    var n=nearest(sx*cv.width);
+    if(tip&&n){
+      tip.hidden=false;
+      tip.style.left=(sx*100)+"%";
+      tip.style.top=(sy*100)+"%";
+      tip.setAttribute("data-flip", sx>0.62 ? "1" : "");
+      tip.innerHTML="<b>"+fmt(pr)+"</b><i>cursor</i>"+
+        "<b>"+fmt(n.price)+"</b><i>"+n.date.slice(0,10)+" "+n.date.slice(11,16)+"Z</i>"+
+        "<u>"+n.source+" &middot; T"+n.tier+"</u>";
+    }
+  });
+  cv.addEventListener("mouseleave",function(){
+    if(hair) hair.hidden=true; if(tip) tip.hidden=true;
+  });
+
   syncLev(); draw();
 })();
 

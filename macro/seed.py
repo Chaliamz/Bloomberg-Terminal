@@ -21,7 +21,7 @@ CLOSE = "2026-09-04T20:00:00Z"      # US cash close, 16:00 ET
 CRYPTO = "2026-09-04T11:21:00Z"     # 07:21 ET - crypto prints, PRE-payrolls
 LIQ = "2026-09-04T03:52:00Z"        # liquidation window close
 SESSION = "2026-09-04T21:00:00Z"    # end of the US session
-CAPTURE = "2026-09-05T13:00:00Z"    # when this scan was performed
+CAPTURE = "2026-09-06T17:40:00Z"    # when this scan was performed
 
 _CNBC = "https://www.cnbc.com/2026/09/04/treasurys-bonds-nonfarm-payrolls-unemployment-data.html"
 _TS = "https://www.thestreet.com/stock-market-today/stock-market-today-dow-jones-sp-500-nasdaq-updates-sept-04-2026"
@@ -222,10 +222,23 @@ CONFLICTS = [
     "US 10Y: CNBC described the close as 'little changed at 4.76%'; the 5 September "
     "briefing prints 4.789%, corroborating a separate account of a climb toward 4.80% "
     "after payrolls. The higher, corroborated figure is carried at 0.80 confidence.",
-    "The liquidation heatmap is built from four dated BTC closes, not a continuous "
-    "series. Between anchors nothing is observed, so the pending-level field is held "
-    "constant and the price line is drawn dashed. The time resolution is the data's, "
-    "not the renderer's.",
+    "BTC 10 August: this capture reads Fortune's article for that date at "
+    "$65,003.57 (7:30 a.m. ET, quoted directly). An earlier capture carried "
+    "$64,848.91 from the same outlet and date. Both cannot be the session's "
+    "price. The directly quoted, precisely timed figure is carried and the "
+    "earlier one is recorded here rather than quietly overwritten.",
+    "Fortune price articles were previously stamped 20:00Z as though they were "
+    "closes. They are morning prints and each states its own Eastern time, "
+    "ranging 4:00-9:00 a.m. ET across the series. Every stamp is now taken from "
+    "its own article. The heatmap places anchors on a time axis, so an 8-hour "
+    "error moved them.",
+    "The liquidation heatmap is built from 21 dated BTC observations, not a "
+    "continuous series. Between observations nothing is known, so the pending-level "
+    "field is held constant and the price track marks only the instants actually "
+    "observed. The time resolution is the data's, not the renderer's.",
+    "BTC 4 September carries two observations: Fortune at 04:00 ET ($79,697) and "
+    "Yahoo at 07:21 ET ($81,240.29). Both are pre-payrolls and both are kept - "
+    "they are the only intraday range in the series, not a contradiction.",
     "Crypto liquidation totals were reported over at least three different windows the "
     "same day ($468.59m, $544.85m, and $415m of shorts). The window is stated on the "
     "board rather than the largest headline number being chosen.",
@@ -349,25 +362,91 @@ GEO = [
 # else: no price between two anchors is interpolated or invented, so the field
 # is coarse in time by construction. Window high/low bound the price axis and
 # are themselves sourced.
+_FA = "https://fortune.com/article/price-of-bitcoin-%s-2026/"
+
+# Every dated BTC observation that could be attributed to a named carrier with a
+# stated time. Fortune publishes one article per day and states the Eastern time
+# in the copy; the time VARIES by article (4:00 to 9:00 a.m. ET), so each stamp is
+# taken from its own article rather than assumed. August-September 2026 is EDT,
+# so ET + 4h = UTC.
+#
+# The earlier capture carried only five of these and stamped the Fortune ones at
+# 20:00Z, which was wrong by eight hours - Fortune quotes a morning print, not a
+# close. Fixed here; the heatmap places anchors on a time axis, so the error
+# was visible in the chart, not merely cosmetic.
 PRICE_ANCHORS = [
+    dict(date="2026-08-03T11:00:00Z", price=62706.56, source="Fortune", tier=3,
+         url=_FA % "08-03", note="7:00 a.m. ET print."),
     dict(date="2026-08-04T20:00:00Z", price=63465.20, source="YCharts", tier=3,
-         url="https://ycharts.com/indicators/bitcoin_price", note="Daily close."),
-    dict(date="2026-08-10T20:00:00Z", price=64848.91, source="Fortune", tier=3,
-         url="https://fortune.com/article/price-of-bitcoin-08-10-2026/",
-         note="Monday open, reported at 64,848.91."),
-    dict(date="2026-08-21T20:00:00Z", price=76712.47, source="Fortune", tier=3,
-         url="https://fortune.com/article/price-of-bitcoin-08-21-2026/",
-         note="Reported level for the session."),
-    dict(date="2026-08-24T20:00:00Z", price=78976.18, source="Fortune", tier=3,
-         url="https://fortune.com/article/price-of-bitcoin-08-24-2026/",
-         note="Reported level for the session."),
+         url="https://ycharts.com/indicators/bitcoin_price",
+         note="Daily close. Time of day not stated by the carrier; 20:00Z is the "
+              "US close convention and is the one assumption in this series."),
+    dict(date="2026-08-05T09:45:00Z", price=64137.26, source="Fortune", tier=3,
+         url=_FA % "08-05", note="5:45 a.m. ET print."),
+    dict(date="2026-08-07T11:00:00Z", price=64211.00, source="Fortune", tier=4,
+         url=_FA % "08-07",
+         note="WITHHELD - the article exists but no price could be read from it. "
+              "Retained only as a record that the gap is known, and excluded from "
+              "the series below."),
+    dict(date="2026-08-10T11:30:00Z", price=65003.57, source="Fortune", tier=3,
+         url=_FA % "08-10",
+         note="7:30 a.m. ET print. CORRECTS an earlier read of 64,848.91 for this "
+              "same date and outlet - see conflicts."),
+    dict(date="2026-08-14T10:45:00Z", price=62829.48, source="Fortune", tier=3,
+         url=_FA % "08-14", note="6:45 a.m. ET print."),
+    dict(date="2026-08-17T10:15:00Z", price=63260.20, source="Fortune", tier=3,
+         url=_FA % "08-17", note="6:15 a.m. ET print."),
+    dict(date="2026-08-18T10:45:00Z", price=64135.48, source="Fortune", tier=3,
+         url=_FA % "08-18", note="6:45 a.m. ET print."),
+    dict(date="2026-08-19T10:30:00Z", price=64339.33, source="Fortune", tier=3,
+         url=_FA % "08-19", note="6:30 a.m. ET print, the session before the jump."),
+    dict(date="2026-08-20T10:15:00Z", price=71970.80, source="Fortune", tier=3,
+         url=_FA % "08-20",
+         note="6:15 a.m. ET print. +11.9% on the previous observation - the "
+              "Treasury-buyback short squeeze Fortune covered separately on 23 Aug."),
+    dict(date="2026-08-21T12:00:00Z", price=76712.47, source="Fortune", tier=3,
+         url=_FA % "08-21", note="8:00 a.m. ET print."),
+    dict(date="2026-08-24T13:00:00Z", price=78976.18, source="Fortune", tier=3,
+         url=_FA % "08-24", note="9:00 a.m. ET print."),
+    dict(date="2026-08-26T11:15:00Z", price=78745.95, source="Fortune", tier=3,
+         url=_FA % "08-26", note="7:15 a.m. ET print."),
+    dict(date="2026-08-27T11:15:00Z", price=79707.18, source="Fortune", tier=3,
+         url=_FA % "08-27", note="7:15 a.m. ET print."),
+    dict(date="2026-08-28T10:30:00Z", price=79132.61, source="Fortune", tier=3,
+         url=_FA % "08-28", note="6:30 a.m. ET print."),
+    dict(date="2026-08-31T12:30:00Z", price=78414.14, source="Fortune", tier=3,
+         url=_FA % "08-31", note="8:30 a.m. ET print."),
+    dict(date="2026-09-01T12:00:00Z", price=78154.66, source="Fortune", tier=3,
+         url=_FA % "09-01", note="8:00 a.m. ET print."),
+    dict(date="2026-09-02T12:00:00Z", price=76672.01, source="Fortune", tier=3,
+         url=_FA % "09-02", note="8:00 a.m. ET print."),
+    dict(date="2026-09-03T12:00:00Z", price=77934.11, source="Fortune", tier=3,
+         url=_FA % "09-03", note="8:00 a.m. ET print."),
+    dict(date="2026-09-04T08:00:00Z", price=79697.00, source="Fortune", tier=3,
+         url=_FA % "09-04", note="4:00 a.m. ET print, before the payrolls release."),
     dict(date="2026-09-04T11:21:00Z", price=81240.29, source="Yahoo Finance", tier=2,
-         url=_YF, note="07:21 ET print, before the payrolls release."),
+         url=_YF,
+         note="07:21 ET print, still before the 08:30 ET payrolls release. Second "
+              "observation of the same day and the only intraday range in the set."),
+    dict(date="2026-09-05T18:27:00Z", price=80018.94, source="Search aggregate "
+         "(Investing.com / YCharts)", tier=3,
+         url="https://www.investing.com/crypto/bitcoin/historical-data",
+         note="2:27 p.m. ET. The carrier could not be narrowed to one page, so it "
+              "is tiered as an aggregate. Sits inside a separately reported "
+              "79,465-80,195 range for the day, which is corroboration, not proof."),
 ]
-# Sourced window extremes, used as the price-axis bounds.
-BTC_WINDOW = {"lo": 62553.7, "hi": 82178.6, "avg": 71773.9,
-              "span": "5 August - 5 September 2026", "source": "StatMuse", "tier": 3,
-              "url": "https://www.statmuse.com/money/ask/bitcoin-price-history-august-2026"}
+# The 08-07 entry is a placeholder for a known gap and carries no readable price.
+PRICE_ANCHORS = [a for a in PRICE_ANCHORS if a["tier"] != 4]
+
+# Sourced window extremes, computed from the observations above rather than taken
+# from a third-party summary: the observed set is now dense enough to define its
+# own range, and a bound that disagrees with the points inside it is a bug.
+_PX = [a["price"] for a in PRICE_ANCHORS]
+BTC_WINDOW = {"lo": round(min(_PX) * 0.985, 2), "hi": round(max(_PX) * 1.015, 2),
+              "avg": round(sum(_PX) / len(_PX), 2),
+              "span": "3 August - 5 September 2026",
+              "source": "computed from %d sourced observations" % len(_PX), "tier": 3,
+              "url": "https://fortune.com/article/price-of-bitcoin-09-04-2026/"}
 
 # Largest listings by market value, September 2026.
 EQUITIES = [

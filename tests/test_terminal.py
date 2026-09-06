@@ -259,6 +259,77 @@ class TestDataIntegrity(unittest.TestCase):
             row = re.findall(rf'{group}="[^"]*"[^>]*data-on', self.doc)
             self.assertEqual(len(row), 1, group)
 
+    def test_price_is_a_chart_series_not_a_dashed_annotation(self):
+        """The old overlay was a 9px dashed polyline with 8px hollow circles."""
+        js = terminal.JS
+        self.assertIn('ST.chart', js)
+        for k in ("candle", "bar", "area", "line", "off"):
+            self.assertIn(f'data-ct="{k}"', self.doc, k)
+            self.assertIn(f'"{k}"', js, k)
+        self.assertIn("[data-ct]", js, "chart-type pills rendered but never bound")
+        # exactly one default, and it is not the line
+        on = re.findall(r'data-ct="([a-z]+)"[^>]*data-on', self.doc)
+        self.assertEqual(on, ["candle"])
+        # the dashed-polyline overlay must be gone
+        self.assertNotIn("g.setLineDash([16,11])", js)
+        self.assertNotIn("g.arc(p[0],p[1],8", js)
+
+    def test_candles_never_invent_an_intrabar_range(self):
+        """Wicks may not extend past the two observations that form the body."""
+        js = terminal.JS
+        self.assertIn("var top=Math.min(a.y,b.y), bot=Math.max(a.y,b.y)", js)
+        self.assertIn("no invented range", js)
+        # the wick is drawn between top and bot and nowhere else: no term may
+        # push a drawn extreme outside the observed pair
+        wick = re.findall(r"g\.moveTo\(cx,(\w+)\); g\.lineTo\(cx,(\w+)\)", js)
+        self.assertTrue(wick, "no wick drawn")
+        for a, b in wick:
+            self.assertEqual({a, b}, {"top", "bot"}, f"wick drawn to {a}..{b}")
+
+    def test_series_positions_come_from_timestamps_not_grid_cells(self):
+        """Quantising to a cell put the track hours away from the observation."""
+        self.assertIn("function px(iso)", terminal.JS)
+        self.assertIn("function py(v)", terminal.JS)
+        self.assertNotIn("(a.col+0.5)*CW", terminal.JS)
+
+    def test_candle_width_uses_the_median_gap(self):
+        """The minimum gap is one 3h21m intraday pair; sizing to it made hairlines."""
+        self.assertIn("gaps[Math.floor(gaps.length/2)]", terminal.JS)
+        self.assertNotIn("gap=Math.min(gap, LAST[i].x", terminal.JS)
+
+    def test_page_copy_matches_what_is_actually_drawn(self):
+        """Copy described a dashed line and 'no candle is drawn' after candles shipped."""
+        low = self.doc.lower()
+        for stale in ("price line is drawn dashed", "no candle is drawn",
+                      "four dated btc closes"):
+            self.assertNotIn(stale, low, f"stale copy on the page: {stale!r}")
+        self.assertIn("no wick is", low)
+
+    def test_price_axis_is_a_zoom_control(self):
+        for ev in ("mousedown", "wheel"):
+            self.assertIn(ev, terminal.JS)
+        self.assertIn('var axis=q("hm-price")', terminal.JS)
+        self.assertIn("ns-resize", terminal.CSS)
+
+    def test_crosshair_clears_when_the_view_refuses(self):
+        """A stale LAST would report positions from a view no longer on screen."""
+        js = terminal.JS
+        self.assertIn('id="hm-hair"', self.doc)
+        self.assertIn('id="hm-tip"', self.doc)
+        self.assertEqual(js.count("LAST=[];"), 3,
+                         "LAST must be cleared on both refusal paths and initialised")
+
+    def test_data_age_is_measured_from_the_newest_observation(self):
+        """Age from `captured` resets to zero on a scan that fetched nothing."""
+        self.assertIn('"newest"', self.doc)
+        self.assertIn("D.newest||D.captured", terminal.JS)
+
+    def test_capture_time_is_never_in_the_future(self):
+        from datetime import datetime, timezone
+        cap = datetime.fromisoformat(self.snap.captured.replace("Z", "+00:00"))
+        self.assertLessEqual(cap, datetime.now(timezone.utc),
+                             "capture stamped in the future: age would read zero")
+
     def test_zoom_can_widen_the_window_not_only_narrow_it(self):
         """The old clamp was max(1, ...), which made every zoom-out a silent no-op."""
         m = re.search(r"function zoom\(f\)\{([^}]*)\}", terminal.JS)
@@ -416,6 +487,11 @@ class TestDataIntegrity(unittest.TestCase):
                       f"{liq.total_usd / 1e6:,.1f}", f"{liq.short_usd / 1e6:,.0f}",
                       f"{liq.long_usd / 1e6:,.1f}",
                       f"{(liq.asset_usd or 0) / 1e6:,.1f}"}
+        # A conflict record quotes the superseded figure on purpose: the contract
+        # is that a correction is RECORDED, not erased. Those numerals are part
+        # of the snapshot, so they count as sourced.
+        conflict_text = " ".join(self.snap.conflicts or ())
+        known |= set(re.findall(r"\b\d[\d,]{2,}\.\d{2}\b", conflict_text))
         for tok in re.findall(r"\b\d[\d,]{2,}\.\d{2}\b", body):
             self.assertIn(tok, known, f"unsourced number on the page: {tok}")
 

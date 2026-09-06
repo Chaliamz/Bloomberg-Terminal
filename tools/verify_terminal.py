@@ -124,6 +124,9 @@ STATIC = """() => {
   if (n("[data-tf]") < 6) bad.push("too few timeframes");
   if (n("[data-lrange]") < 5) bad.push("leverage range presets missing");
   if (n("[data-res]") < 4) bad.push("too few grid resolutions");
+  if (n("[data-ct]") < 5) bad.push("chart-type controls missing");
+  if (!document.getElementById("hm-hair")) bad.push("crosshair missing");
+  if (!document.getElementById("hm-tip")) bad.push("readout missing");
   if (!document.getElementById("hm-lmin") || !document.getElementById("hm-lmax"))
     bad.push("leverage min/max inputs missing");
   if (n("[data-scheme]") < 3) bad.push("scheme controls missing");
@@ -318,6 +321,11 @@ async def run(path: str) -> int:
             ("leverage HIGH", '[data-lrange="50-125"]'),
             ("leverage EXTREME", '[data-lrange="100-125"]'),
             ("leverage ALL", '[data-lrange="2-125"]'),
+            ("chart OHLC bars", '[data-ct="bar"]'),
+            ("chart area", '[data-ct="area"]'),
+            ("chart line", '[data-ct="line"]'),
+            ("chart off", '[data-ct="off"]'),
+            ("chart candles", '[data-ct="candle"]'),
             ("zoom in", "#hm-zin"),
             ("pan up", "#hm-pan-up"),
             ("reset", "#hm-reset"),
@@ -411,6 +419,62 @@ async def run(path: str) -> int:
             ctl_bad.append("dragging the field did not pan the chart")
         await page.click("#hm-reset")
         await page.wait_for_timeout(200)
+        # 4. the price axis must itself be a zoom control (dragging the tags)
+        ab = await page.eval_on_selector("#hm-price", """el => {
+            const r = el.getBoundingClientRect();
+            const top = Math.max(r.y + 6, 6);
+            const bot = Math.min(r.y + r.height - 6, window.innerHeight - 6);
+            return [r.x + r.width / 2, (top + bot) / 2, bot - top];
+        }""")
+        if ab[2] < 60:
+            ctl_bad.append("price axis not visible enough to drag")
+        else:
+            lo4, hi4 = await band()
+            await page.mouse.move(ab[0], ab[1])
+            await page.mouse.down()
+            for dy in (18, 40, 68, 96):
+                await page.mouse.move(ab[0], ab[1] + dy)
+                await page.wait_for_timeout(45)
+            await page.mouse.up()
+            await page.wait_for_timeout(260)
+            lo5, hi5 = await band()
+            if not (hi5 - lo5) > (hi4 - lo4) * 1.05:
+                ctl_bad.append(
+                    f"dragging the price tags down did not widen the scale: "
+                    f"{hi4-lo4:.0f} -> {hi5-lo5:.0f}")
+            await page.click("#hm-fit")
+            await page.wait_for_timeout(200)
+            # and the wheel over the axis must rescale too
+            lo6, hi6 = await band()
+            await page.mouse.move(ab[0], ab[1])
+            await page.mouse.wheel(0, 400)
+            await page.wait_for_timeout(280)
+            lo7, hi7 = await band()
+            if abs((hi7 - lo7) - (hi6 - lo6)) < 1:
+                ctl_bad.append("scrolling the price axis did not rescale")
+            await page.click("#hm-fit")
+            await page.wait_for_timeout(200)
+
+        # 5. the crosshair readout must appear over the field and name a source
+        cbox = await page.eval_on_selector("#hm-canvas", """c => {
+            const r = c.getBoundingClientRect();
+            const top = Math.max(r.y + 8, 8);
+            const bot = Math.min(r.y + r.height - 8, window.innerHeight - 8);
+            return [r.x + r.width * 0.62, (top + bot) / 2];
+        }""")
+        await page.mouse.move(cbox[0], cbox[1])
+        await page.wait_for_timeout(220)
+        if await page.is_hidden("#hm-tip"):
+            ctl_bad.append("crosshair readout never appeared")
+        else:
+            txt = await page.inner_text("#hm-tip")
+            if "T" not in txt or len(txt.strip()) < 12:
+                ctl_bad.append(f"crosshair readout carries no provenance: {txt!r}")
+        await page.mouse.move(4, 4)
+        await page.wait_for_timeout(200)
+        if not await page.is_hidden("#hm-tip"):
+            ctl_bad.append("crosshair readout did not clear on leave")
+
         # threshold slider - baseline taken immediately before the change, or
         # the comparison is against unrelated state and passes vacuously
         pre_thr = await canvas_sig()
