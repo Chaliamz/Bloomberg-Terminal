@@ -363,6 +363,12 @@ noscript .ns{display:block;margin:14px 18px;padding:12px;border:1px solid var(--
 .ctl-g>b{color:var(--faint);letter-spacing:.18em;font-weight:400;margin-right:2px}
 .ctl-v{font-style:normal;color:var(--gold);min-width:34px;text-align:right;
   font-variant-numeric:tabular-nums}
+.ctl-x{font-style:normal;color:var(--faint);padding:0 2px}
+input[type=number]{width:52px;background:var(--panel);border:1px solid var(--edge-hi);
+  color:var(--ink);font-family:var(--mono);font-size:10.5px;padding:2px 4px;
+  border-radius:2px}
+.hm-hint{margin:0;font-family:var(--mono);font-size:10px;color:var(--faint);
+  letter-spacing:.06em}
 .pill{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;padding:3px 9px;
   border-radius:2px;border:1px solid var(--edge-hi);background:var(--panel);
   color:var(--dim);cursor:pointer;transition:all .14s ease}
@@ -391,6 +397,7 @@ input[type=range]{width:104px;accent-color:var(--gold);cursor:pointer}
 .hm-key{display:flex;gap:14px;flex-wrap:wrap;color:var(--faint);
   font-family:var(--mono);font-size:10.5px;padding-top:2px}
 .hm-key i{font-style:normal;display:inline-flex;align-items:center;gap:5px}
+.hm-ctl .pill[data-off]{opacity:.3;cursor:not-allowed;text-decoration:line-through}
 .hm-key .sw{width:16px;height:3px;border-radius:2px;display:inline-block}
 
 /* ---------- stocks & earnings ---------- */
@@ -515,7 +522,10 @@ tick();setInterval(tick,1000);
    reference model. ---- */
 function heatmapCompute(anchors, opts){
   opts = opts || {};
-  var levels = opts.levels || [10,25,50,100];
+  var levels = opts.levels;
+  /* omitted -> full spectrum; explicitly empty -> refuse. Must match live.py. */
+  if(levels == null){ levels = []; for(var L=2;L<=125;L++) levels.push(L); }
+  if(!levels.length) return {ok:false, reason:"no leverage tiers in the model"};
   var columns = opts.columns || 36, rows = opts.rows || 34;
   var pts = anchors.slice().sort(function(a,b){return a.date < b.date ? -1 : 1;});
   if(pts.length < 2 || columns < 2 || rows < 2)
@@ -553,15 +563,17 @@ function heatmapCompute(anchors, opts){
       lastPrice = a.price;
     }
     for(var k=0;k<pending.length;k++){
-      var lv = pending[k][0], n2 = pending[k][1];
-      if(lv >= lo && lv <= hi) grid[c][rowOf(lv)] += n2/10.0;
+      var lv = pending[k][0];
+      /* uniform weight per (anchor, tier, side) - see macro/live.py */
+      if(lv >= lo && lv <= hi) grid[c][rowOf(lv)] += 1.0;
     }
   }
   var peak = 0;
   for(x=0;x<columns;x++) for(y=0;y<rows;y++) if(grid[x][y]>peak) peak=grid[x][y];
   if(!(peak > 0)) return {ok:false, reason:"no pending levels fell inside the price range"};
   var norm = grid.map(function(col){
-    return col.map(function(v){ return Math.round(v/peak*1e4)/1e4; });
+    /* floor(x+0.5), not Math.round: must match macro/live.py exactly */
+    return col.map(function(v){ return Math.floor(v/peak*1e4+0.5)/1e4; });
   });
   return {ok:true, columns:columns, rows:rows, lo:lo, hi:hi, grid:norm, peak:peak,
           levels:levels, t0:pts[0].date, t1:pts[pts.length-1].date,
@@ -576,7 +588,8 @@ function heatmapCompute(anchors, opts){
   var cv=q("hm-canvas"); if(!cv||!cv.getContext||!D.anchors||D.anchors.length<2) return;
   var g=cv.getContext("2d"); if(!g) return;
   var BASE={lo:D.window&&D.window.lo, hi:D.window&&D.window.hi};
-  var ST={days:0, levels:[10,25,50,100], cols:72, rows:52,
+  function tiers(a,b){var o=[];for(var i=a;i<=b;i++)o.push(i);return o;}
+  var ST={days:0, lmin:2, lmax:125, cols:160, rows:90,
           scheme:"viridis", thr:0, zoom:1, pan:0};
 
   function hex(h){return [parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),
@@ -599,7 +612,7 @@ function heatmapCompute(anchors, opts){
   function bounds(){
     if(BASE.lo==null||BASE.hi==null) return {};
     var mid=(BASE.lo+BASE.hi)/2 + ST.pan*(BASE.hi-BASE.lo);
-    var half=(BASE.hi-BASE.lo)/2/ST.zoom;
+    var half=(BASE.hi-BASE.lo)/2/ST.zoom;   /* zoom < 1 widens the window */
     return {lo:mid-half, hi:mid+half};
   }
   function fmt(n){
@@ -620,8 +633,8 @@ function heatmapCompute(anchors, opts){
       return;
     }
     var bb=bounds();
-    var H=heatmapCompute(pts,{levels:ST.levels, columns:ST.cols, rows:ST.rows,
-                              lo:bb.lo, hi:bb.hi});
+    var H=heatmapCompute(pts,{levels:tiers(ST.lmin,ST.lmax), columns:ST.cols,
+                              rows:ST.rows, lo:bb.lo, hi:bb.hi});
     if(!H.ok){
       g.fillStyle="#0A0C14"; g.fillRect(0,0,cv.width,cv.height);
       g.fillStyle="#66738C"; g.font="18px monospace"; g.textAlign="center";
@@ -675,8 +688,10 @@ function heatmapCompute(anchors, opts){
       (D.ramps[ST.scheme]||D.ramps.viridis).join(",")+")";
     setText("hm-peak",H.peak.toFixed(1));
     if(meta) meta.textContent=pts.length+" sourced anchors · "+
-      H.columns+"×"+H.rows+" grid · "+ST.levels.join("x/")+"x · "+
-      fmt(H.lo)+"-"+fmt(H.hi);
+      H.columns+"×"+H.rows+" grid · "+(ST.lmax-ST.lmin+1)+" leverage tiers "+
+      ST.lmin+"x-"+ST.lmax+"x · "+fmt(H.lo)+"-"+fmt(H.hi)+
+      " · zoom "+ST.zoom.toFixed(2)+"x";
+    setText("hm-zv",ST.zoom.toFixed(2)+"×");
   }
 
   function bindPills(sel, fn){
@@ -684,6 +699,37 @@ function heatmapCompute(anchors, opts){
       b.addEventListener("click",function(){ fn(b); draw(); });
     });
   }
+  /* Not every window the bar offers is a view the data can support. A window
+     holding fewer than two sourced anchors cannot produce a heatmap at all, and
+     one holding the same anchors as a narrower window renders identically - both
+     would be buttons that do nothing. Gate them, and say why on hover, rather
+     than shipping dead controls. Anchor sets are nested as the window widens, so
+     an equal count means an equal set. */
+  function anchorsIn(days){
+    if(!days) return D.anchors.length;
+    var last=Date.parse(D.anchors[D.anchors.length-1].date);
+    var cut=last-days*86400000;
+    return D.anchors.filter(function(a){return Date.parse(a.date)>=cut;}).length;
+  }
+  (function gateWindows(){
+    var seen={}, btns=[].slice.call(document.querySelectorAll("[data-tf]"));
+    btns.sort(function(a,b){
+      var x=parseInt(a.getAttribute("data-tf"),10)||1e9;
+      var y=parseInt(b.getAttribute("data-tf"),10)||1e9;
+      return x-y;
+    });
+    btns.forEach(function(b){
+      var d=parseInt(b.getAttribute("data-tf"),10);
+      var n=anchorsIn(d), why=null;
+      if(n<2) why=n+" sourced anchor in this window \u2014 a heatmap needs two";
+      else if(seen[n]) why="same anchors as "+seen[n]+" \u2014 no observation between them";
+      else seen[n]=(d?d+"D":"ALL");
+      if(why){
+        b.disabled=true; b.setAttribute("data-off","1");
+        b.removeAttribute("data-on"); b.title=why;
+      } else b.title=n+" sourced anchors in this window";
+    });
+  })();
   bindPills("[data-tf]",function(b){
     document.querySelectorAll("[data-tf]").forEach(function(o){o.removeAttribute("data-on");});
     b.setAttribute("data-on","1"); ST.days=parseInt(b.getAttribute("data-tf"),10);
@@ -698,36 +744,79 @@ function heatmapCompute(anchors, opts){
     document.querySelectorAll("[data-scheme]").forEach(function(o){o.removeAttribute("data-on");});
     b.setAttribute("data-on","1"); ST.scheme=b.getAttribute("data-scheme");
   });
-  bindPills("[data-lev]",function(b){
-    var n=parseInt(b.getAttribute("data-lev"),10);
-    var on=b.hasAttribute("data-on");
-    /* never allow every tier off: an empty model is not a view of anything */
-    if(on && ST.levels.length<=1) return;
-    if(on){ b.removeAttribute("data-on"); ST.levels=ST.levels.filter(function(v){return v!==n;}); }
-    else { b.setAttribute("data-on","1"); ST.levels.push(n); ST.levels.sort(function(a,c){return a-c;}); }
+  function syncLev(){
+    var a=q("hm-lmin"), b=q("hm-lmax");
+    if(a) a.value=ST.lmin; if(b) b.value=ST.lmax;
+    document.querySelectorAll("[data-lrange]").forEach(function(o){
+      var r=o.getAttribute("data-lrange").split("-");
+      if(+r[0]===ST.lmin && +r[1]===ST.lmax) o.setAttribute("data-on","1");
+      else o.removeAttribute("data-on");
+    });
+  }
+  bindPills("[data-lrange]",function(b){
+    var r=b.getAttribute("data-lrange").split("-");
+    ST.lmin=+r[0]; ST.lmax=+r[1]; syncLev();
+  });
+  ["hm-lmin","hm-lmax"].forEach(function(id){
+    var el=q(id); if(!el) return;
+    el.addEventListener("change",function(){
+      var v=parseInt(el.value,10);
+      if(isNaN(v)) v = id==="hm-lmin" ? 2 : 125;
+      v=Math.min(125,Math.max(2,v));
+      if(id==="hm-lmin") ST.lmin=v; else ST.lmax=v;
+      /* an inverted range is an empty model: keep at least one tier */
+      if(ST.lmin>ST.lmax){ if(id==="hm-lmin") ST.lmax=ST.lmin; else ST.lmin=ST.lmax; }
+      syncLev(); draw();
+    });
   });
   var thr=q("hm-thr");
   if(thr) thr.addEventListener("input",function(){
     ST.thr=parseInt(thr.value,10)/100;
     setText("hm-thr-v",ST.thr.toFixed(2)); draw();
   });
-  function zoom(f){ ST.zoom=Math.min(12,Math.max(1,ST.zoom*f)); draw(); }
+  /* Zoom out was clamped at 1, so the chart could not be widened past the
+     sourced window at all. The floor is now 0.2x. */
+  function zoom(f){ ST.zoom=Math.min(25,Math.max(0.2,ST.zoom*f)); draw(); }
   var zi=q("hm-zin"), zo=q("hm-zout"), pu=q("hm-pan-up"), pd=q("hm-pan-dn"),
       rs=q("hm-reset");
   if(zi) zi.addEventListener("click",function(){zoom(1.5);});
   if(zo) zo.addEventListener("click",function(){zoom(1/1.5);});
   if(pu) pu.addEventListener("click",function(){ST.pan=Math.min(1,ST.pan+0.12/ST.zoom);draw();});
   if(pd) pd.addEventListener("click",function(){ST.pan=Math.max(-1,ST.pan-0.12/ST.zoom);draw();});
+  var fit=q("hm-fit");
+  if(fit) fit.addEventListener("click",function(){ST.zoom=1;ST.pan=0;draw();});
   if(rs) rs.addEventListener("click",function(){
-    ST.zoom=1; ST.pan=0; ST.thr=0;
+    ST.zoom=1; ST.pan=0; ST.thr=0; ST.lmin=2; ST.lmax=125;
+    ST.days=0; ST.cols=160; ST.rows=90; ST.scheme="viridis";
     if(thr){thr.value=0; setText("hm-thr-v","0.00");}
+    document.querySelectorAll("[data-tf]").forEach(function(o){
+      o.toggleAttribute("data-on", o.getAttribute("data-tf")==="0"); });
+    document.querySelectorAll("[data-res]").forEach(function(o){
+      o.toggleAttribute("data-on", o.getAttribute("data-res")==="160x90"); });
+    document.querySelectorAll("[data-scheme]").forEach(function(o){
+      o.toggleAttribute("data-on", o.getAttribute("data-scheme")==="viridis"); });
+    syncLev(); draw();
+  });
+
+  /* drag to pan the price axis, as on a real chart */
+  var dragging=false, lastY=0;
+  cv.addEventListener("mousedown",function(ev){
+    dragging=true; lastY=ev.clientY; cv.style.cursor="grabbing"; ev.preventDefault();
+  });
+  addEventListener("mouseup",function(){dragging=false; cv.style.cursor="grab";});
+  addEventListener("mousemove",function(ev){
+    if(!dragging) return;
+    var dy=(ev.clientY-lastY)/Math.max(1,cv.getBoundingClientRect().height);
+    lastY=ev.clientY;
+    ST.pan=Math.max(-3,Math.min(3,ST.pan+dy/ST.zoom));
     draw();
   });
+  cv.style.cursor="grab";
   /* scroll to zoom the price axis, as on a real chart */
   cv.addEventListener("wheel",function(ev){
     ev.preventDefault(); zoom(ev.deltaY<0?1.18:1/1.18);
   },{passive:false});
-  draw();
+  syncLev(); draw();
 })();
 
 /* ---- relative time on the geopolitical board, recomputed every tick ---- */
@@ -1046,12 +1135,13 @@ def render_heatmap(snap) -> str:
     tf = "".join(
         f'<button class="pill" data-tf="{d}"{" data-on=1" if d == 0 else ""}>'
         f'{"ALL" if d == 0 else str(d) + "D"}</button>'
-        for d in (7, 14, 30, 0)
+        for d in (3, 7, 14, 21, 30, 0)
     )
     lev = "".join(
-        f'<button class="pill lv" data-lev="{n}"'
-        f'{" data-on=1" if n in (10, 25, 50, 100) else ""}>{n}&times;</button>'
-        for n in (5, 10, 25, 50, 100)
+        f'<button class="pill" data-lrange="{a}-{b}"'
+        f'{" data-on=1" if (a, b) == (2, 125) else ""}>{lbl}</button>'
+        for a, b, lbl in ((2, 125, "ALL"), (2, 10, "LOW"), (10, 50, "MID"),
+                          (50, 125, "HIGH"), (100, 125, "EXTREME"))
     )
     schemes = "".join(
         f'<button class="sw-btn" data-scheme="{k}" title="{k}"'
@@ -1060,14 +1150,19 @@ def render_heatmap(snap) -> str:
         for k, v in HEAT_RAMPS.items()
     )
     res = "".join(
-        f'<button class="pill" data-res="{c}x{r}"{" data-on=1" if c == 72 else ""}>'
+        f'<button class="pill" data-res="{c}x{r}"{" data-on=1" if c == 160 else ""}>'
         f'{lbl}</button>'
-        for c, r, lbl in ((36, 34, "COARSE"), (72, 52, "MED"), (140, 80, "FINE"))
+        for c, r, lbl in ((60, 40, "COARSE"), (110, 64, "MED"), (160, 90, "FINE"),
+                          (240, 130, "ULTRA"))
     )
     return (
         '<div class="hm-ctl">'
         f'<span class="ctl-g"><b>WINDOW</b>{tf}</span>'
-        f'<span class="ctl-g"><b>LEVERAGE</b>{lev}</span>'
+        f'<span class="ctl-g"><b>LEVERAGE</b>{lev}'
+        '<input id="hm-lmin" type="number" min="2" max="125" value="2" '
+        'aria-label="Minimum leverage"><i class="ctl-x">&ndash;</i>'
+        '<input id="hm-lmax" type="number" min="2" max="125" value="125" '
+        'aria-label="Maximum leverage"><i class="ctl-v">&times;</i></span>'
         f'<span class="ctl-g"><b>GRID</b>{res}</span>'
         f'<span class="ctl-g"><b>SCHEME</b>{schemes}</span>'
         '<span class="ctl-g"><b>THRESHOLD</b>'
@@ -1077,8 +1172,10 @@ def render_heatmap(snap) -> str:
         '<span class="ctl-g"><b>ZOOM</b>'
         '<button class="pill" id="hm-zin" title="Zoom in on price">+</button>'
         '<button class="pill" id="hm-zout" title="Zoom out">&minus;</button>'
+        '<i id="hm-zv" class="ctl-v">1.00&times;</i>'
         '<button class="pill" id="hm-pan-up" title="Pan up">&uarr;</button>'
         '<button class="pill" id="hm-pan-dn" title="Pan down">&darr;</button>'
+        '<button class="pill" id="hm-fit" title="Fit to the sourced window">FIT</button>'
         '<button class="pill" id="hm-reset">RESET</button></span>'
         '</div>'
         '<div class="hm-stage">'
@@ -1094,6 +1191,8 @@ def render_heatmap(snap) -> str:
         '<i><span class="sw" style="background:repeating-linear-gradient(90deg,'
         'var(--gold) 0 3px,transparent 3px 6px)"></span>no observation between</i>'
         '<i id="hm-meta">&mdash;</i></div>'
+        '<p class="hm-hint">drag the field to pan &middot; scroll to zoom the price '
+        'axis &middot; every control recomputes the model</p>'
         '<p class="note warn"><b>Computed by the published method, on real prices.</b> '
         'At each observed close, positions opened there liquidate at '
         'price&times;(1&minus;1/N) and price&times;(1+1/N); those levels stay pending '
@@ -1427,8 +1526,12 @@ def render(snap: Snapshot, standalone: bool = True) -> str:
         "captured": snap.captured,
         "ramps": {k: list(v) for k, v in HEAT_RAMPS.items()},
         "window": snap.btc_window or {},
+        # Sorted here, not merely by authoring luck: windowed() and anchorsIn()
+        # both read anchors[len-1] as the latest observation, and the scanner
+        # appends in arrival order, not date order.
         "anchors": [{"date": a.date, "price": a.price, "source": a.source,
-                     "tier": a.tier} for a in snap.price_anchors],
+                     "tier": a.tier}
+                    for a in sorted(snap.price_anchors, key=lambda a: a.date)],
     }, ensure_ascii=False).replace("</", "<\\/")
 
     head = (f'<title>Macro Desk Live</title>\n'

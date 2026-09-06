@@ -419,6 +419,17 @@ class TestCrossImplementation(unittest.TestCase):
             dict(columns=12, rows=8, levels=[25]),
             dict(lo=70000, hi=85000, columns=48, rows=40, levels=[10, 50]),
             dict(lo=1.0, hi=2.0, columns=20, rows=20, levels=[10]),   # refuses
+            # the shipped default: levels omitted -> the full 2..125 spectrum,
+            # which is what every unmodified page load actually renders
+            dict(lo=62553.7, hi=82178.6, columns=160, rows=90),
+            dict(columns=240, rows=130),                       # ULTRA, derived range
+            dict(lo=62553.7, hi=82178.6, columns=60, rows=40,
+                 levels=list(range(50, 126))),                 # the HIGH preset
+            dict(lo=62553.7, hi=82178.6, columns=110, rows=64,
+                 levels=list(range(2, 11))),                   # the LOW preset
+            # small integer peaks are where round()/Math.round diverge on ties
+            dict(lo=62553.7, hi=82178.6, columns=8, rows=200, levels=[3, 7]),
+            dict(columns=36, rows=34, levels=[]),   # explicitly empty: refuses
         ]
         prog = (m.group(1) + "\nconst A=" + json.dumps(anchors) +
                 ";\nconst C=" + json.dumps(cases) +

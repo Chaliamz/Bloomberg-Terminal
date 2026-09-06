@@ -241,15 +241,67 @@ class TestDataIntegrity(unittest.TestCase):
             self.assertLessEqual(a.price, data["window"]["hi"])
 
     def test_heatmap_controls_are_present_and_wired(self):
-        for attr in ("data-tf", "data-lev", "data-res", "data-scheme"):
+        for attr in ("data-tf", "data-lrange", "data-res", "data-scheme"):
             self.assertIn(attr, self.doc, attr)
-        for el in ("hm-thr", "hm-zin", "hm-zout", "hm-reset", "hm-peak", "hm-price",
-                   "hm-time", "hm-meta"):
+            self.assertIn(f'[{attr}]', terminal.JS, f"{attr} is rendered but never bound")
+        for el in ("hm-thr", "hm-zin", "hm-zout", "hm-reset", "hm-fit", "hm-zv",
+                   "hm-lmin", "hm-lmax", "hm-peak", "hm-price", "hm-time", "hm-meta"):
             self.assertIn(f'id="{el}"', self.doc, el)
         self.assertIn("heatmapCompute", terminal.JS)
 
+    def test_the_control_bar_offers_a_coinglass_grade_range_of_views(self):
+        """One timeframe and two resolutions is not 'plenty of options'."""
+        self.assertGreaterEqual(len(re.findall(r'data-tf="(-?\d+)"', self.doc)), 6)
+        self.assertGreaterEqual(len(re.findall(r'data-res="(\d+x\d+)"', self.doc)), 4)
+        self.assertGreaterEqual(len(re.findall(r'data-lrange="(\d+-\d+)"', self.doc)), 5)
+        # exactly one default per pill group, or the initial paint disagrees with the bar
+        for group in ("data-tf", "data-res", "data-scheme"):
+            row = re.findall(rf'{group}="[^"]*"[^>]*data-on', self.doc)
+            self.assertEqual(len(row), 1, group)
+
+    def test_zoom_can_widen_the_window_not_only_narrow_it(self):
+        """The old clamp was max(1, ...), which made every zoom-out a silent no-op."""
+        m = re.search(r"function zoom\(f\)\{([^}]*)\}", terminal.JS)
+        self.assertIsNotNone(m, "zoom() missing")
+        floor = re.search(r"Math\.max\(([0-9.]+)", m.group(1))
+        self.assertIsNotNone(floor, "zoom() has no lower clamp")
+        self.assertLess(float(floor.group(1)), 1.0,
+                        "zoom-out is clamped at or above 1x: the chart cannot widen")
+
+    def test_the_chart_can_be_panned(self):
+        for ev in ("mousedown", "mousemove", "mouseup"):
+            self.assertIn(f'"{ev}"', terminal.JS, ev)
+        self.assertIn("ST.pan", terminal.JS)
+
+    def test_embedded_anchors_are_chronological(self):
+        """windowed() and anchorsIn() both take the last anchor as the latest."""
+        m = re.search(r'"anchors":\s*(\[.*?\])\s*,?\s*\}', self.doc, re.S)
+        self.assertIsNotNone(m, "anchor payload not found")
+        dates = re.findall(r'"date":\s*"([^"]+)"', m.group(1))
+        self.assertEqual(len(dates), len(self.snap.price_anchors))
+        self.assertEqual(dates, sorted(dates), "anchors emitted out of order")
+
+    def test_windows_the_data_cannot_support_are_gated_not_shipped_dead(self):
+        """A window with <2 anchors, or the same anchors as a narrower one,
+        renders identically. Offering it as a live button is a lie about the data."""
+        self.assertIn("gateWindows", terminal.JS)
+        self.assertIn("a heatmap needs two", terminal.JS)
+        self.assertIn("no observation between them", terminal.JS)
+        self.assertIn("b.disabled=true", terminal.JS.replace(" ", ""))
+        self.assertIn("[data-off]", terminal.CSS)
+        # the gate must run before the default view is drawn, or the bar and the
+        # canvas disagree on the first paint
+        self.assertLess(terminal.JS.index("gateWindows"),
+                        terminal.JS.rindex("syncLev(); draw();"))
+        # ALL is the widest window and can never be gated off, so a default
+        # always survives
+        self.assertIn('data-tf="0" data-on=1', self.doc)
+
     def test_leverage_control_cannot_empty_the_model(self):
-        self.assertIn("an empty model is not a view of anything", terminal.JS)
+        """An inverted min/max would render tiers(a,b) empty and blank the field."""
+        self.assertIn("an inverted range is an empty model", terminal.JS)
+        self.assertIn("if(ST.lmin>ST.lmax)", terminal.JS.replace(" ", ""))
+        self.assertIn("Math.min(125,Math.max(2,v))", terminal.JS.replace(" ", ""))
 
     def test_equity_ticker_does_not_reuse_the_tape_class(self):
         """.tk is the ticker-tape item: reusing it puts flex and padding on equities."""

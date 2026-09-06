@@ -119,10 +119,13 @@ STATIC = """() => {
   });
 
   // heatmap controls must exist
-  ["hm-thr","hm-zin","hm-zout","hm-reset","hm-peak","hm-price","hm-time","hm-meta"]
+  ["hm-thr","hm-zin","hm-zout","hm-reset","hm-fit","hm-zv","hm-lmin","hm-lmax","hm-peak","hm-price","hm-time","hm-meta"]
     .forEach(id => { if (!document.getElementById(id)) bad.push("control " + id + " missing"); });
-  if (n("[data-tf]") < 3) bad.push("timeframe controls missing");
-  if (n("[data-lev]") < 4) bad.push("leverage controls missing");
+  if (n("[data-tf]") < 6) bad.push("too few timeframes");
+  if (n("[data-lrange]") < 5) bad.push("leverage range presets missing");
+  if (n("[data-res]") < 4) bad.push("too few grid resolutions");
+  if (!document.getElementById("hm-lmin") || !document.getElementById("hm-lmax"))
+    bad.push("leverage min/max inputs missing");
   if (n("[data-scheme]") < 3) bad.push("scheme controls missing");
   if (!document.getElementById("hm-meta").textContent.trim() ||
       document.getElementById("hm-meta").textContent.indexOf("\u2014") === 0)
@@ -296,18 +299,46 @@ async def run(path: str) -> int:
 
         ctl_bad = []
         base_sig, base_meta = await canvas_sig(), await meta()
+        async def band() -> tuple[float, float]:
+            """The price band the field currently spans, read off the axis."""
+            v = await page.evaluate("""() => {
+              const s = document.querySelectorAll("#hm-price span");
+              const num = t => parseFloat(t.replace(/[^0-9.]/g, ""));
+              return [num(s[s.length-1].textContent), num(s[0].textContent)];
+            }""")
+            return float(v[0]), float(v[1])
+
         checks = [
             ("scheme magma", '[data-scheme="magma"]'),
             ("scheme ember", '[data-scheme="ember"]'),
-            ("grid COARSE", '[data-res="36x34"]'),
-            ("grid FINE", '[data-res="140x80"]'),
-            ("window 30D", '[data-tf="30"]'),
-            ("window ALL", '[data-tf="0"]'),
-            ("leverage 5x", '[data-lev="5"]'),
+            ("grid COARSE", '[data-res="60x40"]'),
+            ("grid ULTRA", '[data-res="240x130"]'),
+            ("grid FINE", '[data-res="160x90"]'),
+            ("leverage LOW", '[data-lrange="2-10"]'),
+            ("leverage HIGH", '[data-lrange="50-125"]'),
+            ("leverage EXTREME", '[data-lrange="100-125"]'),
+            ("leverage ALL", '[data-lrange="2-125"]'),
             ("zoom in", "#hm-zin"),
             ("pan up", "#hm-pan-up"),
             ("reset", "#hm-reset"),
         ]
+        # A window holding <2 anchors, or the same anchors as a narrower one,
+        # renders identically - it must be gated off with a stated reason rather
+        # than shipped as a button that does nothing.
+        tfs = await page.evaluate("""() => [...document.querySelectorAll("[data-tf]")]
+          .map(b => ({d: b.getAttribute("data-tf"),
+                      off: b.hasAttribute("data-off"),
+                      why: b.title || ""}))""")
+        live = [t for t in tfs if not t["off"]]
+        if len(live) < 2:
+            ctl_bad.append(f"only {len(live)} usable timeframe(s)")
+        for t in tfs:
+            if t["off"] and len(t["why"]) < 10:
+                ctl_bad.append(f'timeframe {t["d"]} disabled without a reason')
+            if not t["off"] and not t["why"]:
+                ctl_bad.append(f'timeframe {t["d"]} has no anchor count')
+        checks += [(f'window {t["d"] or "ALL"}', f'[data-tf="{t["d"]}"]') for t in live]
+
         prev = base_sig
         for label, sel in checks:
             await page.click(sel)
@@ -316,31 +347,113 @@ async def run(path: str) -> int:
             if sig == prev:
                 ctl_bad.append(f"{label}: canvas unchanged after click")
             prev = sig
-        # the window control must change the reported model, not just pixels
-        await page.click('[data-tf="7"]')
+        # a window control must change the reported model, not just pixels
+        narrow = [t for t in live if t["d"] != "0"]
+        if narrow:
+            await page.click(f'[data-tf="{narrow[0]["d"]}"]')
+            await page.wait_for_timeout(220)
+            if await meta() == base_meta:
+                ctl_bad.append(
+                    f'{narrow[0]["d"]}D window did not change the model description')
+        await page.click("#hm-reset")
         await page.wait_for_timeout(220)
-        if await meta() == base_meta:
-            ctl_bad.append("7D window did not change the model description")
-        await page.click('[data-tf="0"]')
+
+        # ---- the two defects the user reported, probed directly ------------
+        # 1. zoom OUT must widen the visible band. The old clamp was max(1,..),
+        #    which made every zoom-out click a silent no-op.
+        lo0, hi0 = await band()
+        for _ in range(3):
+            await page.click("#hm-zout")
+            await page.wait_for_timeout(130)
+        lo1, hi1 = await band()
+        if not (hi1 - lo1) > (hi0 - lo0) * 1.05:
+            ctl_bad.append(
+                f"zoom out did not widen the band: {hi0-lo0:.0f} -> {hi1-lo1:.0f}")
+        if (await page.inner_text("#hm-zv")).startswith("1.00"):
+            ctl_bad.append("zoom readout stuck at 1.00x after zooming out")
+        # zoom in must narrow it again
+        for _ in range(5):
+            await page.click("#hm-zin")
+            await page.wait_for_timeout(110)
+        lo2, hi2 = await band()
+        if not (hi2 - lo2) < (hi1 - lo1):
+            ctl_bad.append("zoom in did not narrow the band")
+        # 2. FIT must restore the sourced window
+        await page.click("#hm-fit")
+        await page.wait_for_timeout(250)
+        lo3, hi3 = await band()
+        if abs((hi3 - lo3) - (hi0 - lo0)) > max(1.0, (hi0 - lo0) * 0.02):
+            ctl_bad.append(f"FIT did not restore the sourced band "
+                           f"({hi3-lo3:.0f} vs {hi0-lo0:.0f})")
+        # 3. the chart must be draggable
+        # The field is taller than the viewport, so its geometric centre sits
+        # below the fold and mouse.move() there never lands on it. Grab the
+        # middle of the part that is actually visible.
+        box = await page.eval_on_selector("#hm-canvas", """c => {
+            const r = c.getBoundingClientRect();
+            const top = Math.max(r.y + 8, 8);
+            const bot = Math.min(r.y + r.height - 8, window.innerHeight - 8);
+            return [r.x + r.width / 2, (top + bot) / 2, bot - top];
+        }""")
+        if box[2] < 80:
+            ctl_bad.append("heatmap not visible enough in the viewport to drag")
+        await page.click("#hm-zin")          # zoomed in, so panning has headroom
         await page.wait_for_timeout(200)
-        # threshold slider
+        before = await canvas_sig()
+        await page.mouse.move(box[0], box[1])
+        await page.mouse.down()
+        for dy in (14, 28, 46, 70):
+            await page.mouse.move(box[0], box[1] + dy)
+            await page.wait_for_timeout(45)
+        await page.mouse.up()
+        await page.wait_for_timeout(260)
+        if await canvas_sig() == before:
+            ctl_bad.append("dragging the field did not pan the chart")
+        await page.click("#hm-reset")
+        await page.wait_for_timeout(200)
+        # threshold slider - baseline taken immediately before the change, or
+        # the comparison is against unrelated state and passes vacuously
+        pre_thr = await canvas_sig()
         await page.evaluate("""() => {
           const r = document.getElementById("hm-thr");
           r.value = 60; r.dispatchEvent(new Event("input", {bubbles:true}));
         }""")
         await page.wait_for_timeout(250)
-        if await canvas_sig() == prev:
+        if await canvas_sig() == pre_thr:
             ctl_bad.append("threshold slider had no effect")
-        # turning every leverage tier off must be refused
-        for lv in ("5", "10", "25", "50", "100"):
-            el = await page.query_selector(f'[data-lev="{lv}"]')
-            if await el.get_attribute("data-on"):
-                await page.click(f'[data-lev="{lv}"]')
-                await page.wait_for_timeout(60)
-        left = await page.evaluate(
-            "() => document.querySelectorAll('[data-lev][data-on]').length")
-        if left < 1:
-            ctl_bad.append("all leverage tiers could be switched off")
+        await page.evaluate("""() => {
+          const r = document.getElementById("hm-thr");
+          r.value = 0; r.dispatchEvent(new Event("input", {bubbles:true}));
+        }""")
+        await page.wait_for_timeout(200)
+
+        # 4. an inverted leverage range would empty the model and blank the
+        #    field; it must collapse to at least one tier instead.
+        async def set_lev(which: str, val: int) -> None:
+            await page.fill(f"#hm-{which}", str(val))
+            await page.dispatch_event(f"#hm-{which}", "change")
+            await page.wait_for_timeout(200)
+
+        await set_lev("lmin", 90)
+        await set_lev("lmax", 10)          # inverted on purpose
+        lmin = int(await page.input_value("#hm-lmin"))
+        lmax = int(await page.input_value("#hm-lmax"))
+        if lmin > lmax:
+            ctl_bad.append(f"inverted leverage range survived ({lmin}-{lmax})")
+        if "0 leverage tiers" in await meta():
+            ctl_bad.append("leverage range emptied the model")
+        # out-of-range input must clamp, not propagate
+        await set_lev("lmin", -40)
+        await set_lev("lmax", 9999)
+        lmin = int(await page.input_value("#hm-lmin"))
+        lmax = int(await page.input_value("#hm-lmax"))
+        if not (2 <= lmin <= 125 and 2 <= lmax <= 125):
+            ctl_bad.append(f"leverage inputs did not clamp ({lmin}-{lmax})")
+        await page.click('[data-lrange="2-125"]')
+        await page.wait_for_timeout(200)
+        left = int(await page.input_value("#hm-lmax")) - \
+            int(await page.input_value("#hm-lmin")) + 1
+
         real_cerr = [x for x in cerr if "fonts.g" not in x and "ERR_" not in x]
         if ctl_bad or real_cerr:
             failures += 1
@@ -349,7 +462,7 @@ async def run(path: str) -> int:
                 print(f"       - {x}")
         else:
             print(f"PASS heatmap controls  {len(checks)} controls recompute, "
-                  f"threshold live, leverage floor held at {left}")
+                  f"zoom/pan/fit live, {left} leverage tiers modelled")
         await page.close()
 
         # ---- live behaviour: the parts that only exist at runtime ----------

@@ -352,6 +352,9 @@ GEO = [
 PRICE_ANCHORS = [
     dict(date="2026-08-04T20:00:00Z", price=63465.20, source="YCharts", tier=3,
          url="https://ycharts.com/indicators/bitcoin_price", note="Daily close."),
+    dict(date="2026-08-10T20:00:00Z", price=64848.91, source="Fortune", tier=3,
+         url="https://fortune.com/article/price-of-bitcoin-08-10-2026/",
+         note="Monday open, reported at 64,848.91."),
     dict(date="2026-08-21T20:00:00Z", price=76712.47, source="Fortune", tier=3,
          url="https://fortune.com/article/price-of-bitcoin-08-21-2026/",
          note="Reported level for the session."),

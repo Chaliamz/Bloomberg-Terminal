@@ -19,6 +19,7 @@ timestamp*, so the terminal shows the true age rather than a fresh-looking lie.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import time
@@ -32,7 +33,7 @@ __all__ = [
     "Quote", "Headline", "Gauge", "Liquidations", "GeoEvent", "Snapshot",
     "SOURCES", "RELEASE_CLOCK", "load", "save", "scan", "merge", "age_seconds",
     "liquidation_ladder", "liquidation_heatmap", "PriceAnchor", "HEAT_RAMP",
-    "HEAT_RAMPS", "Equity", "Earning",
+    "HEAT_RAMPS", "Equity", "Earning", "leverage_tiers",
 ]
 
 UA = "macro-radar/1.1 (institutional macro terminal; contact: operator)"
@@ -249,10 +250,25 @@ HEAT_RAMPS: dict[str, tuple[str, ...]] = {
 HEAT_RAMP = HEAT_RAMPS["viridis"]
 
 
+def leverage_tiers(lo: int = 2, hi: int = 125) -> tuple[int, ...]:
+    """Every integer leverage tier in [lo, hi].
+
+    Modelling four round tiers was the earlier simplification and it is what made
+    the field look like a handful of stripes. Venues offer the whole spectrum and
+    traders use it, so every tier gets a level. The density that results near the
+    price is emergent - at high leverage consecutive tiers are only
+    ``P/(n(n+1))`` apart, so dozens land in one price bin - rather than imposed
+    by a weighting fudge.
+    """
+    lo = max(2, int(lo))
+    hi = max(lo, int(hi))
+    return tuple(range(lo, hi + 1))
+
+
 def liquidation_heatmap(
     anchors: list["PriceAnchor"],
     *,
-    levels: tuple[int, ...] = (10, 25, 50, 100),
+    levels: tuple[int, ...] | None = None,
     columns: int = 36,
     rows: int = 34,
     lo: float | None = None,
@@ -263,8 +279,9 @@ def liquidation_heatmap(
     The model, stated so it can be argued with:
 
     1.  At each observed price, positions opened there at leverage N would
-        liquidate at ``P*(1-1/N)`` (longs) and ``P*(1+1/N)`` (shorts). Those
-        levels are added to a pending set.
+        liquidate at ``P*(1-1/N)`` (longs) and ``P*(1+1/N)`` (shorts), for every
+        integer tier in the modelled leverage range. Those levels are added to a
+        pending set, each weighted equally.
     2.  A pending level is REMOVED when price is later observed to have swept
         through it - that is the liquidation actually occurring.
     3.  Between two observations nothing is known, so the pending set is held
@@ -275,6 +292,13 @@ def liquidation_heatmap(
     computed from real observed prices; it is NOT open-interest-weighted,
     because that needs per-exchange position data. Both facts belong on the page.
     """
+    # omitted -> the full spectrum; explicitly empty -> a refusal, not a silent
+    # substitution. The JS port draws the same distinction, or the two engines
+    # would disagree on levels=[].
+    if levels is None:
+        levels = leverage_tiers()
+    if not levels:
+        return {"ok": False, "reason": "no leverage tiers in the model"}
     pts = sorted(anchors, key=lambda a: a.date)
     if len(pts) < 2 or columns < 2 or rows < 2:
         return {"ok": False, "reason": "need at least two dated price anchors"}
@@ -319,15 +343,21 @@ def liquidation_heatmap(
                 pending.append((a.price * (1 - 1.0 / n), n, "long"))
                 pending.append((a.price * (1 + 1.0 / n), n, "short"))
             last_price = a.price
-        for level, n, _side in pending:
+        for level, _n, _side in pending:
             if lo <= level <= hi:
-                # weight by leverage: a 100x level is a tighter, denser cluster
-                grid[c][row_of(level)] += n / 10.0
+                # Uniform weight per (anchor, tier, side). Any leverage-dependent
+                # weight would be an invented distribution of open interest; the
+                # bright band near price comes from tier spacing alone.
+                grid[c][row_of(level)] += 1.0
 
     peak = max((v for col in grid for v in col), default=0.0)
     if peak <= 0:
         return {"ok": False, "reason": "no pending levels fell inside the price range"}
-    norm = [[round(v / peak, 4) for v in col] for col in grid]
+    # floor(x+0.5), NOT round() and NOT JS Math.round(): Python rounds halves
+    # to even and Math.round mishandles 0.49999999999999994. With integer cell
+    # counts a tie is reachable (peak=32, v=1 -> 312.5), so the two engines
+    # would land in different colour buckets. Both now use this exact form.
+    norm = [[math.floor(v / peak * 1e4 + 0.5) / 1e4 for v in col] for col in grid]
 
     return {
         "ok": True, "columns": columns, "rows": rows, "lo": lo, "hi": hi,
