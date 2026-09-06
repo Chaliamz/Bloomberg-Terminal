@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import glob
+import re
 import os
 import sys
 
@@ -125,6 +126,8 @@ STATIC = """() => {
   if (n("[data-lrange]") < 5) bad.push("leverage range presets missing");
   if (n("[data-res]") < 4) bad.push("too few grid resolutions");
   if (n("[data-ct]") < 5) bad.push("chart-type controls missing");
+  if (n("[data-bar]") < 6) bad.push("bar-interval controls missing");
+  if (!document.querySelector("[data-lauto]")) bad.push("auto leverage missing");
   if (!document.getElementById("hm-hair")) bad.push("crosshair missing");
   if (!document.getElementById("hm-tip")) bad.push("readout missing");
   if (!document.getElementById("hm-lmin") || !document.getElementById("hm-lmax"))
@@ -321,6 +324,9 @@ async def run(path: str) -> int:
             ("leverage HIGH", '[data-lrange="50-125"]'),
             ("leverage EXTREME", '[data-lrange="100-125"]'),
             ("leverage ALL", '[data-lrange="2-125"]'),
+            ("bar 1D", '[data-bar="86400000"]'),
+            ("bar 1W", '[data-bar="604800000"]'),
+            ("bar AUTO", '[data-bar="0"]'),
             ("chart OHLC bars", '[data-ct="bar"]'),
             ("chart area", '[data-ct="area"]'),
             ("chart line", '[data-ct="line"]'),
@@ -474,6 +480,81 @@ async def run(path: str) -> int:
         await page.wait_for_timeout(200)
         if not await page.is_hidden("#hm-tip"):
             ctl_bad.append("crosshair readout did not clear on leave")
+
+        # 6. scrolling the FIELD must scale TIME: zooming out brings more
+        #    observations on screen. Previously the field wheel drove the price
+        #    axis, so zooming out there never produced a single extra bar.
+        async def model() -> tuple[int, int]:
+            t = await meta()
+            obs = re.search(r"(\d+) observations", t)
+            bars = re.search(r"(\d+) (?:\d+)?[HDW] bars", t)
+            return (int(obs.group(1)) if obs else -1,
+                    int(bars.group(1)) if bars else -1)
+
+        await page.click("#hm-reset")
+        await page.wait_for_timeout(260)
+        fbox = await page.eval_on_selector("#hm-canvas", """c => {
+            const r = c.getBoundingClientRect();
+            const top = Math.max(r.y + 10, 10);
+            const bot = Math.min(r.y + r.height - 10, window.innerHeight - 10);
+            return [r.x + r.width / 2, (top + bot) / 2, bot - top];
+        }""")
+        if fbox[2] < 60:
+            ctl_bad.append("field not visible enough to scroll")
+        else:
+            await page.mouse.move(fbox[0], fbox[1])
+            wide_obs, _ = await model()
+            for _ in range(6):
+                await page.mouse.wheel(0, -300)     # zoom IN on time
+                await page.wait_for_timeout(120)
+            near_obs, _ = await model()
+            if not near_obs < wide_obs:
+                ctl_bad.append(
+                    f"scrolling the field in did not narrow the series: "
+                    f"{wide_obs} -> {near_obs} observations")
+            for _ in range(10):
+                await page.mouse.wheel(0, 300)      # zoom OUT on time
+                await page.wait_for_timeout(120)
+            back_obs, _ = await model()
+            if not back_obs > near_obs:
+                ctl_bad.append(
+                    f"scrolling the field out did not bring more observations: "
+                    f"{near_obs} -> {back_obs}")
+            # and the field wheel must NOT be moving the price band
+            await page.click("#hm-reset")
+            await page.wait_for_timeout(240)
+            plo, phi = await band()
+            await page.mouse.move(fbox[0], fbox[1])
+            await page.mouse.wheel(0, -300)
+            await page.wait_for_timeout(240)
+            zv = await page.inner_text("#hm-zv")
+            if not zv.startswith("1.00"):
+                ctl_bad.append(f"field wheel changed the PRICE zoom ({zv})")
+
+        # 7. liquidity must scale with the timeframe: a long window models more
+        #    leverage tiers than a short one, because its band is wider.
+        await page.click("#hm-reset")
+        await page.wait_for_timeout(240)
+
+        async def tiers_now() -> int:
+            m2 = re.search(r"(\d+) leverage tiers", await meta())
+            return int(m2.group(1)) if m2 else -1
+
+        wide_tiers = await tiers_now()
+        short = [t for t in live if t["d"] not in ("0",)]
+        if short:
+            await page.click(f'[data-tf="{short[0]["d"]}"]')
+            await page.wait_for_timeout(300)
+            short_tiers = await tiers_now()
+            if not short_tiers < wide_tiers:
+                ctl_bad.append(
+                    f"liquidity did not scale with the timeframe: "
+                    f"{short[0]['d']}D models {short_tiers} tiers vs "
+                    f"{wide_tiers} on ALL")
+            if "(auto)" not in await meta():
+                ctl_bad.append("leverage floor is not being derived")
+        await page.click("#hm-reset")
+        await page.wait_for_timeout(240)
 
         # threshold slider - baseline taken immediately before the change, or
         # the comparison is against unrelated state and passes vacuously

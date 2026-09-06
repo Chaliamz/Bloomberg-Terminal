@@ -274,17 +274,26 @@ class TestDataIntegrity(unittest.TestCase):
         self.assertNotIn("g.setLineDash([16,11])", js)
         self.assertNotIn("g.arc(p[0],p[1],8", js)
 
-    def test_candles_never_invent_an_intrabar_range(self):
-        """Wicks may not extend past the two observations that form the body."""
+    def test_bars_are_built_from_observations_not_invented(self):
+        """O/H/L/C must all come from prints inside the bucket."""
         js = terminal.JS
-        self.assertIn("var top=Math.min(a.y,b.y), bot=Math.max(a.y,b.y)", js)
-        self.assertIn("no invented range", js)
-        # the wick is drawn between top and bot and nowhere else: no term may
-        # push a drawn extreme outside the observed pair
+        self.assertIn("function buckets(pts, ms)", js)
+        # high and low may only ever move to an observed price
+        self.assertIn("if(pts[i].price>cur.h) cur.h=pts[i].price;", js)
+        self.assertIn("if(pts[i].price<cur.l) cur.l=pts[i].price;", js)
+        # the wick spans high to low and nothing else
         wick = re.findall(r"g\.moveTo\(cx,(\w+)\); g\.lineTo\(cx,(\w+)\)", js)
         self.assertTrue(wick, "no wick drawn")
         for a, b in wick:
-            self.assertEqual({a, b}, {"top", "bot"}, f"wick drawn to {a}..{b}")
+            self.assertEqual({a, b}, {"yH", "yL"}, f"wick drawn to {a}..{b}")
+        # a single-print bucket must not be given a body
+        self.assertIn("a doji is a line, never a fabricated body", js)
+
+    def test_bucket_open_and_close_are_first_and_last_print(self):
+        js = terminal.JS
+        self.assertIn("o:pts[i].price", js)
+        self.assertIn("cur.c=pts[i].price;", js)
+        self.assertNotIn("cur.o=", js, "open must never be reassigned after the first print")
 
     def test_series_positions_come_from_timestamps_not_grid_cells(self):
         """Quantising to a cell put the track hours away from the observation."""
@@ -292,18 +301,58 @@ class TestDataIntegrity(unittest.TestCase):
         self.assertIn("function py(v)", terminal.JS)
         self.assertNotIn("(a.col+0.5)*CW", terminal.JS)
 
-    def test_candle_width_uses_the_median_gap(self):
-        """The minimum gap is one 3h21m intraday pair; sizing to it made hairlines."""
-        self.assertIn("gaps[Math.floor(gaps.length/2)]", terminal.JS)
-        self.assertNotIn("gap=Math.min(gap, LAST[i].x", terminal.JS)
+    def test_bar_width_comes_from_the_bucket_slot(self):
+        self.assertIn("var slot=tspan>0 ? BMS/tspan*cv.width", terminal.JS)
+        self.assertNotIn("gaps[Math.floor(gaps.length/2)]", terminal.JS)
+
+    def test_scrolling_the_field_scales_time_not_price(self):
+        """Field scroll was bound to price zoom, so zooming out never added bars."""
+        js = terminal.JS
+        self.assertIn("function tzoom(f)", js)
+        m = re.search(r'cv\.addEventListener\("wheel",function\(ev\)\{([^}]*)\}', js)
+        self.assertIsNotNone(m, "no wheel handler on the field")
+        self.assertIn("tzoom(", m.group(1))
+        # `tzoom(` contains `zoom(`, so the price-zoom check needs a boundary
+        self.assertIsNone(re.search(r"(?<![A-Za-z])zoom\(ev\.deltaY", m.group(1)),
+                          "field wheel still drives the price zoom")
+        # and a zoom that would empty the model is refused, not clamped blindly
+        self.assertIn("if(windowed().length<2) ST.tz=prev;", js)
+
+    def test_leverage_floor_is_derived_from_the_band(self):
+        """Liquidity must scale with the timeframe, from the liquidation formula."""
+        js = terminal.JS
+        self.assertIn("function autoFloor(pts, lo, hi)", js)
+        self.assertIn("need=Math.min(need, P/(P-lo));", js)
+        self.assertIn("need=Math.min(need, P/(hi-P));", js)
+        self.assertIn("ST.lauto", js)
+        self.assertIn('data-lauto', self.doc)
+
+    def test_price_band_follows_the_window(self):
+        """A 24h view drawn against a month's range cannot scale liquidity."""
+        self.assertIn("function fitBand(pts)", terminal.JS)
+        self.assertIn("function bounds(pts)", terminal.JS)
 
     def test_page_copy_matches_what_is_actually_drawn(self):
         """Copy described a dashed line and 'no candle is drawn' after candles shipped."""
         low = self.doc.lower()
         for stale in ("price line is drawn dashed", "no candle is drawn",
-                      "four dated btc closes"):
+                      "four dated btc closes",
+                      "body spans one observation to the next",
+                      "no wick is drawn past the body"):
             self.assertNotIn(stale, low, f"stale copy on the page: {stale!r}")
-        self.assertIn("no wick is", low)
+        self.assertIn("a doji", low)
+        # the hint must describe the interaction the page actually has
+        self.assertIn("scroll the field to zoom <b>time</b>", self.doc)
+        self.assertIn("zoom <b>price</b>", self.doc)
+
+    def test_numeric_cells_tolerate_a_wider_face(self):
+        """fonts.googleapis.com is egress-blocked in the harness, so no browser
+        check here ever measures the real face. Fixed px on the big numerals
+        would overflow silently in a browser that does load it."""
+        for sel in (".q .val{", ".q.derived .val{", ".tk{"):
+            i = terminal.CSS.index(sel)
+            block = terminal.CSS[i:i + 260]
+            self.assertIn("clamp(", block, f"{sel} pins a fixed font-size")
 
     def test_price_axis_is_a_zoom_control(self):
         for ev in ("mousedown", "wheel"):

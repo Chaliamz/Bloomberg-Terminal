@@ -29,9 +29,9 @@ def e(x: object) -> str:
 
 
 FONTS = ("https://fonts.googleapis.com/css2?"
-         "family=Chakra+Petch:wght@600;700&"
-         "family=Inter:wght@400;500;600&"
-         "family=JetBrains+Mono:wght@400;500;700&display=swap")
+         "family=Space+Grotesk:wght@600;700&"
+         "family=Barlow:wght@400;500;600&"
+         "family=Azeret+Mono:wght@400;500;700&display=swap")
 
 CSS = r"""
 :root{
@@ -51,12 +51,13 @@ CSS = r"""
      step gaps 0.086-0.110, 15.9:1 contrast at the top against the ground. */
   --h0:#0D1030; --h1:#241A5E; --h2:#28407F; --h3:#22698C;
   --h4:#2A9284; --h5:#63B85C; --h6:#C8CC46; --h7:#F2E85C;
-  /* JetBrains Mono carries the numbers: it has true tabular figures and a
-     slashed zero, which matters more here than anything else on the page.
-     Chakra Petch is the angular display face, IBM Plex Sans the reading face. */
-  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-  --body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --disp:"Chakra Petch","Inter",system-ui,sans-serif;
+  /* Azeret Mono carries the numbers - a squarer, more mechanical figure than
+     the previous stack, with tabular widths. Space Grotesk is the display face
+     and Barlow the reading face: narrower than Inter, so the dense tables fit
+     more per row without dropping size. */
+  --mono:"Azeret Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --disp:"Space Grotesk","Barlow",system-ui,sans-serif;
 }
 *{box-sizing:border-box}
 html{background:var(--void)}
@@ -143,7 +144,7 @@ img{max-width:100%}
 .tape:hover .tape-run{animation-play-state:paused}
 @keyframes roll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .tk{display:flex;align-items:baseline;gap:9px;padding:9px 22px;border-right:1px solid var(--edge);
-  font-family:var(--mono);font-size:13.5px;white-space:nowrap}
+  font-family:var(--mono);font-size:clamp(11.5px,1.05vw,13.5px);white-space:nowrap}
 .tk .s{color:var(--ink-2);letter-spacing:.12em;font-weight:500}
 .tk .v{color:var(--ink);font-variant-numeric:tabular-nums}
 .tk .d{font-size:12px;font-variant-numeric:tabular-nums}
@@ -197,14 +198,15 @@ main{max-width:1720px;margin:0 auto;padding:14px 18px 64px;
    2 columns, and the derived strip closes the board instead of leaving a gap. */
 .q.derived{grid-column:1/-1;flex-direction:row;align-items:baseline;gap:14px;
   flex-wrap:wrap;background:linear-gradient(90deg,var(--raise),var(--panel))}
-.q.derived .val{color:var(--gold);font-size:24px}
+.q.derived .val{color:var(--gold);font-size:clamp(18px,1.7vw,24px)}
 .q.derived .lab{flex:none}
 .q.derived .src{margin-left:auto}
 .q:hover{background:var(--raise)}
 .q .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.17em;text-transform:uppercase;
   color:var(--dim);display:flex;justify-content:space-between;gap:6px;align-items:center}
-.q .val{font-family:var(--mono);font-size:29px;font-weight:500;color:var(--ink);
-  font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1.1}
+.q .val{font-family:var(--mono);font-size:clamp(19px,2.0vw,29px);font-weight:500;
+  color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.02em;
+  line-height:1.12;min-width:0;overflow-wrap:anywhere}
 .q .dlt{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
 .q .src{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.06em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -423,7 +425,7 @@ input[type=range]{width:104px;accent-color:var(--gold);cursor:pointer}
 .hm-scale i{font-style:normal;white-space:nowrap}
 .hm-bar{flex:1 1 auto;border:1px solid var(--edge);border-radius:2px;min-height:60px}
 .hm{grid-row:1;border:1px solid var(--edge);background:#440154;width:100%;
-  display:block;aspect-ratio:1152/832}
+  display:block;aspect-ratio:1600/760}
 .hm-price{grid-row:1;display:flex;flex-direction:column;justify-content:space-between;
   color:var(--faint);padding:1px 0;font-size:10px;text-align:left}
 .hm-time{grid-column:2;grid-row:2;display:flex;justify-content:space-between;
@@ -643,12 +645,14 @@ function heatmapCompute(anchors, opts){
   var g=cv.getContext("2d"); if(!g) return;
   var BASE={lo:D.window&&D.window.lo, hi:D.window&&D.window.hi};
   function tiers(a,b){var o=[];for(var i=a;i<=b;i++)o.push(i);return o;}
-  var ST={days:0, lmin:2, lmax:125, cols:160, rows:90,
-          scheme:"viridis", thr:0, zoom:1, pan:0, chart:"candle"};
+  var ST={days:0, lmin:2, lmax:125, lauto:true, cols:160, rows:90,
+          scheme:"viridis", thr:0, zoom:1, pan:0, chart:"candle",
+          tz:1, tpan:0, bar:0};
   /* screen positions of the drawn observations, rebuilt on every draw and read
      by the crosshair. Declared here so a crosshair move before the first draw
      finds an empty array rather than throwing. */
   var LAST=[];
+  var BARS=[];
   /* the band currently painted, so the crosshair reports the price under the
      cursor rather than the un-zoomed sourced band. */
   var CUR={lo:0, hi:1};
@@ -663,18 +667,108 @@ function heatmapCompute(anchors, opts){
     var i=Math.floor(f), k=f-i, A=st[i], B=st[Math.min(i+1,st.length-1)];
     return [A[0]+(B[0]-A[0])*k, A[1]+(B[1]-A[1])*k, A[2]+(B[2]-A[2])*k];
   }
-  function windowed(){
-    var all=D.anchors;
-    if(!ST.days) return all;
-    var last=Date.parse(all[all.length-1].date);
-    var cut=last-ST.days*86400000;
-    return all.filter(function(a){return Date.parse(a.date)>=cut;});
+  /* ---- time viewport -------------------------------------------------
+     The window is continuous, not a set of fixed buckets: the timeframe pills
+     seed it and the wheel over the field scales it, so scrolling out really
+     does bring more observations on screen. */
+  var FULL={lo:Date.parse(D.anchors[0].date),
+            hi:Date.parse(D.anchors[D.anchors.length-1].date)};
+  function tWindow(){
+    var full=Math.max(1, FULL.hi-FULL.lo);
+    var span=(ST.days? ST.days*86400000 : full)/ST.tz;
+    span=Math.max(3600000, Math.min(full*1.5, span));
+    var hi=FULL.hi+ST.tpan*full;
+    return {lo:hi-span, hi:hi};
   }
-  function bounds(){
-    if(BASE.lo==null||BASE.hi==null) return {};
-    var mid=(BASE.lo+BASE.hi)/2 + ST.pan*(BASE.hi-BASE.lo);
-    var half=(BASE.hi-BASE.lo)/2/ST.zoom;   /* zoom < 1 widens the window */
+  function windowed(){
+    var w=tWindow();
+    return D.anchors.filter(function(a){
+      var t=Date.parse(a.date); return t>=w.lo && t<=w.hi;
+    });
+  }
+  /* ---- price band follows the window ----------------------------------
+     A 24h view must not be drawn against the whole month's price range: the
+     band is the extent of what is actually in view, padded. This is what makes
+     the leverage model below respond to the timeframe at all. */
+  function fitBand(pts){
+    if(!pts.length) return {lo:BASE.lo, hi:BASE.hi};
+    var lo=pts[0].price, hi=pts[0].price;
+    for(var i=1;i<pts.length;i++){
+      if(pts[i].price<lo) lo=pts[i].price;
+      if(pts[i].price>hi) hi=pts[i].price;
+    }
+    var pad=Math.max((hi-lo)*0.14, hi*0.006);
+    return {lo:lo-pad, hi:hi+pad};
+  }
+  function bounds(pts){
+    var b=fitBand(pts);
+    if(b.lo==null||b.hi==null||!(b.hi>b.lo)) return {};
+    var mid=(b.lo+b.hi)/2 + ST.pan*(b.hi-b.lo);
+    var half=(b.hi-b.lo)/2/ST.zoom;   /* zoom < 1 widens the window */
     return {lo:mid-half, hi:mid+half};
+  }
+  /* ---- which leverage tiers can actually liquidate inside this view ----
+     A position at leverage n opened at P liquidates at P(1-1/n) long and
+     P(1+1/n) short. For that level to fall inside the band [lo,hi] the tier
+     must satisfy n >= P/(P-lo) on the long side and n >= P/(hi-P) on the
+     short. Tiers below that threshold put their levels off-screen and add
+     nothing, so the modelled floor IS that threshold.
+
+     This is why the field fills as the timeframe lengthens: a 24h band is
+     narrow, so only very high leverage reaches into it; a three-month band is
+     wide, so 3x and 5x positions land inside too and the accumulated liquidity
+     is genuinely larger. The relationship is derived from the liquidation
+     formula, not tuned to look right. */
+  function autoFloor(pts, lo, hi){
+    var need=125;
+    for(var i=0;i<pts.length;i++){
+      var P=pts[i].price;
+      if(P>lo) need=Math.min(need, P/(P-lo));
+      if(hi>P) need=Math.min(need, P/(hi-P));
+    }
+    if(!isFinite(need)) need=2;
+    return Math.max(2, Math.min(125, Math.ceil(need)));
+  }
+  /* ---- OHLC buckets ---------------------------------------------------
+     No exchange OHLC is reachable from here, so a bar is built by aggregating
+     the observations that fall inside it: open is the first print in the
+     bucket, close the last, high and low the extremes OF THOSE PRINTS. Nothing
+     is interpolated and no intrabar range is invented. A bucket holding one
+     print is a doji, which is the honest rendering of one observation - and
+     zooming out merges prints, so the bars gain real bodies and real wicks
+     exactly as they do in any charting package. */
+  var STEPS=[3600000,10800000,21600000,43200000,86400000,
+             172800000,259200000,432000000,604800000];
+  function barMs(w, pts){
+    if(ST.bar) return ST.bar;
+    /* AUTO is chosen from OBSERVATION DENSITY, not from the raw time span.
+       Sizing by span alone gave every bucket a single print, so every bar was a
+       doji and the series stopped reading as a chart. Here the smallest step
+       that aggregates roughly a couple of prints per bar wins - that is what
+       produces a real body and a real wick. It also scales the right way on its
+       own: when the live scanner is running and prints arrive every minute, the
+       same rule picks a fine bucket instead of a coarse one. */
+    var want=Math.max(3, Math.round(pts.length/2.2));
+    for(var i=0;i<STEPS.length;i++){
+      if(buckets(pts, STEPS[i]).length<=want) return STEPS[i];
+    }
+    return STEPS[STEPS.length-1];
+  }
+  function buckets(pts, ms){
+    var out=[], cur=null;
+    for(var i=0;i<pts.length;i++){
+      var t=Date.parse(pts[i].date), k=Math.floor(t/ms);
+      if(!cur||cur.k!==k){
+        cur={k:k, t0:k*ms, t1:k*ms+ms, o:pts[i].price, h:pts[i].price,
+             l:pts[i].price, c:pts[i].price, n:1, first:pts[i], last:pts[i]};
+        out.push(cur);
+      } else {
+        cur.c=pts[i].price; cur.last=pts[i]; cur.n++;
+        if(pts[i].price>cur.h) cur.h=pts[i].price;
+        if(pts[i].price<cur.l) cur.l=pts[i].price;
+      }
+    }
+    return out;
   }
   function fmt(n){
     return n>=1000 ? n.toLocaleString("en-US",{maximumFractionDigits:0})
@@ -694,8 +788,13 @@ function heatmapCompute(anchors, opts){
       if(price) price.innerHTML=""; if(time) time.innerHTML="";
       return;
     }
-    var bb=bounds();
-    var H=heatmapCompute(pts,{levels:tiers(ST.lmin,ST.lmax), columns:ST.cols,
+    var bb=bounds(pts);
+    /* AUTO derives the floor from the band actually in view, so the modelled
+       liquidity scales with the timeframe instead of being fixed at 2x-125x. */
+    var lo0=ST.lauto? autoFloor(pts, bb.lo, bb.hi) : ST.lmin;
+    var hi0=ST.lauto? 125 : ST.lmax;
+    if(ST.lauto){ ST.lmin=lo0; ST.lmax=hi0; syncLev(); }
+    var H=heatmapCompute(pts,{levels:tiers(lo0,hi0), columns:ST.cols,
                               rows:ST.rows, lo:bb.lo, hi:bb.hi});
     if(!H.ok){
       g.fillStyle="#0A0C14"; g.fillRect(0,0,cv.width,cv.height);
@@ -715,91 +814,87 @@ function heatmapCompute(anchors, opts){
                    Math.ceil(CW),Math.ceil(CH));
       }
     }
-    /* ---- price series -------------------------------------------------
-       Positions are computed from the real timestamp and price, NOT from the
-       quantised grid cell the old overlay used: at COARSE resolution a cell is
-       five hours wide and the track visibly sat in the wrong place.
+    /* ---- price series ---------------------------------------------------
+       Bars are OHLC buckets over the observations in view (see buckets()):
+       open is the first print in the bucket, close the last, high and low the
+       extremes of those prints. A one-print bucket is a doji - that is what one
+       observation looks like, and inventing a body for it would be a lie.
+       Zoom out and prints merge, so bodies and wicks become real.
 
-       Candle bodies span observation to observation - open is the previous
-       observation, close is this one. That is exactly what is known. The
-       intrabar high and low were never observed, so the wick is drawn only to
-       the body extremes and never beyond: no invented range. Where a real
-       intraday range exists (4 September carries two prints) the body shows it.
-
-       Up is near-white and down is hot red rather than the usual green/red:
-       green disappears into the middle of every sequential ramp on the field
-       behind it, and a series you cannot see is not a series. */
+       Up is near-white and down is hot red rather than green/red: green
+       disappears into the middle of every sequential ramp on the field behind
+       it, and a series you cannot see is not a series. */
     var t0m=Date.parse(H.t0), t1m=Date.parse(H.t1), tspan=t1m-t0m;
     function px(iso){ return tspan>0 ? (Date.parse(iso)-t0m)/tspan*cv.width : cv.width/2; }
+    function pxt(ms){ return tspan>0 ? (ms-t0m)/tspan*cv.width : cv.width/2; }
     function py(v){ return (1-(v-H.lo)/(H.hi-H.lo))*cv.height; }
     LAST=H.anchors.map(function(a){
       return {x:px(a.date), y:py(a.price), price:a.price, date:a.date,
               source:a.source, tier:a.tier};
     });
-    var gaps=[], i;
-    for(i=1;i<LAST.length;i++) gaps.push(LAST[i].x-LAST[i-1].x);
-    gaps.sort(function(a,b){return a-b;});
-    /* MEDIAN, not minimum: 4 September carries two prints 3h21m apart, and
-       sizing every candle to that one pair collapsed the series to hairlines. */
-    var gap=gaps.length?gaps[Math.floor(gaps.length/2)]:cv.width/12;
-    var bw=Math.max(3, Math.min(34, gap*0.68));
+    var BMS=barMs({lo:t0m, hi:t1m}, pts), BK=buckets(pts, BMS);
+    BARS=BK;
+    var slot=tspan>0 ? BMS/tspan*cv.width : cv.width/12;
+    var bw=Math.max(2, Math.min(48, slot*0.68));
 
-    g.save(); g.lineJoin="round"; g.lineCap="butt";
+    g.save(); g.lineJoin="miter"; g.lineCap="butt";
     if(ST.chart!=="off"){
       if(ST.chart==="line"||ST.chart==="area"){
         if(ST.chart==="area"){
           var grd=g.createLinearGradient(0,0,0,cv.height);
-          grd.addColorStop(0,"rgba(46,197,207,.40)");
+          grd.addColorStop(0,"rgba(46,197,207,.42)");
           grd.addColorStop(1,"rgba(46,197,207,0)");
           g.beginPath(); g.moveTo(LAST[0].x,cv.height);
           LAST.forEach(function(p){g.lineTo(p.x,p.y);});
           g.lineTo(LAST[LAST.length-1].x,cv.height); g.closePath();
           g.fillStyle=grd; g.fill();
         }
-        g.strokeStyle="rgba(5,6,10,.85)"; g.lineWidth=4.6;
+        g.strokeStyle="rgba(5,6,10,.85)"; g.lineWidth=4.6; g.lineJoin="round";
         g.beginPath(); LAST.forEach(function(p,k){k?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y);});
         g.stroke();
         g.strokeStyle="#7FE9F2"; g.lineWidth=1.9;
         g.beginPath(); LAST.forEach(function(p,k){k?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y);});
         g.stroke();
       } else {
-        for(i=1;i<LAST.length;i++){
-          var a=LAST[i-1], b=LAST[i], up=b.price>=a.price;
-          var top=Math.min(a.y,b.y), bot=Math.max(a.y,b.y);
-          var cx=b.x, h=Math.max(1.5,bot-top);
-          g.strokeStyle="rgba(4,5,9,.92)";
+        for(var i=0;i<BK.length;i++){
+          var b=BK[i];
+          var cx=Math.round(pxt(b.t0+BMS/2))+0.5;
+          var up=b.c>=b.o;
+          var col=up?"#EAF6FF":"#FF4D6D";
+          var yH=py(b.h), yL=py(b.l), yO=py(b.o), yC=py(b.c);
+          var top=Math.min(yO,yC), bot=Math.max(yO,yC);
           if(ST.chart==="bar"){
-            g.lineWidth=Math.max(3.4,bw*0.30);
-            g.beginPath(); g.moveTo(cx,top); g.lineTo(cx,bot); g.stroke();
-            g.beginPath(); g.moveTo(cx-bw*0.5,a.y); g.lineTo(cx,a.y);
-            g.moveTo(cx,b.y); g.lineTo(cx+bw*0.5,b.y); g.stroke();
-            g.strokeStyle=up?"#EAF6FF":"#FF4D6D";
-            g.lineWidth=Math.max(1.6,bw*0.16);
-            g.beginPath(); g.moveTo(cx,top); g.lineTo(cx,bot); g.stroke();
-            g.beginPath(); g.moveTo(cx-bw*0.5,a.y); g.lineTo(cx,a.y);
-            g.moveTo(cx,b.y); g.lineTo(cx+bw*0.5,b.y); g.stroke();
+            /* OHLC bar: wick with an open tick left and a close tick right */
+            g.strokeStyle=col; g.lineWidth=Math.max(1,Math.round(bw*0.12));
+            g.beginPath(); g.moveTo(cx,yH); g.lineTo(cx,yL); g.stroke();
+            g.beginPath();
+            g.moveTo(cx-bw*0.5,yO); g.lineTo(cx,yO);
+            g.moveTo(cx,yC); g.lineTo(cx+bw*0.5,yC);
+            g.stroke();
           } else {
-            g.lineWidth=Math.max(2.6,bw*0.22);
-            g.beginPath(); g.moveTo(cx,top); g.lineTo(cx,bot); g.stroke();
-            g.strokeStyle=up?"#EAF6FF":"#FF4D6D";
-            g.lineWidth=Math.max(1.2,bw*0.11);
-            g.beginPath(); g.moveTo(cx,top); g.lineTo(cx,bot); g.stroke();
-            g.fillStyle=up?"#EAF6FF":"#FF4D6D";
-            g.strokeStyle="rgba(4,5,9,.92)"; g.lineWidth=1.4;
-            g.beginPath(); g.rect(cx-bw/2,top,bw,h); g.fill(); g.stroke();
+            /* candle, drawn the way an exchange chart draws one: a 1px wick
+               through the centre and a body from open to close */
+            g.strokeStyle=col; g.lineWidth=Math.max(1,Math.round(slot*0.06));
+            g.beginPath(); g.moveTo(cx,yH); g.lineTo(cx,yL); g.stroke();
+            var h=bot-top;
+            if(h<1.15){
+              /* open == close: a doji is a line, never a fabricated body */
+              g.lineWidth=Math.max(2.2,Math.round(bw*0.2));
+              g.beginPath(); g.moveTo(cx-bw/2,Math.round(top)+0.5);
+              g.lineTo(cx+bw/2,Math.round(top)+0.5); g.stroke();
+            } else {
+              g.fillStyle=col;
+              g.fillRect(Math.round(cx-bw/2), Math.round(top),
+                         Math.max(1,Math.round(bw)), Math.max(1,Math.round(h)));
+            }
           }
         }
-        /* the first observation has no predecessor, so it is a mark, not a bar */
-        var f=LAST[0];
-        g.strokeStyle="rgba(4,5,9,.92)"; g.lineWidth=4.2;
-        g.beginPath(); g.moveTo(f.x-bw*0.5,f.y); g.lineTo(f.x+bw*0.5,f.y); g.stroke();
-        g.strokeStyle="#9FB2C9"; g.lineWidth=2;
-        g.beginPath(); g.moveTo(f.x-bw*0.5,f.y); g.lineTo(f.x+bw*0.5,f.y); g.stroke();
       }
-      /* the latest observation, marked the way a chart marks last price */
+      /* last price, marked the way an exchange chart marks it */
       var L=LAST[LAST.length-1];
       g.setLineDash([5,5]); g.strokeStyle="rgba(127,233,242,.55)"; g.lineWidth=1;
-      g.beginPath(); g.moveTo(0,L.y); g.lineTo(cv.width,L.y); g.stroke();
+      g.beginPath(); g.moveTo(0,Math.round(L.y)+0.5);
+      g.lineTo(cv.width,Math.round(L.y)+0.5); g.stroke();
       g.setLineDash([]);
     }
     g.restore();
@@ -823,10 +918,13 @@ function heatmapCompute(anchors, opts){
     if(bar) bar.style.background="linear-gradient(0deg,"+
       (D.ramps[ST.scheme]||D.ramps.viridis).join(",")+")";
     setText("hm-peak",H.peak.toFixed(1));
-    if(meta) meta.textContent=pts.length+" sourced anchors · "+
-      H.columns+"×"+H.rows+" grid · "+(ST.lmax-ST.lmin+1)+" leverage tiers "+
-      ST.lmin+"x-"+ST.lmax+"x · "+fmt(H.lo)+"-"+fmt(H.hi)+
-      " · zoom "+ST.zoom.toFixed(2)+"x";
+    if(meta){
+      var bl=BMS>=604800000?"1W":(BMS>=86400000?(BMS/86400000)+"D":(BMS/3600000)+"H");
+      meta.textContent=pts.length+" observations · "+BK.length+" "+bl+" bars · "+
+        H.columns+"×"+H.rows+" grid · "+(hi0-lo0+1)+" leverage tiers "+
+        lo0+"x-"+hi0+"x"+(ST.lauto?" (auto)":"")+" · "+
+        fmt(H.lo)+"-"+fmt(H.hi)+" · zoom "+ST.zoom.toFixed(2)+"x";
+    }
     setText("hm-zv",ST.zoom.toFixed(2)+"×");
   }
 
@@ -869,6 +967,18 @@ function heatmapCompute(anchors, opts){
   bindPills("[data-tf]",function(b){
     document.querySelectorAll("[data-tf]").forEach(function(o){o.removeAttribute("data-on");});
     b.setAttribute("data-on","1"); ST.days=parseInt(b.getAttribute("data-tf"),10);
+    /* a pill states a span, so it clears any accumulated scroll and pan */
+    ST.tz=1; ST.tpan=0;
+  });
+  bindPills("[data-bar]",function(b){
+    document.querySelectorAll("[data-bar]").forEach(function(o){o.removeAttribute("data-on");});
+    b.setAttribute("data-on","1"); ST.bar=parseInt(b.getAttribute("data-bar"),10);
+  });
+  bindPills("[data-lauto]",function(b){
+    ST.lauto=!ST.lauto;
+    if(ST.lauto) b.setAttribute("data-on","1"); else b.removeAttribute("data-on");
+    if(!ST.lauto){ ST.lmin=2; ST.lmax=125; }
+    syncLev();
   });
   bindPills("[data-res]",function(b){
     document.querySelectorAll("[data-res]").forEach(function(o){o.removeAttribute("data-on");});
@@ -891,7 +1001,10 @@ function heatmapCompute(anchors, opts){
   }
   bindPills("[data-lrange]",function(b){
     var r=b.getAttribute("data-lrange").split("-");
-    ST.lmin=+r[0]; ST.lmax=+r[1]; syncLev();
+    ST.lmin=+r[0]; ST.lmax=+r[1]; ST.lauto=false;
+    var ab=document.querySelector("[data-lauto]");
+    if(ab) ab.removeAttribute("data-on");
+    syncLev();
   });
   ["hm-lmin","hm-lmax"].forEach(function(id){
     var el=q(id); if(!el) return;
@@ -900,6 +1013,9 @@ function heatmapCompute(anchors, opts){
       if(isNaN(v)) v = id==="hm-lmin" ? 2 : 125;
       v=Math.min(125,Math.max(2,v));
       if(id==="hm-lmin") ST.lmin=v; else ST.lmax=v;
+      ST.lauto=false;
+      var ab=document.querySelector("[data-lauto]");
+      if(ab) ab.removeAttribute("data-on");
       /* an inverted range is an empty model: keep at least one tier */
       if(ST.lmin>ST.lmax){ if(id==="hm-lmin") ST.lmax=ST.lmin; else ST.lmin=ST.lmax; }
       syncLev(); draw();
@@ -920,10 +1036,18 @@ function heatmapCompute(anchors, opts){
   if(pu) pu.addEventListener("click",function(){ST.pan=Math.min(1,ST.pan+0.12/ST.zoom);draw();});
   if(pd) pd.addEventListener("click",function(){ST.pan=Math.max(-1,ST.pan-0.12/ST.zoom);draw();});
   var fit=q("hm-fit");
-  if(fit) fit.addEventListener("click",function(){ST.zoom=1;ST.pan=0;draw();});
+  if(fit) fit.addEventListener("click",function(){
+    ST.zoom=1; ST.pan=0; ST.tz=1; ST.tpan=0; draw();});
   if(rs) rs.addEventListener("click",function(){
-    ST.zoom=1; ST.pan=0; ST.thr=0; ST.lmin=2; ST.lmax=125;
+    ST.zoom=1; ST.pan=0; ST.thr=0; ST.lmin=2; ST.lmax=125; ST.lauto=true;
     ST.days=0; ST.cols=160; ST.rows=90; ST.scheme="viridis";
+    ST.tz=1; ST.tpan=0; ST.bar=0; ST.chart="candle";
+    document.querySelectorAll("[data-bar]").forEach(function(o){
+      o.toggleAttribute("data-on", o.getAttribute("data-bar")==="0"); });
+    document.querySelectorAll("[data-ct]").forEach(function(o){
+      o.toggleAttribute("data-on", o.getAttribute("data-ct")==="candle"); });
+    document.querySelectorAll("[data-lauto]").forEach(function(o){
+      o.setAttribute("data-on","1"); });
     if(thr){thr.value=0; setText("hm-thr-v","0.00");}
     document.querySelectorAll("[data-tf]").forEach(function(o){
       o.toggleAttribute("data-on", o.getAttribute("data-tf")==="0"); });
@@ -935,22 +1059,42 @@ function heatmapCompute(anchors, opts){
   });
 
   /* drag to pan the price axis, as on a real chart */
-  var dragging=false, lastY=0;
+  var dragging=false, lastY=0, lastX=0;
   cv.addEventListener("mousedown",function(ev){
-    dragging=true; lastY=ev.clientY; cv.style.cursor="grabbing"; ev.preventDefault();
+    dragging=true; lastY=ev.clientY; lastX=ev.clientX;
+    cv.style.cursor="grabbing"; ev.preventDefault();
   });
   addEventListener("mouseup",function(){dragging=false; cv.style.cursor="grab";});
   addEventListener("mousemove",function(ev){
     if(!dragging) return;
-    var dy=(ev.clientY-lastY)/Math.max(1,cv.getBoundingClientRect().height);
-    lastY=ev.clientY;
+    var r=cv.getBoundingClientRect();
+    var dy=(ev.clientY-lastY)/Math.max(1,r.height);
+    var dx=(ev.clientX-lastX)/Math.max(1,r.width);
+    lastY=ev.clientY; lastX=ev.clientX;
     ST.pan=Math.max(-3,Math.min(3,ST.pan+dy/ST.zoom));
+    /* dragging right walks backwards through time, as on any chart */
+    var prev=ST.tpan;
+    ST.tpan=Math.max(-1.2,Math.min(0.35,ST.tpan-dx/ST.tz));
+    if(windowed().length<2) ST.tpan=prev;
     draw();
   });
   cv.style.cursor="grab";
-  /* scroll to zoom the price axis, as on a real chart */
+  /* ---- time zoom -------------------------------------------------------
+     Scrolling the FIELD scales time, so zooming out brings more observations
+     on screen. Scrolling the price tags scales price. That is the split every
+     charting package uses, and the previous build had the field bound to price,
+     which is why zooming out there never produced more bars.
+
+     A zoom that would leave fewer than two observations on screen is refused
+     rather than clamped to an arbitrary number: two is what the model needs. */
+  function tzoom(f){
+    var prev=ST.tz;
+    ST.tz=Math.min(60,Math.max(0.35,ST.tz*f));
+    if(windowed().length<2) ST.tz=prev;
+    draw();
+  }
   cv.addEventListener("wheel",function(ev){
-    ev.preventDefault(); zoom(ev.deltaY<0?1.18:1/1.18);
+    ev.preventDefault(); tzoom(ev.deltaY<0?1.18:1/1.18);
   },{passive:false});
   bindPills("[data-ct]",function(b){
     document.querySelectorAll("[data-ct]").forEach(function(o){o.removeAttribute("data-on");});
@@ -1346,6 +1490,12 @@ def render_heatmap(snap) -> str:
         f'<i style="background:linear-gradient(90deg,{",".join(v)})"></i></button>'
         for k, v in HEAT_RAMPS.items()
     )
+    bars = "".join(
+        f'<button class="pill" data-bar="{ms}"{" data-on=1" if ms == 0 else ""}>'
+        f'{lbl}</button>'
+        for ms, lbl in ((0, "AUTO"), (3600000, "1H"), (21600000, "6H"),
+                        (86400000, "1D"), (259200000, "3D"), (604800000, "1W"))
+    )
     charts = "".join(
         f'<button class="pill" data-ct="{k}"{" data-on=1" if k == "candle" else ""}>'
         f'{lbl}</button>'
@@ -1361,7 +1511,13 @@ def render_heatmap(snap) -> str:
     return (
         '<div class="hm-ctl">'
         f'<span class="ctl-g"><b>WINDOW</b>{tf}</span>'
-        f'<span class="ctl-g"><b>LEVERAGE</b>{lev}'
+        f'<span class="ctl-g"><b>LEVERAGE</b>'
+        '<button class="pill" data-lauto="1" data-on=1 '
+        'title="Model the tiers that can liquidate inside the band in view. '
+        'A short window is narrow, so only high leverage reaches into it; a '
+        'long window is wide, so low leverage lands inside too and the '
+        'accumulated liquidity is larger.">AUTO</button>'
+        f'{lev}'
         '<input id="hm-lmin" type="number" min="2" max="125" value="2" '
         'aria-label="Minimum leverage"><i class="ctl-x">&ndash;</i>'
         '<input id="hm-lmax" type="number" min="2" max="125" value="125" '
@@ -1373,6 +1529,7 @@ def render_heatmap(snap) -> str:
         'aria-label="Intensity threshold">'
         '<i id="hm-thr-v" class="ctl-v">0.00</i></span>'
         f'<span class="ctl-g"><b>PRICE</b>{charts}</span>'
+        f'<span class="ctl-g"><b>BAR</b>{bars}</span>'
         '<span class="ctl-g"><b>ZOOM</b>'
         '<button class="pill" id="hm-zin" title="Zoom in on price">+</button>'
         '<button class="pill" id="hm-zout" title="Zoom out">&minus;</button>'
@@ -1386,7 +1543,7 @@ def render_heatmap(snap) -> str:
         '<div class="hm-scale"><i id="hm-peak">&mdash;</i>'
         '<span class="hm-bar" id="hm-bar"></span><i>0</i></div>'
         '<div class="hm-field">'
-        '<canvas class="hm" id="hm-canvas" width="1152" height="832" role="img" '
+        '<canvas class="hm" id="hm-canvas" width="1600" height="760" role="img" '
         'aria-label="Liquidation leverage density by price and time"></canvas>'
         '<i class="hm-hair" id="hm-hair" hidden></i>'
         '<div class="hm-tip" id="hm-tip" hidden></div>'
@@ -1395,24 +1552,29 @@ def render_heatmap(snap) -> str:
         '<div class="hm-time" id="hm-time"></div>'
         '</div>'
         '<div class="hm-key">'
-        '<i><span class="sw" style="background:#EAF6FF"></span>up on the previous '
-        'observation</i>'
-        '<i><span class="sw" style="background:#FF4D6D"></span>down on it</i>'
-        '<i><span class="sw" style="background:var(--gold)"></span>body spans '
-        'observation to observation &mdash; the intrabar range was never observed, '
-        'so no wick is drawn beyond it</i>'
+        '<i><span class="sw" style="background:#EAF6FF"></span>close above open</i>'
+        '<i><span class="sw" style="background:#FF4D6D"></span>close below open</i>'
+        '<i><span class="sw" style="background:var(--gold)"></span>each bar is the '
+        'open, high, low and close OF THE OBSERVATIONS inside it &mdash; a bar '
+        'holding one print is a doji, because that is what one print is</i>'
         '<i id="hm-meta">&mdash;</i></div>'
-        '<p class="hm-hint">drag the field to pan &middot; drag or scroll the price '
-        'tags to rescale &middot; hover for the reading &middot; every control '
-        'recomputes the model</p>'
+        '<p class="hm-hint">scroll the field to zoom <b>time</b> &mdash; out for more '
+        'bars &middot; scroll or drag the price tags to zoom <b>price</b> &middot; '
+        'drag the field to pan either way &middot; hover for the reading &middot; '
+        'every control recomputes the model</p>'
         '<p class="note warn"><b>Computed by the published method, on real prices.</b> '
         'At each observed price, positions opened there liquidate at '
         'price&times;(1&minus;1/N) and price&times;(1+1/N); those levels stay pending '
         'until price sweeps through them. Between two observations nothing is known, '
         'so the field is held and no price is ever interpolated. '
-        'Each candle body spans one observation to the next, which is exactly what '
-        'was observed; the intrabar high and low were never sourced, so no wick is '
-        'drawn past the body and no OHLC range is invented. '
+        'No exchange OHLC is reachable from here, so a bar is not downloaded &mdash; '
+        'it is <b>built</b>: open is the first observation inside the bar, close the '
+        'last, high and low the extremes of those same observations. A bar holding a '
+        'single print is therefore a doji rather than a fabricated body, and widening '
+        'the bar merges real prints into a real body and a real wick. '
+        'The modelled leverage floor is derived, not chosen: a tier only appears if '
+        'its liquidation level falls inside the band on screen, which is why a short '
+        'window shows high leverage only and a long one accumulates far more. '
         'It is <b>not</b> open-interest weighted: that needs per-exchange position '
         'data. Every control below recomputes the model rather than restyling a '
         'picture of it.</p>'
