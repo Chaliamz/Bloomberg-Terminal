@@ -23,6 +23,17 @@ time. Follow it in order and do not skip the gate.
 - A published artifact cannot fetch (CSP blocks fetch/XHR/WebSocket). The page
   ships an honestly stamped snapshot whose age counter climbs.
 
+## Nobody is watching this run
+
+A permission prompt has no one to answer it, so the job stalls for ever. The
+first verification run did exactly that: it went off-script to run `env | sort`
+and blocked there.
+
+**Run only the commands in this file.** Do not inspect the environment, do not
+run `env`, do not probe the network beyond the WebSearch step, do not install
+anything, do not explore the tree. What this environment can and cannot reach is
+written above — read it, do not rediscover it.
+
 ## Procedure
 
 ### 1. Find what is new

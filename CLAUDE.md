@@ -75,3 +75,10 @@ happens, you update them immediately."
   thing that keeps the age counter honest.
 - The hourly Routine is `trig_011kkfqqtmtakBbQ7SxPB8oU`. It republishes to the
   existing artifact URL so the user's link keeps working.
+- A scheduled run has **nobody to answer a permission prompt**. Any command
+  outside the runbook can block it for ever - the first verification run stalled
+  on `env | sort`. The Routine prompt therefore forbids environment probing and
+  exploration, and REFRESH.md repeats it.
+- `state/observations.json` **must stay tracked in git**. It was caught by
+  `state/*.json` and un-ignoring it is what makes accumulation survive a fresh
+  clone; two tests guard that and the derived `snapshot.json` staying ignored.
