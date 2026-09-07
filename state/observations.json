@@ -1,0 +1,42 @@
+[
+ {
+  "date": "2026-08-07T09:30:00Z",
+  "price": 64744.92,
+  "source": "Fortune",
+  "tier": 3,
+  "url": "https://fortune.com/article/price-of-bitcoin-08-07-2026/",
+  "note": "5:30 a.m. ET print."
+ },
+ {
+  "date": "2026-08-11T10:30:00Z",
+  "price": 64190.41,
+  "source": "Fortune",
+  "tier": 3,
+  "url": "https://fortune.com/article/price-of-bitcoin-08-11-2026/",
+  "note": "6:30 a.m. ET print."
+ },
+ {
+  "date": "2026-08-12T10:45:00Z",
+  "price": 64085.21,
+  "source": "Fortune",
+  "tier": 3,
+  "url": "https://fortune.com/article/price-of-bitcoin-08-12-2026/",
+  "note": "6:45 a.m. ET print."
+ },
+ {
+  "date": "2026-08-13T10:30:00Z",
+  "price": 63558.45,
+  "source": "Fortune",
+  "tier": 3,
+  "url": "https://fortune.com/article/price-of-bitcoin-08-13-2026/",
+  "note": "6:30 a.m. ET print."
+ },
+ {
+  "date": "2026-08-25T12:00:00Z",
+  "price": 79111.64,
+  "source": "Fortune",
+  "tier": 3,
+  "url": "https://fortune.com/article/price-of-bitcoin-08-25-2026/",
+  "note": "8:00 a.m. ET print."
+ }
+]

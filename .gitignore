@@ -10,6 +10,11 @@ build/
 .mypy_cache/
 state/*.json
 !state/.gitkeep
+# The observation store MUST be tracked. A scheduled run works from a fresh
+# clone, so if this is ignored every run starts with an empty store and the
+# whole unattended refresh silently accumulates nothing, for ever.
+# state/snapshot.json stays ignored: it is a derived cache, not data.
+!state/observations.json
 out/
 *.html.bak
 

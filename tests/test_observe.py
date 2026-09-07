@@ -114,3 +114,28 @@ class TestObservationStore(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTheStoreSurvivesAFreshClone(unittest.TestCase):
+    """A scheduled run works from a clone. If the store is gitignored, every run
+    starts empty and the unattended refresh accumulates nothing, for ever, with
+    no error anywhere. It was ignored; this is the guard."""
+
+    def _ignored(self, path):
+        import subprocess
+        r = subprocess.run(["git", "check-ignore", "-q", path],
+                           capture_output=True,
+                           cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        if r.returncode not in (0, 1):
+            self.skipTest("git unavailable or not a repository")
+        return r.returncode == 0
+
+    def test_the_observation_store_is_not_ignored(self):
+        self.assertFalse(self._ignored("state/observations.json"),
+                         "the observation store is gitignored: a scheduled run "
+                         "would clone an empty store and lose every accumulated "
+                         "observation")
+
+    def test_the_derived_snapshot_cache_is_still_ignored(self):
+        self.assertTrue(self._ignored("state/snapshot.json"),
+                        "snapshot.json is a derived cache and must not be tracked")
