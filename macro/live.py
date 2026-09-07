@@ -271,6 +271,8 @@ def liquidation_heatmap(
     levels: tuple[int, ...] | None = None,
     columns: int = 36,
     rows: int = 34,
+    t0: str | None = None,
+    t1: str | None = None,
     lo: float | None = None,
     hi: float | None = None,
 ) -> dict[str, Any]:
@@ -309,8 +311,16 @@ def liquidation_heatmap(
     if hi <= lo:
         return {"ok": False, "reason": "degenerate price range"}
 
-    t0 = datetime.strptime(pts[0].date, "%Y-%m-%dT%H:%M:%SZ")
-    t1 = datetime.strptime(pts[-1].date, "%Y-%m-%dT%H:%M:%SZ")
+    # The time axis defaults to the first and last observation, but the caller
+    # may widen it to bar boundaries so the field and the drawn bars share one
+    # grid: without that the edge bars are half off-canvas and render as runts.
+    _t0 = t0 if t0 is not None else pts[0].date
+    _t1 = t1 if t1 is not None else pts[-1].date
+    try:
+        t0 = datetime.strptime(_t0, "%Y-%m-%dT%H:%M:%SZ")
+        t1 = datetime.strptime(_t1, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        return {"ok": False, "reason": "unparseable time bounds"}
     span = (t1 - t0).total_seconds()
     if span <= 0:
         return {"ok": False, "reason": "all anchors share one timestamp"}
@@ -362,7 +372,7 @@ def liquidation_heatmap(
     return {
         "ok": True, "columns": columns, "rows": rows, "lo": lo, "hi": hi,
         "grid": norm, "peak": peak, "levels": list(levels),
-        "t0": pts[0].date, "t1": pts[-1].date,
+        "t0": _t0, "t1": _t1,
         "anchors": [{"col": col_of(a.date), "row": row_of(a.price), "price": a.price,
                      "date": a.date, "source": a.source, "tier": a.tier}
                     for a in pts],

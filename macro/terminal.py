@@ -590,7 +590,11 @@ function heatmapCompute(anchors, opts){
   var lo = opts.lo != null ? opts.lo : Math.min.apply(null, prices)*0.97;
   var hi = opts.hi != null ? opts.hi : Math.max.apply(null, prices)*1.03;
   if(hi <= lo) return {ok:false, reason:"degenerate price range"};
-  var t0 = Date.parse(pts[0].date), t1 = Date.parse(pts[pts.length-1].date);
+  /* caller may widen the axis to bar boundaries - see macro/live.py */
+  var _t0 = opts.t0 != null ? opts.t0 : pts[0].date;
+  var _t1 = opts.t1 != null ? opts.t1 : pts[pts.length-1].date;
+  var t0 = Date.parse(_t0), t1 = Date.parse(_t1);
+  if(isNaN(t0)||isNaN(t1)) return {ok:false, reason:"unparseable time bounds"};
   var span = (t1 - t0)/1000;
   if(!(span > 0)) return {ok:false, reason:"all anchors share one timestamp"};
 
@@ -632,7 +636,7 @@ function heatmapCompute(anchors, opts){
     return col.map(function(v){ return Math.floor(v/peak*1e4+0.5)/1e4; });
   });
   return {ok:true, columns:columns, rows:rows, lo:lo, hi:hi, grid:norm, peak:peak,
-          levels:levels, t0:pts[0].date, t1:pts[pts.length-1].date,
+          levels:levels, t0:_t0, t1:_t1,
           anchors: pts.map(function(a){
             return {col:colOf(a.date), row:rowOf(a.price), price:a.price,
                     date:a.date, source:a.source, tier:a.tier};
@@ -741,18 +745,24 @@ function heatmapCompute(anchors, opts){
              172800000,259200000,432000000,604800000];
   function barMs(w, pts){
     if(ST.bar) return ST.bar;
-    /* AUTO is chosen from OBSERVATION DENSITY, not from the raw time span.
-       Sizing by span alone gave every bucket a single print, so every bar was a
-       doji and the series stopped reading as a chart. Here the smallest step
-       that aggregates roughly a couple of prints per bar wins - that is what
-       produces a real body and a real wick. It also scales the right way on its
-       own: when the live scanner is running and prints arrive every minute, the
-       same rule picks a fine bucket instead of a coarse one. */
-    var want=Math.max(3, Math.round(pts.length/2.2));
+    /* AUTO picks the FINEST interval in which no slot is empty.
+       Bars can only touch if every slot between the first and the last holds an
+       observation; choose a finer interval than the data supports and the holes
+       are real gaps in observation, which no amount of styling can close
+       without inventing a bar. This rule scales by itself: sparse prints give
+       coarse bars, and as the scanner fills the feed in it walks down to 1D,
+       6H, 1H without anything being retuned.
+       If nothing is fully contiguous, take the most contiguous. */
+    var best=STEPS[STEPS.length-1], bestRatio=-1;
     for(var i=0;i<STEPS.length;i++){
-      if(buckets(pts, STEPS[i]).length<=want) return STEPS[i];
+      var bk=buckets(pts, STEPS[i]);
+      if(bk.length<2) continue;
+      var span=bk[bk.length-1].k-bk[0].k+1;
+      var ratio=bk.length/span;
+      if(ratio>=1) return STEPS[i];
+      if(ratio>bestRatio){ bestRatio=ratio; best=STEPS[i]; }
     }
-    return STEPS[STEPS.length-1];
+    return best;
   }
   function buckets(pts, ms){
     var out=[], cur=null;
@@ -769,6 +779,14 @@ function heatmapCompute(anchors, opts){
       }
     }
     return out;
+  }
+  /* both engines parse exactly %Y-%m-%dT%H:%M:%SZ, so build that shape and not
+     whatever toISOString() decides to append */
+  function iso(ms){
+    var d=new Date(ms);
+    return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1)+"-"+pad(d.getUTCDate())+
+      "T"+pad(d.getUTCHours())+":"+pad(d.getUTCMinutes())+":"+
+      pad(d.getUTCSeconds())+"Z";
   }
   function fmt(n){
     return n>=1000 ? n.toLocaleString("en-US",{maximumFractionDigits:0})
@@ -794,8 +812,15 @@ function heatmapCompute(anchors, opts){
     var lo0=ST.lauto? autoFloor(pts, bb.lo, bb.hi) : ST.lmin;
     var hi0=ST.lauto? 125 : ST.lmax;
     if(ST.lauto){ ST.lmin=lo0; ST.lmax=hi0; syncLev(); }
+    /* Buckets are decided BEFORE the field is computed so both share one grid.
+       The axis then runs from the first bar's opening edge to the last bar's
+       closing edge, which is why no bar is half off-canvas any more. */
+    var BMS=barMs(null, pts), BK=buckets(pts, BMS);
+    var ax0=BK.length?BK[0].t0:Date.parse(pts[0].date);
+    var ax1=BK.length?BK[BK.length-1].t1:Date.parse(pts[pts.length-1].date);
     var H=heatmapCompute(pts,{levels:tiers(lo0,hi0), columns:ST.cols,
-                              rows:ST.rows, lo:bb.lo, hi:bb.hi});
+                              rows:ST.rows, lo:bb.lo, hi:bb.hi,
+                              t0:iso(ax0), t1:iso(ax1)});
     if(!H.ok){
       g.fillStyle="#0A0C14"; g.fillRect(0,0,cv.width,cv.height);
       g.fillStyle="#66738C"; g.font="18px monospace"; g.textAlign="center";
@@ -832,10 +857,13 @@ function heatmapCompute(anchors, opts){
       return {x:px(a.date), y:py(a.price), price:a.price, date:a.date,
               source:a.source, tier:a.tier};
     });
-    var BMS=barMs({lo:t0m, hi:t1m}, pts), BK=buckets(pts, BMS);
     BARS=BK;
     var slot=tspan>0 ? BMS/tspan*cv.width : cv.width/12;
-    var bw=Math.max(2, Math.min(48, slot*0.68));
+    /* Bars fill their slot, leaving a single hairline. The old 48px cap was a
+       leftover from sizing by the median observation gap: with a 240px slot it
+       drew a 48px body and a 192px hole, which is what made the series look
+       like scattered blocks rather than a chart. */
+    var bw=Math.max(2, slot-1);
 
     g.save(); g.lineJoin="miter"; g.lineCap="butt";
     if(ST.chart!=="off"){

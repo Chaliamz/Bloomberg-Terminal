@@ -58,3 +58,20 @@ convention:
   one is a change to both.
 - Regenerate with `python3 -m macro terminal` after touching `macro/`; a test
   asserts the committed HTML matches the render.
+
+## Unattended refresh (standing, set by the user)
+
+The user asked for continuous refresh: "Data should refresh 24/7. Anything new
+happens, you update them immediately."
+
+- The runbook is `REFRESH.md`. A scheduled session follows it; it must not
+  re-derive the environment's limits each run.
+- A scheduled run **appends to `state/observations.json` through
+  `python3 -m macro observe`** and never edits `macro/seed.py`. The store
+  validates through `PriceAnchor` and refuses a missing source or tier, a
+  malformed or future stamp, a duplicate, and a non-finite or non-positive price.
+- **A scan that finds nothing must change nothing** — no republish, no commit.
+  An unchanged page is the correct output of a quiet hour, and it is the only
+  thing that keeps the age counter honest.
+- The hourly Routine is `trig_011kkfqqtmtakBbQ7SxPB8oU`. It republishes to the
+  existing artifact URL so the user's link keeps working.

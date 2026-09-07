@@ -430,6 +430,13 @@ class TestCrossImplementation(unittest.TestCase):
             # small integer peaks are where round()/Math.round diverge on ties
             dict(lo=62553.7, hi=82178.6, columns=8, rows=200, levels=[3, 7]),
             dict(columns=36, rows=34, levels=[]),   # explicitly empty: refuses
+            # widened axis: the renderer hands the engine bar boundaries so the
+            # field and the drawn bars share one grid
+            dict(lo=62553.7, hi=82178.6, columns=80, rows=50,
+                 t0="2026-08-01T00:00:00Z", t1="2026-09-10T00:00:00Z"),
+            dict(columns=48, rows=40, t0="2026-07-20T00:00:00Z",
+                 t1="2026-09-20T00:00:00Z", levels=[10, 50]),
+            dict(columns=20, rows=20, t0="bad", t1="worse"),   # refuses
         ]
         prog = (m.group(1) + "\nconst A=" + json.dumps(anchors) +
                 ";\nconst C=" + json.dumps(cases) +

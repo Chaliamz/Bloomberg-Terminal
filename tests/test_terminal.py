@@ -301,9 +301,31 @@ class TestDataIntegrity(unittest.TestCase):
         self.assertIn("function py(v)", terminal.JS)
         self.assertNotIn("(a.col+0.5)*CW", terminal.JS)
 
-    def test_bar_width_comes_from_the_bucket_slot(self):
+    def test_bars_fill_their_slot_so_they_touch(self):
+        """A 48px cap against a 240px slot drew 192px holes between bars."""
         self.assertIn("var slot=tspan>0 ? BMS/tspan*cv.width", terminal.JS)
+        self.assertIn("var bw=Math.max(2, slot-1);", terminal.JS)
+        self.assertNotIn("Math.min(48, slot", terminal.JS)
         self.assertNotIn("gaps[Math.floor(gaps.length/2)]", terminal.JS)
+
+    def test_auto_interval_prefers_a_gap_free_grid(self):
+        """Bars can only touch if every slot between first and last is occupied."""
+        js = terminal.JS
+        self.assertIn("var span=bk[bk.length-1].k-bk[0].k+1;", js)
+        self.assertIn("if(ratio>=1) return STEPS[i];", js)
+
+    def test_field_and_bars_share_one_time_grid(self):
+        """Without bar-aligned bounds the edge bars are half off-canvas."""
+        js = terminal.JS
+        self.assertIn("t0:iso(ax0), t1:iso(ax1)", js)
+        self.assertIn("function iso(ms)", js)
+        # and the engine must accept those bounds on both sides
+        self.assertIn("opts.t0 != null", js)
+        import inspect
+        from macro import live
+        sig = inspect.signature(live.liquidation_heatmap)
+        self.assertIn("t0", sig.parameters)
+        self.assertIn("t1", sig.parameters)
 
     def test_scrolling_the_field_scales_time_not_price(self):
         """Field scroll was bound to price zoom, so zooming out never added bars."""

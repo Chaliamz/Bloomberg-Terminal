@@ -383,11 +383,6 @@ PRICE_ANCHORS = [
               "US close convention and is the one assumption in this series."),
     dict(date="2026-08-05T09:45:00Z", price=64137.26, source="Fortune", tier=3,
          url=_FA % "08-05", note="5:45 a.m. ET print."),
-    dict(date="2026-08-07T11:00:00Z", price=64211.00, source="Fortune", tier=4,
-         url=_FA % "08-07",
-         note="WITHHELD - the article exists but no price could be read from it. "
-              "Retained only as a record that the gap is known, and excluded from "
-              "the series below."),
     dict(date="2026-08-10T11:30:00Z", price=65003.57, source="Fortune", tier=3,
          url=_FA % "08-10",
          note="7:30 a.m. ET print. CORRECTS an earlier read of 64,848.91 for this "
@@ -435,8 +430,6 @@ PRICE_ANCHORS = [
               "is tiered as an aggregate. Sits inside a separately reported "
               "79,465-80,195 range for the day, which is corroboration, not proof."),
 ]
-# The 08-07 entry is a placeholder for a known gap and carries no readable price.
-PRICE_ANCHORS = [a for a in PRICE_ANCHORS if a["tier"] != 4]
 
 # Sourced window extremes, computed from the observations above rather than taken
 # from a third-party summary: the observed set is now dense enough to define its
@@ -526,7 +519,10 @@ def build() -> Snapshot:
         g = Gauge(**gd)
         snap.gauges[g.key] = g
     snap.liquidations = Liquidations(**LIQUIDATIONS)
-    snap.price_anchors = [PriceAnchor(**a) for a in PRICE_ANCHORS]
+    from .observe import merge as _merge
+    # Baseline plus whatever a later unattended scan stored. The store is
+    # data, not code, so a scheduled run never edits this file.
+    snap.price_anchors = _merge([PriceAnchor(**a) for a in PRICE_ANCHORS])
     snap.btc_window = dict(BTC_WINDOW)
     snap.equities = [Equity(**x) for x in EQUITIES]
     snap.earnings = [Earning(**x) for x in EARNINGS]

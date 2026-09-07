@@ -99,7 +99,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("command",
                    choices=sorted(CLI_TO_COMMAND)
-                           + ["demo", "selftest", "coverage", "board", "terminal", "live"],
+                           + ["demo", "selftest", "coverage", "board", "terminal", "live",
+                              "observe"],
                    help="command to run")
     p.add_argument("arg", nargs="?", help="argument (e.g. a release code for pre-event)")
     p.add_argument("--state", help="path to a market-state JSON file")
@@ -107,6 +108,13 @@ def build_parser() -> argparse.ArgumentParser:
                    help="populate the state from FRED (requires FRED_API_KEY)")
     p.add_argument("--html", metavar="OUT", help="also write the single-file HTML terminal")
     p.add_argument("--json", action="store_true", help="emit machine-readable JSON where supported")
+    # `observe`: append one sourced observation found by a scheduled re-scan.
+    p.add_argument("--date", help="observation stamp, YYYY-MM-DDTHH:MM:SSZ")
+    p.add_argument("--price", help="observed price")
+    p.add_argument("--source", help="named carrier the number came from")
+    p.add_argument("--tier", help="source tier, 1-4")
+    p.add_argument("--url", default="", help="page the number was read from")
+    p.add_argument("--note", default="", help="what exactly was quoted")
     return p
 
 
@@ -118,6 +126,18 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "terminal":
         from .terminal import main as term_main
         return term_main(args.arg or "board/macro-desk-live.html")
+    if args.command == "observe":
+        from .observe import add as observe_add, load as observe_load
+        missing = [f for f in ("date", "price", "source", "tier")
+                   if getattr(args, f) in (None, "")]
+        if missing:
+            print("observe needs " + ", ".join("--" + m for m in missing), file=sys.stderr)
+            return 2
+        ok, why = observe_add(args.date, args.price, args.source, args.tier,
+                              args.url, args.note)
+        print(f"{'stored' if ok else 'refused'}: {why} "
+              f"({len(observe_load())} in store)")
+        return 0 if ok else 1
     if args.command == "live":
         return _live(args.arg)
     if args.command == "board":
