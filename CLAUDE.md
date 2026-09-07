@@ -73,6 +73,10 @@ happens, you update them immediately."
 - **A scan that finds nothing must change nothing** — no republish, no commit.
   An unchanged page is the correct output of a quiet hour, and it is the only
   thing that keeps the age counter honest.
+- **The loop is not yet verified end to end.** Three manual runs each finished in
+  ~40s having pushed nothing, which is the signature of a session with no
+  checkout (the Routine has no `sources`). The prompt now clones if the repo is
+  absent. Confirm by checking whether `state/refresh-log.jsonl` gains lines.
 - The hourly Routine is `trig_011kkfqqtmtakBbQ7SxPB8oU`. It republishes to the
   existing artifact URL so the user's link keeps working.
 - A scheduled run has **nobody to answer a permission prompt**. Any command

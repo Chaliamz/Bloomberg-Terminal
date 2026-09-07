@@ -34,6 +34,25 @@ run `env`, do not probe the network beyond the WebSearch step, do not install
 anything, do not explore the tree. What this environment can and cannot reach is
 written above — read it, do not rediscover it.
 
+## The scheduled session may start with no checkout
+
+The Routine was created with no `sources`, and three verification runs each
+ended within about forty seconds having pushed nothing — the signature of a
+session that looked for the repo, did not find it, and stopped. So the runbook
+does not assume a checkout:
+
+```bash
+ls /home/user/Bloomberg-Terminal 2>/dev/null \
+  || git clone https://github.com/Chaliamz/Bloomberg-Terminal /home/user/Bloomberg-Terminal
+cd /home/user/Bloomberg-Terminal
+git checkout claude/macro-intelligence-radar-6fpk1q && git pull --ff-only
+```
+
+This diagnosis is **inferred from timing and from nothing being pushed**, not
+confirmed — there is no way to read a fired session's transcript from another
+session. The heartbeat in step 2b is what will settle it: if a run leaves a line
+in `state/refresh-log.jsonl`, the loop reached the repo and worked.
+
 ## Procedure
 
 ### 1. Find what is new
