@@ -15,6 +15,7 @@ state/*.json
 # whole unattended refresh silently accumulates nothing, for ever.
 # state/snapshot.json stays ignored: it is a derived cache, not data.
 !state/observations.json
+!state/refresh-log.jsonl
 out/
 *.html.bak
 

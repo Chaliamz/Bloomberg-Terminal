@@ -79,6 +79,10 @@ happens, you update them immediately."
   outside the runbook can block it for ever - the first verification run stalled
   on `env | sort`. The Routine prompt therefore forbids environment probing and
   exploration, and REFRESH.md repeats it.
+- Every run appends to `state/refresh-log.jsonl` via `python3 -m macro
+  heartbeat`, including quiet ones, and pushes it. A quiet run leaves the
+  page alone but must still leave a trace: a dead loop and a quiet loop are
+  otherwise indistinguishable.
 - `state/observations.json` **must stay tracked in git**. It was caught by
   `state/*.json` and un-ignoring it is what makes accumulation survive a fresh
   clone; two tests guard that and the derived `snapshot.json` staying ignored.

@@ -139,3 +139,55 @@ class TestTheStoreSurvivesAFreshClone(unittest.TestCase):
     def test_the_derived_snapshot_cache_is_still_ignored(self):
         self.assertTrue(self._ignored("state/snapshot.json"),
                         "snapshot.json is a derived cache and must not be tracked")
+
+
+class TestHeartbeat(unittest.TestCase):
+    """A quiet run must not touch the page, but it must still leave a trace.
+    Without one, a loop that has silently died is indistinguishable from a loop
+    with nothing to report — which is the whole failure mode worth catching."""
+
+    def setUp(self):
+        self.d = tempfile.TemporaryDirectory()
+        self.p = os.path.join(self.d.name, "log.jsonl")
+
+    def tearDown(self):
+        self.d.cleanup()
+
+    def test_each_run_appends_one_line(self):
+        for i in range(3):
+            observe.heartbeat(f"run {i}", i, self.p)
+        rows = observe.log_tail(10, self.p)
+        self.assertEqual(len(rows), 3)
+        self.assertEqual([r["found"] for r in rows], [0, 1, 2])
+
+    def test_a_corrupt_line_costs_one_record_not_the_file(self):
+        observe.heartbeat("good one", 1, self.p)
+        with open(self.p, "a") as fh:
+            fh.write("{ truncated\n")
+        observe.heartbeat("good two", 2, self.p)
+        rows = observe.log_tail(10, self.p)
+        self.assertEqual([r["note"] for r in rows], ["good one", "good two"])
+
+    def test_a_missing_log_reads_empty_not_fatal(self):
+        self.assertEqual(observe.log_tail(5, self.p), [])
+
+    def test_the_note_is_bounded(self):
+        observe.heartbeat("x" * 5000, 0, self.p)
+        self.assertLessEqual(len(observe.log_tail(1, self.p)[0]["note"]), 400)
+
+    def test_the_stamp_is_the_shape_everything_else_parses(self):
+        observe.heartbeat("shape", 0, self.p)
+        at = observe.log_tail(1, self.p)[0]["at"]
+        from datetime import datetime
+        datetime.strptime(at, "%Y-%m-%dT%H:%M:%SZ")
+
+    def test_the_log_is_tracked_so_a_fresh_clone_keeps_the_history(self):
+        import subprocess
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        r = subprocess.run(["git", "check-ignore", "-q", "state/refresh-log.jsonl"],
+                           capture_output=True, cwd=root)
+        if r.returncode not in (0, 1):
+            self.skipTest("git unavailable")
+        self.assertEqual(r.returncode, 1,
+                         "the run log is gitignored: the record of unattended "
+                         "runs would vanish on every fresh clone")

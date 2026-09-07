@@ -100,7 +100,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("command",
                    choices=sorted(CLI_TO_COMMAND)
                            + ["demo", "selftest", "coverage", "board", "terminal", "live",
-                              "observe"],
+                              "observe", "heartbeat"],
                    help="command to run")
     p.add_argument("arg", nargs="?", help="argument (e.g. a release code for pre-event)")
     p.add_argument("--state", help="path to a market-state JSON file")
@@ -138,6 +138,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{'stored' if ok else 'refused'}: {why} "
               f"({len(observe_load())} in store)")
         return 0 if ok else 1
+    if args.command == "heartbeat":
+        from .observe import heartbeat, log_tail
+        at = heartbeat(args.note or "scheduled check", args.price or 0)
+        rows = log_tail(5)
+        print(f"logged {at} (found={args.price or 0})")
+        for r in rows:
+            print(f"  {r['at']}  found={r['found']}  {r['note'][:70]}")
+        return 0
     if args.command == "live":
         return _live(args.arg)
     if args.command == "board":

@@ -63,9 +63,26 @@ stamp, and a non-finite or non-positive price. A re-scan that finds the same
 print again is a no-op, and a scan that finds nothing changes nothing — that is
 the intended outcome of a quiet hour, not a failure.
 
-**If a scan finds nothing new, stop here.** Do not republish, do not commit, and
-do not manufacture an update. An unchanged page is the correct output of an hour
-in which nothing happened.
+### 2b. Always leave a heartbeat — even on a quiet hour
+
+```bash
+python3 -m macro heartbeat --note "checked 09-06/09-07 Fortune; nothing indexed yet" --price <count found>
+```
+
+**If a scan finds nothing new, stop after this.** Do not regenerate, do not
+republish, and do not manufacture an update. An unchanged page is the correct
+output of an hour in which nothing happened.
+
+But do commit and push `state/refresh-log.jsonl`. A quiet run must not touch the
+page — that is what keeps the age counter honest — yet it must still leave a
+trace, because a loop that has silently died looks exactly like a loop with
+nothing to report. The log is the only way to tell those apart from outside.
+
+Read the recent history any time with:
+
+```bash
+python3 -c "from macro import observe; [print(r) for r in observe.log_tail(20)]"
+```
 
 ### 3. Regenerate
 

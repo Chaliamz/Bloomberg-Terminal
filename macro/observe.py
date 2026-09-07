@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from .live import PriceAnchor
 
 STORE = os.path.join("state", "observations.json")
+LOG = os.path.join("state", "refresh-log.jsonl")
 
 
 def _parse(stamp: str) -> datetime:
@@ -101,4 +102,41 @@ def merge(anchors: list[PriceAnchor], path: str = STORE) -> list[PriceAnchor]:
         seen.add((row["date"], row["source"]))
         out.append(PriceAnchor(**row))
     out.sort(key=lambda a: a.date)
+    return out
+
+
+def heartbeat(note: str, found: int = 0, path: str = LOG) -> str:
+    """Append one line recording that a scheduled run happened.
+
+    A run that finds nothing must not touch the page - that is what keeps the
+    age counter honest - but it must still leave a trace, or a loop that has
+    silently died looks exactly like a loop with nothing to report. This is that
+    trace, and it is the only way to tell the two apart from outside.
+
+    Append-only JSON Lines: a corrupt or partial line costs one record, not the
+    file, which matters for something written unattended every hour.
+    """
+    row = {"at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+           "found": int(found), "note": str(note)[:400]}
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return row["at"]
+
+
+def log_tail(n: int = 20, path: str = LOG) -> list[dict]:
+    """Read back the last n runs. A bad line is skipped, never fatal."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            lines = fh.readlines()
+    except OSError:
+        return []
+    out = []
+    for line in lines[-n:]:
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(row, dict) and "at" in row:
+            out.append(row)
     return out
