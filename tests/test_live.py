@@ -18,7 +18,7 @@ from macro import live, seed
 from macro.live import (
     HEAT_RAMP, Headline, PriceAnchor, Quote, Snapshot, Source, age_seconds,
     dedupe, liquidation_heatmap, liquidation_ladder, load, merge, parse_rss,
-    parse_treasury_csv, save, scan,
+    parse_treasury_csv, save, scan, liquidity_levels,
 )
 
 NOW = datetime(2026, 9, 5, 13, 0, 0, tzinfo=timezone.utc)
@@ -397,79 +397,94 @@ class TestCrossImplementation(unittest.TestCase):
     drifts from the Python reference the page silently shows a different model,
     so the two are compared directly."""
 
-    def test_js_engine_matches_python_exactly(self):
-        import json
-        import shutil
-        import subprocess
-        import tempfile
-
-        if shutil.which("node") is None:
-            self.skipTest("node not available")
-        from macro import seed as seed_mod
+    def test_there_is_no_js_engine_left_to_drift(self):
+        """The canvas port is gone with the canvas. One engine, in Python, is
+        now the only implementation - so there is nothing left to diverge."""
         from macro import terminal
+        self.assertNotIn("heatmapCompute", terminal.JS)
+        self.assertNotIn("hm-canvas", terminal.JS)
+        # the #fx ambient background is a canvas too and legitimately stays,
+        # so getContext alone is not the signal - the heatmap ids are
+        self.assertIn('q("fx")', terminal.JS, "ambient background lost with the chart")
 
-        m = re.search(r"(function heatmapCompute\(anchors, opts\)\{.*?\n\})\n",
-                      terminal.JS, re.S)
-        self.assertIsNotNone(m, "heatmapCompute not found in the shipped JS")
-        anchors = [{"date": a.date, "price": a.price, "source": a.source,
-                    "tier": a.tier} for a in seed_mod.build().price_anchors]
-        cases = [
-            dict(lo=62553.7, hi=82178.6, columns=36, rows=34, levels=[10, 25, 50, 100]),
-            dict(lo=62553.7, hi=82178.6, columns=90, rows=60, levels=[5, 10, 25, 50, 100]),
-            dict(columns=12, rows=8, levels=[25]),
-            dict(lo=70000, hi=85000, columns=48, rows=40, levels=[10, 50]),
-            dict(lo=1.0, hi=2.0, columns=20, rows=20, levels=[10]),   # refuses
-            # the shipped default: levels omitted -> the full 2..125 spectrum,
-            # which is what every unmodified page load actually renders
-            dict(lo=62553.7, hi=82178.6, columns=160, rows=90),
-            dict(columns=240, rows=130),                       # ULTRA, derived range
-            dict(lo=62553.7, hi=82178.6, columns=60, rows=40,
-                 levels=list(range(50, 126))),                 # the HIGH preset
-            dict(lo=62553.7, hi=82178.6, columns=110, rows=64,
-                 levels=list(range(2, 11))),                   # the LOW preset
-            # small integer peaks are where round()/Math.round diverge on ties
-            dict(lo=62553.7, hi=82178.6, columns=8, rows=200, levels=[3, 7]),
-            dict(columns=36, rows=34, levels=[]),   # explicitly empty: refuses
-            # widened axis: the renderer hands the engine bar boundaries so the
-            # field and the drawn bars share one grid
-            dict(lo=62553.7, hi=82178.6, columns=80, rows=50,
-                 t0="2026-08-01T00:00:00Z", t1="2026-09-10T00:00:00Z"),
-            dict(columns=48, rows=40, t0="2026-07-20T00:00:00Z",
-                 t1="2026-09-20T00:00:00Z", levels=[10, 50]),
-            dict(columns=20, rows=20, t0="bad", t1="worse"),   # refuses
-        ]
-        prog = (m.group(1) + "\nconst A=" + json.dumps(anchors) +
-                ";\nconst C=" + json.dumps(cases) +
-                ";\nconsole.log(JSON.stringify(C.map(o=>heatmapCompute(A,o))));")
-        with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as fh:
-            fh.write(prog)
-            path = fh.name
-        try:
-            out = subprocess.run(["node", path], capture_output=True, text=True,
-                                 timeout=60)
-        finally:
-            os.unlink(path)
-        self.assertEqual(out.returncode, 0, out.stderr[:400])
-        js = json.loads(out.stdout)
 
-        py_anchors = seed_mod.build().price_anchors
-        for i, c in enumerate(cases):
-            py = liquidation_heatmap(py_anchors, **c)
-            self.assertEqual(py["ok"], js[i]["ok"], f"case {i}: ok differs")
-            if not py["ok"]:
-                continue
-            for k in ("columns", "rows"):
-                self.assertEqual(py[k], js[i][k], f"case {i}: {k}")
-            for k in ("lo", "hi"):
-                self.assertAlmostEqual(py[k], js[i][k], places=9, msg=f"case {i}: {k}")
-            for x in range(py["columns"]):
-                for y in range(py["rows"]):
-                    self.assertAlmostEqual(
-                        py["grid"][x][y], js[i]["grid"][x][y], places=9,
-                        msg=f"case {i}: grid[{x}][{y}] diverges")
-            self.assertEqual([(a["col"], a["row"]) for a in py["anchors"]],
-                             [(a["col"], a["row"]) for a in js[i]["anchors"]],
-                             f"case {i}: anchor placement differs")
+class TestLiquidityLevels(unittest.TestCase):
+    """The panel that replaced the heatmap. Same model, reported as data."""
+
+    def setUp(self):
+        self.anchors = seed.build().price_anchors
+
+    def test_it_reports_bands_with_leverage(self):
+        r = liquidity_levels(self.anchors, bands=12)
+        self.assertTrue(r["ok"], r.get("reason"))
+        self.assertEqual(len(r["rows"]), len({x["lo"] for x in r["rows"]}))
+        for x in r["rows"]:
+            self.assertGreaterEqual(x["count"], 1)
+            self.assertLessEqual(x["lev_lo"], x["lev_median"])
+            self.assertLessEqual(x["lev_median"], x["lev_hi"])
+            self.assertEqual(x["count"], x["long"] + x["short"])
+            self.assertGreaterEqual(x["lev_lo"], 2)
+            self.assertLessEqual(x["lev_hi"], 125)
+
+    def test_every_level_lies_inside_its_band(self):
+        r = liquidity_levels(self.anchors, bands=16)
+        for x in r["rows"]:
+            self.assertLess(x["lo"], x["hi"])
+            self.assertTrue(x["lo"] <= x["mid"] <= x["hi"])
+
+    def test_bands_tile_the_range_without_gaps_or_overlap(self):
+        r = liquidity_levels(self.anchors, bands=10)
+        edges = sorted((x["lo"], x["hi"]) for x in r["rows"])
+        for (_, hi1), (lo2, _) in zip(edges, edges[1:]):
+            self.assertAlmostEqual(hi1, lo2, places=6, msg="bands do not tile")
+
+    def test_counts_are_conserved(self):
+        """Every pending level inside the range lands in exactly one band."""
+        r = liquidity_levels(self.anchors, bands=18)
+        self.assertEqual(sum(x["count"] for x in r["rows"]), r["pending_total"])
+
+    def test_share_is_normalised_to_the_densest_band(self):
+        r = liquidity_levels(self.anchors, bands=14)
+        self.assertAlmostEqual(max(x["share"] for x in r["rows"]), 1.0, places=6)
+        for x in r["rows"]:
+            self.assertTrue(0 < x["share"] <= 1.0)
+
+    def test_a_level_only_survives_if_price_never_swept_it(self):
+        """The sweep rule is the model. Two anchors that cross a level must
+        remove it; without that the map is just an accumulation of everything."""
+        from macro.live import PriceAnchor
+        a = [PriceAnchor(date="2026-09-01T00:00:00Z", price=100.0, source="S", tier=3),
+             PriceAnchor(date="2026-09-02T00:00:00Z", price=100.0, source="S", tier=3)]
+        flat = liquidity_levels(a, levels=(2,), bands=4, lo=40.0, hi=160.0)
+        swept = liquidity_levels(
+            [a[0], PriceAnchor(date="2026-09-02T00:00:00Z", price=40.0,
+                               source="S", tier=3)],
+            levels=(2,), bands=4, lo=30.0, hi=160.0)
+        # the flat pair keeps its 50 and 150 levels; sweeping down through 50 kills it
+        self.assertTrue(any(x["lo"] <= 50.0 < x["hi"] for x in flat["rows"]))
+        self.assertFalse(any(x["lo"] <= 50.0 < x["hi"] and x["long"] > 0
+                             for x in swept["rows"]),
+                         "a level price swept through was still reported")
+
+    def test_side_matches_which_way_the_level_sits(self):
+        r = liquidity_levels(self.anchors, bands=20)
+        for x in r["rows"]:
+            if x["side"] == "long":
+                self.assertGreater(x["long"], x["short"])
+            elif x["side"] == "short":
+                self.assertGreater(x["short"], x["long"])
+            else:
+                self.assertEqual(x["long"], x["short"])
+
+    def test_it_refuses_rather_than_estimating(self):
+        for kw, why in ((dict(levels=[]), "leverage"),
+                        (dict(bands=1), "bands"),
+                        (dict(lo=5.0, hi=5.0), "degenerate"),
+                        (dict(lo=1.0, hi=2.0), "no pending levels")):
+            r = liquidity_levels(self.anchors, **kw)
+            self.assertFalse(r["ok"], f"accepted {kw}")
+            self.assertIn(why, r["reason"])
+        self.assertFalse(liquidity_levels(self.anchors[:1])["ok"])
 
 
 class TestEquitiesAndEarnings(unittest.TestCase):

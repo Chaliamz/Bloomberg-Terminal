@@ -201,12 +201,6 @@ class TestDataIntegrity(unittest.TestCase):
         self.assertIsNotNone(m, "payload missing")
         return json.loads(m.group(1).replace("<\\/", "</"))
 
-    def test_heatmap_canvas_is_rendered(self):
-        cv = re.search(r'id="hm-canvas" width="(\d+)" height="(\d+)"', self.doc)
-        self.assertIsNotNone(cv, "heatmap canvas not rendered")
-        self.assertGreaterEqual(int(cv.group(1)), 400)
-        self.assertGreaterEqual(int(cv.group(2)), 300)
-
     def test_heatmap_anchors_are_only_observed_prices(self):
         data = self._payload()
         observed = {round(a.price, 2) for a in self.snap.price_anchors}
@@ -224,12 +218,6 @@ class TestDataIntegrity(unittest.TestCase):
         """The browser recomputes from anchors, so a stale grid must not ride along."""
         self.assertNotIn('"grid"', self.doc)
 
-    def test_heatmap_states_its_method_and_its_limits(self):
-        flat = " ".join(self.doc.split())
-        self.assertIn("Computed by the published method, on real prices", flat)
-        self.assertIn("no price is ever interpolated", flat)
-        self.assertIn("not</b> open-interest weighted", flat)
-
     def test_heatmap_axis_bounds_come_from_the_sourced_window(self):
         """Axes are drawn client-side, so the sourced bounds must reach the payload."""
         w = self.snap.btc_window
@@ -240,133 +228,6 @@ class TestDataIntegrity(unittest.TestCase):
             self.assertGreaterEqual(a.price, data["window"]["lo"])
             self.assertLessEqual(a.price, data["window"]["hi"])
 
-    def test_heatmap_controls_are_present_and_wired(self):
-        for attr in ("data-tf", "data-lrange", "data-res", "data-scheme"):
-            self.assertIn(attr, self.doc, attr)
-            self.assertIn(f'[{attr}]', terminal.JS, f"{attr} is rendered but never bound")
-        for el in ("hm-thr", "hm-zin", "hm-zout", "hm-reset", "hm-fit", "hm-zv",
-                   "hm-lmin", "hm-lmax", "hm-peak", "hm-price", "hm-time", "hm-meta"):
-            self.assertIn(f'id="{el}"', self.doc, el)
-        self.assertIn("heatmapCompute", terminal.JS)
-
-    def test_the_control_bar_offers_a_coinglass_grade_range_of_views(self):
-        """One timeframe and two resolutions is not 'plenty of options'."""
-        self.assertGreaterEqual(len(re.findall(r'data-tf="(-?\d+)"', self.doc)), 6)
-        self.assertGreaterEqual(len(re.findall(r'data-res="(\d+x\d+)"', self.doc)), 4)
-        self.assertGreaterEqual(len(re.findall(r'data-lrange="(\d+-\d+)"', self.doc)), 5)
-        # exactly one default per pill group, or the initial paint disagrees with the bar
-        for group in ("data-tf", "data-res", "data-scheme"):
-            row = re.findall(rf'{group}="[^"]*"[^>]*data-on', self.doc)
-            self.assertEqual(len(row), 1, group)
-
-    def test_price_is_a_chart_series_not_a_dashed_annotation(self):
-        """The old overlay was a 9px dashed polyline with 8px hollow circles."""
-        js = terminal.JS
-        self.assertIn('ST.chart', js)
-        for k in ("candle", "bar", "area", "line", "off"):
-            self.assertIn(f'data-ct="{k}"', self.doc, k)
-            self.assertIn(f'"{k}"', js, k)
-        self.assertIn("[data-ct]", js, "chart-type pills rendered but never bound")
-        # exactly one default, and it is not the line
-        on = re.findall(r'data-ct="([a-z]+)"[^>]*data-on', self.doc)
-        self.assertEqual(on, ["candle"])
-        # the dashed-polyline overlay must be gone
-        self.assertNotIn("g.setLineDash([16,11])", js)
-        self.assertNotIn("g.arc(p[0],p[1],8", js)
-
-    def test_bars_are_built_from_observations_not_invented(self):
-        """O/H/L/C must all come from prints inside the bucket."""
-        js = terminal.JS
-        self.assertIn("function buckets(pts, ms)", js)
-        # high and low may only ever move to an observed price
-        self.assertIn("if(pts[i].price>cur.h) cur.h=pts[i].price;", js)
-        self.assertIn("if(pts[i].price<cur.l) cur.l=pts[i].price;", js)
-        # the wick spans high to low and nothing else
-        wick = re.findall(r"g\.moveTo\(cx,(\w+)\); g\.lineTo\(cx,(\w+)\)", js)
-        self.assertTrue(wick, "no wick drawn")
-        for a, b in wick:
-            self.assertEqual({a, b}, {"yH", "yL"}, f"wick drawn to {a}..{b}")
-        # a single-print bucket must not be given a body
-        self.assertIn("a doji is a line, never a fabricated body", js)
-
-    def test_bucket_open_and_close_are_first_and_last_print(self):
-        js = terminal.JS
-        self.assertIn("o:pts[i].price", js)
-        self.assertIn("cur.c=pts[i].price;", js)
-        self.assertNotIn("cur.o=", js, "open must never be reassigned after the first print")
-
-    def test_series_positions_come_from_timestamps_not_grid_cells(self):
-        """Quantising to a cell put the track hours away from the observation."""
-        self.assertIn("function px(iso)", terminal.JS)
-        self.assertIn("function py(v)", terminal.JS)
-        self.assertNotIn("(a.col+0.5)*CW", terminal.JS)
-
-    def test_bars_fill_their_slot_so_they_touch(self):
-        """A 48px cap against a 240px slot drew 192px holes between bars."""
-        self.assertIn("var slot=tspan>0 ? BMS/tspan*cv.width", terminal.JS)
-        self.assertIn("var bw=Math.max(2, slot-1);", terminal.JS)
-        self.assertNotIn("Math.min(48, slot", terminal.JS)
-        self.assertNotIn("gaps[Math.floor(gaps.length/2)]", terminal.JS)
-
-    def test_auto_interval_prefers_a_gap_free_grid(self):
-        """Bars can only touch if every slot between first and last is occupied."""
-        js = terminal.JS
-        self.assertIn("var span=bk[bk.length-1].k-bk[0].k+1;", js)
-        self.assertIn("if(ratio>=1) return STEPS[i];", js)
-
-    def test_field_and_bars_share_one_time_grid(self):
-        """Without bar-aligned bounds the edge bars are half off-canvas."""
-        js = terminal.JS
-        self.assertIn("t0:iso(ax0), t1:iso(ax1)", js)
-        self.assertIn("function iso(ms)", js)
-        # and the engine must accept those bounds on both sides
-        self.assertIn("opts.t0 != null", js)
-        import inspect
-        from macro import live
-        sig = inspect.signature(live.liquidation_heatmap)
-        self.assertIn("t0", sig.parameters)
-        self.assertIn("t1", sig.parameters)
-
-    def test_scrolling_the_field_scales_time_not_price(self):
-        """Field scroll was bound to price zoom, so zooming out never added bars."""
-        js = terminal.JS
-        self.assertIn("function tzoom(f)", js)
-        m = re.search(r'cv\.addEventListener\("wheel",function\(ev\)\{([^}]*)\}', js)
-        self.assertIsNotNone(m, "no wheel handler on the field")
-        self.assertIn("tzoom(", m.group(1))
-        # `tzoom(` contains `zoom(`, so the price-zoom check needs a boundary
-        self.assertIsNone(re.search(r"(?<![A-Za-z])zoom\(ev\.deltaY", m.group(1)),
-                          "field wheel still drives the price zoom")
-        # and a zoom that would empty the model is refused, not clamped blindly
-        self.assertIn("if(windowed().length<2) ST.tz=prev;", js)
-
-    def test_leverage_floor_is_derived_from_the_band(self):
-        """Liquidity must scale with the timeframe, from the liquidation formula."""
-        js = terminal.JS
-        self.assertIn("function autoFloor(pts, lo, hi)", js)
-        self.assertIn("need=Math.min(need, P/(P-lo));", js)
-        self.assertIn("need=Math.min(need, P/(hi-P));", js)
-        self.assertIn("ST.lauto", js)
-        self.assertIn('data-lauto', self.doc)
-
-    def test_price_band_follows_the_window(self):
-        """A 24h view drawn against a month's range cannot scale liquidity."""
-        self.assertIn("function fitBand(pts)", terminal.JS)
-        self.assertIn("function bounds(pts)", terminal.JS)
-
-    def test_page_copy_matches_what_is_actually_drawn(self):
-        """Copy described a dashed line and 'no candle is drawn' after candles shipped."""
-        low = self.doc.lower()
-        for stale in ("price line is drawn dashed", "no candle is drawn",
-                      "four dated btc closes",
-                      "body spans one observation to the next",
-                      "no wick is drawn past the body"):
-            self.assertNotIn(stale, low, f"stale copy on the page: {stale!r}")
-        self.assertIn("a doji", low)
-        # the hint must describe the interaction the page actually has
-        self.assertIn("scroll the field to zoom <b>time</b>", self.doc)
-        self.assertIn("zoom <b>price</b>", self.doc)
-
     def test_numeric_cells_tolerate_a_wider_face(self):
         """fonts.googleapis.com is egress-blocked in the harness, so no browser
         check here ever measures the real face. Fixed px on the big numerals
@@ -375,20 +236,6 @@ class TestDataIntegrity(unittest.TestCase):
             i = terminal.CSS.index(sel)
             block = terminal.CSS[i:i + 260]
             self.assertIn("clamp(", block, f"{sel} pins a fixed font-size")
-
-    def test_price_axis_is_a_zoom_control(self):
-        for ev in ("mousedown", "wheel"):
-            self.assertIn(ev, terminal.JS)
-        self.assertIn('var axis=q("hm-price")', terminal.JS)
-        self.assertIn("ns-resize", terminal.CSS)
-
-    def test_crosshair_clears_when_the_view_refuses(self):
-        """A stale LAST would report positions from a view no longer on screen."""
-        js = terminal.JS
-        self.assertIn('id="hm-hair"', self.doc)
-        self.assertIn('id="hm-tip"', self.doc)
-        self.assertEqual(js.count("LAST=[];"), 3,
-                         "LAST must be cleared on both refusal paths and initialised")
 
     def test_data_age_is_measured_from_the_newest_observation(self):
         """Age from `captured` resets to zero on a scan that fetched nothing."""
@@ -401,20 +248,6 @@ class TestDataIntegrity(unittest.TestCase):
         self.assertLessEqual(cap, datetime.now(timezone.utc),
                              "capture stamped in the future: age would read zero")
 
-    def test_zoom_can_widen_the_window_not_only_narrow_it(self):
-        """The old clamp was max(1, ...), which made every zoom-out a silent no-op."""
-        m = re.search(r"function zoom\(f\)\{([^}]*)\}", terminal.JS)
-        self.assertIsNotNone(m, "zoom() missing")
-        floor = re.search(r"Math\.max\(([0-9.]+)", m.group(1))
-        self.assertIsNotNone(floor, "zoom() has no lower clamp")
-        self.assertLess(float(floor.group(1)), 1.0,
-                        "zoom-out is clamped at or above 1x: the chart cannot widen")
-
-    def test_the_chart_can_be_panned(self):
-        for ev in ("mousedown", "mousemove", "mouseup"):
-            self.assertIn(f'"{ev}"', terminal.JS, ev)
-        self.assertIn("ST.pan", terminal.JS)
-
     def test_embedded_anchors_are_chronological(self):
         """windowed() and anchorsIn() both take the last anchor as the latest."""
         m = re.search(r'"anchors":\s*(\[.*?\])\s*,?\s*\}', self.doc, re.S)
@@ -422,28 +255,6 @@ class TestDataIntegrity(unittest.TestCase):
         dates = re.findall(r'"date":\s*"([^"]+)"', m.group(1))
         self.assertEqual(len(dates), len(self.snap.price_anchors))
         self.assertEqual(dates, sorted(dates), "anchors emitted out of order")
-
-    def test_windows_the_data_cannot_support_are_gated_not_shipped_dead(self):
-        """A window with <2 anchors, or the same anchors as a narrower one,
-        renders identically. Offering it as a live button is a lie about the data."""
-        self.assertIn("gateWindows", terminal.JS)
-        self.assertIn("a heatmap needs two", terminal.JS)
-        self.assertIn("no observation between them", terminal.JS)
-        self.assertIn("b.disabled=true", terminal.JS.replace(" ", ""))
-        self.assertIn("[data-off]", terminal.CSS)
-        # the gate must run before the default view is drawn, or the bar and the
-        # canvas disagree on the first paint
-        self.assertLess(terminal.JS.index("gateWindows"),
-                        terminal.JS.rindex("syncLev(); draw();"))
-        # ALL is the widest window and can never be gated off, so a default
-        # always survives
-        self.assertIn('data-tf="0" data-on=1', self.doc)
-
-    def test_leverage_control_cannot_empty_the_model(self):
-        """An inverted min/max would render tiers(a,b) empty and blank the field."""
-        self.assertIn("an inverted range is an empty model", terminal.JS)
-        self.assertIn("if(ST.lmin>ST.lmax)", terminal.JS.replace(" ", ""))
-        self.assertIn("Math.min(125,Math.max(2,v))", terminal.JS.replace(" ", ""))
 
     def test_equity_ticker_does_not_reuse_the_tape_class(self):
         """.tk is the ticker-tape item: reusing it puts flex and padding on equities."""
@@ -621,3 +432,66 @@ class TestGeneratedFileIsCurrent(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_removing_the_chart_did_not_take_the_geo_clock_with_it(self):
+        """relTime lived beside the heatmap controller and was cut out with it;
+        every geopolitical timestamp then rendered as an em dash."""
+        self.assertIn("function relTime()", terminal.JS)
+        self.assertIn("setInterval(relTime", terminal.JS)
+        self.assertIn('data-ago="', self.doc)
+
+    def test_the_chart_is_gone_and_the_table_replaced_it(self):
+        """The canvas and its whole engine were removed, not merely hidden."""
+        for gone in ("hm-canvas", "heatmapCompute", "data-lrange", "data-ct",
+                     "hm-tip", "hm-hair", "data-tf", "data-bar"):
+            self.assertNotIn(gone, self.doc, f"heatmap remnant on the page: {gone}")
+            self.assertNotIn(gone, terminal.JS, f"heatmap remnant in JS: {gone}")
+        self.assertIn('table class="lq"', self.doc)
+        self.assertIn("liquidity map", self.doc.lower())
+
+    def test_every_liquidity_band_is_rendered(self):
+        from macro.live import liquidity_levels
+        r = liquidity_levels(self.snap.price_anchors, bands=22)
+        self.assertTrue(r["ok"], r.get("reason"))
+        self.assertEqual(self.doc.count("<tr", self.doc.index('table class="lq"')) - 1,
+                         len(r["rows"]), "a band is missing from the table")
+
+    def test_the_table_reports_leverage_per_band(self):
+        """'How much leverage is used on levels' is the whole point of the panel."""
+        self.assertIn("Leverage at this band", self.doc)
+        self.assertIn("lq-lev", self.doc)
+        self.assertIn("median", self.doc)
+        self.assertRegex(self.doc, r"\d+&times;&ndash;\d+&times;")
+
+    def test_the_table_states_that_counts_are_not_dollars(self):
+        """A count of tiers must never be read as open interest."""
+        low = self.doc.lower()
+        self.assertIn("not open interest and not dollars", low)
+        self.assertIn("clustering", low)
+
+    def test_no_liquidity_number_is_invented(self):
+        """Every price band and count on the page must come from the engine."""
+        from macro.live import liquidity_levels
+        r = liquidity_levels(self.snap.price_anchors, bands=22)
+        seg = self.doc[self.doc.index('table class="lq"'):]
+        seg = seg[:seg.index("</table>")]
+        known = set()
+        for x in r["rows"]:
+            known |= {f'{x["lo"]:,.0f}', f'{x["hi"]:,.0f}', f'{x["count"]:,}',
+                      f'{x["long"]:,}', f'{x["short"]:,}', str(x["lev_lo"]),
+                      str(x["lev_hi"]), str(x["lev_median"]),
+                      f'{x["from_spot_pct"]:+.2f}'}
+        for tok in re.findall(r"\b\d[\d,]{3,}\b", seg):
+            self.assertIn(tok, known, f"unsourced number in the liquidity table: {tok}")
+
+    def test_bitcoin_is_not_stale_relative_to_the_newest_observation(self):
+        """The board carried a 4 September BTC print for three days."""
+        btc = self.snap.quotes["BTC"]
+        newest = max(a.date for a in self.snap.price_anchors)
+        self.assertEqual(btc.as_of, newest,
+                         "the BTC quote is older than the newest observation held")
+
+    def test_both_sentiment_gauges_carry_the_same_read_time(self):
+        gs = [g for g in self.snap.gauges.values()]
+        self.assertEqual(len({g.as_of for g in gs}), 1,
+                         "gauges were read at different times but shown together")

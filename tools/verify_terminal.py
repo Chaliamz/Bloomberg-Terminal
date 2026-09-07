@@ -89,26 +89,19 @@ STATIC = """() => {
       bad.push(cells.length + " quote cells do not tile " + cols + " columns");
   })();
 
-  // heatmap must actually paint, and its price line must sit inside the canvas
+  // the liquidity table must carry real numbers, not empty cells
   (() => {
-    const cv = document.getElementById("hm-canvas");
-    if (!cv) { bad.push("heatmap canvas missing"); return; }
-    if (cv.getBoundingClientRect().width < 80) bad.push("heatmap canvas collapsed");
-    const g = cv.getContext("2d");
-    if (!g) { bad.push("heatmap 2d context unavailable"); return; }
-    const d = g.getImageData(0, 0, cv.width, cv.height).data;
-    let lit = 0, distinct = new Set();
-    for (let i = 0; i < d.length; i += 4) {
-      const key = d[i] + "," + d[i+1] + "," + d[i+2];
-      distinct.add(key);
-      if (d[i] + d[i+1] + d[i+2] > 40) lit++;
+    const rows = [...document.querySelectorAll("table.lq tbody tr")];
+    if (!rows.length) { bad.push("liquidity table has no rows"); return; }
+    let priced = 0, levered = 0;
+    for (const r of rows) {
+      const c = [...r.children].map(x => x.textContent.trim());
+      if (/^[\d,]{3,}/.test(c[0] || "")) priced++;
+      if (/\d+\u00d7/.test(c[3] || "")) levered++;
     }
-    if (lit < 20) bad.push("heatmap appears unpainted (" + lit + " lit px)");
-    if (distinct.size < 6)
-      bad.push("heatmap uses only " + distinct.size + " colours - ramp not applied");
-    if (d[3] !== 255) bad.push("heatmap pixels not opaque");
+    if (priced !== rows.length) bad.push("liquidity band without a price range");
+    if (levered !== rows.length) bad.push("liquidity band without a leverage range");
   })();
-
   // stocks + earnings
   if (n(".eqc") < 4) bad.push("mega-cap board thin: " + n(".eqc"));
   if (n(".er") < 3) bad.push("earnings board thin: " + n(".er"));
@@ -119,27 +112,15 @@ STATIC = """() => {
       bad.push("earnings " + i + " shows a clock for a date-only source: " + t);
   });
 
-  // heatmap controls must exist
-  ["hm-thr","hm-zin","hm-zout","hm-reset","hm-fit","hm-zv","hm-lmin","hm-lmax","hm-peak","hm-price","hm-time","hm-meta"]
-    .forEach(id => { if (!document.getElementById(id)) bad.push("control " + id + " missing"); });
-  if (n("[data-tf]") < 6) bad.push("too few timeframes");
-  if (n("[data-lrange]") < 5) bad.push("leverage range presets missing");
-  if (n("[data-res]") < 4) bad.push("too few grid resolutions");
-  if (n("[data-ct]") < 5) bad.push("chart-type controls missing");
-  if (n("[data-bar]") < 6) bad.push("bar-interval controls missing");
-  if (!document.querySelector("[data-lauto]")) bad.push("auto leverage missing");
-  if (!document.getElementById("hm-hair")) bad.push("crosshair missing");
-  if (!document.getElementById("hm-tip")) bad.push("readout missing");
-  if (!document.getElementById("hm-lmin") || !document.getElementById("hm-lmax"))
-    bad.push("leverage min/max inputs missing");
-  if (n("[data-scheme]") < 3) bad.push("scheme controls missing");
-  if (!document.getElementById("hm-meta").textContent.trim() ||
-      document.getElementById("hm-meta").textContent.indexOf("\u2014") === 0)
-    bad.push("heatmap meta line never resolved");
-  if (document.querySelectorAll("#hm-price span").length < 3)
-    bad.push("price axis not drawn");
-  if (document.querySelectorAll("#hm-time span").length < 3)
-    bad.push("time axis not drawn");
+  // the liquidity table replaced the heatmap canvas
+  if (!document.querySelector("table.lq")) bad.push("liquidity table missing");
+  if (n("table.lq tbody tr") < 4) bad.push("too few liquidity bands");
+  if (n("table.lq .lq-lev") < 4) bad.push("leverage column missing");
+  if (document.getElementById("hm-canvas")) bad.push("heatmap canvas still present");
+  if (!document.querySelector("table.lq .lq-bar span"))
+    bad.push("density bars not drawn");
+  if (!/not open interest and not dollars/i.test(document.body.textContent))
+    bad.push("the panel does not state what the counts are not");
 
   // geo events must each show a resolved relative time
   document.querySelectorAll("[data-ago]").forEach((el, i) => {
@@ -208,7 +189,7 @@ STATIC = """() => {
     bad.push("h-overflow " + document.documentElement.scrollWidth + " > " + window.innerWidth);
 
   return {bad, quotes: n(".q"), news: n(".sqr"), gauges: n(".gg"), geo: n(".ge"),
-          heat: !!document.getElementById("hm-canvas"), cds: n("[data-when]"),
+          heat: n("table.lq tbody tr"), cds: n("[data-when]"),
           state: txt("state"), age: txt("age"), sess: txt("sess"), clk: txt("clk")};
 }"""
 
@@ -285,329 +266,51 @@ async def run(path: str) -> int:
         await page.goto(url, wait_until="load")
         await page.wait_for_timeout(1500)
 
-        async def canvas_sig() -> int:
-            # Sample the WHOLE canvas with a stride. A corner crop lands in the
-            # region before the first anchor, which is uniform base colour and
-            # therefore identical across configurations - it would hide real
-            # changes and report false failures.
-            return await page.evaluate("""() => {
-              const c = document.getElementById("hm-canvas");
-              const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
-              let s = 0;
-              for (let i = 0; i < d.length; i += 16)
-                s = (s + d[i] + d[i+1]*3 + d[i+2]*7) % 2147483647;
-              return s;
-            }""")
-
-        async def meta() -> str:
-            return await page.evaluate(
-                "() => document.getElementById('hm-meta').textContent")
-
+        # ---- liquidity table: read the rendered numbers back ------------
         ctl_bad = []
-        base_sig, base_meta = await canvas_sig(), await meta()
-        async def band() -> tuple[float, float]:
-            """The price band the field currently spans, read off the axis."""
-            v = await page.evaluate("""() => {
-              const s = document.querySelectorAll("#hm-price span");
-              const num = t => parseFloat(t.replace(/[^0-9.]/g, ""));
-              return [num(s[s.length-1].textContent), num(s[0].textContent)];
-            }""")
-            return float(v[0]), float(v[1])
-
-        checks = [
-            ("scheme magma", '[data-scheme="magma"]'),
-            ("scheme ember", '[data-scheme="ember"]'),
-            ("grid COARSE", '[data-res="60x40"]'),
-            ("grid ULTRA", '[data-res="240x130"]'),
-            ("grid FINE", '[data-res="160x90"]'),
-            ("leverage LOW", '[data-lrange="2-10"]'),
-            ("leverage HIGH", '[data-lrange="50-125"]'),
-            ("leverage EXTREME", '[data-lrange="100-125"]'),
-            ("leverage ALL", '[data-lrange="2-125"]'),
-            ("bar 1D", '[data-bar="86400000"]'),
-            ("bar 1W", '[data-bar="604800000"]'),
-            ("bar AUTO", '[data-bar="0"]'),
-            ("chart OHLC bars", '[data-ct="bar"]'),
-            ("chart area", '[data-ct="area"]'),
-            ("chart line", '[data-ct="line"]'),
-            ("chart off", '[data-ct="off"]'),
-            ("chart candles", '[data-ct="candle"]'),
-            ("zoom in", "#hm-zin"),
-            ("pan up", "#hm-pan-up"),
-            ("reset", "#hm-reset"),
-        ]
-        # A window holding <2 anchors, or the same anchors as a narrower one,
-        # renders identically - it must be gated off with a stated reason rather
-        # than shipped as a button that does nothing.
-        tfs = await page.evaluate("""() => [...document.querySelectorAll("[data-tf]")]
-          .map(b => ({d: b.getAttribute("data-tf"),
-                      off: b.hasAttribute("data-off"),
-                      why: b.title || ""}))""")
-        live = [t for t in tfs if not t["off"]]
-        if len(live) < 2:
-            ctl_bad.append(f"only {len(live)} usable timeframe(s)")
-        for t in tfs:
-            if t["off"] and len(t["why"]) < 10:
-                ctl_bad.append(f'timeframe {t["d"]} disabled without a reason')
-            if not t["off"] and not t["why"]:
-                ctl_bad.append(f'timeframe {t["d"]} has no anchor count')
-        checks += [(f'window {t["d"] or "ALL"}', f'[data-tf="{t["d"]}"]') for t in live]
-
-        prev = base_sig
-        for label, sel in checks:
-            await page.click(sel)
-            await page.wait_for_timeout(220)
-            sig = await canvas_sig()
-            if sig == prev:
-                ctl_bad.append(f"{label}: canvas unchanged after click")
-            prev = sig
-        # a window control must change the reported model, not just pixels
-        narrow = [t for t in live if t["d"] != "0"]
-        if narrow:
-            await page.click(f'[data-tf="{narrow[0]["d"]}"]')
-            await page.wait_for_timeout(220)
-            if await meta() == base_meta:
-                ctl_bad.append(
-                    f'{narrow[0]["d"]}D window did not change the model description')
-        await page.click("#hm-reset")
-        await page.wait_for_timeout(220)
-
-        # ---- the two defects the user reported, probed directly ------------
-        # 1. zoom OUT must widen the visible band. The old clamp was max(1,..),
-        #    which made every zoom-out click a silent no-op.
-        lo0, hi0 = await band()
-        for _ in range(3):
-            await page.click("#hm-zout")
-            await page.wait_for_timeout(130)
-        lo1, hi1 = await band()
-        if not (hi1 - lo1) > (hi0 - lo0) * 1.05:
-            ctl_bad.append(
-                f"zoom out did not widen the band: {hi0-lo0:.0f} -> {hi1-lo1:.0f}")
-        if (await page.inner_text("#hm-zv")).startswith("1.00"):
-            ctl_bad.append("zoom readout stuck at 1.00x after zooming out")
-        # zoom in must narrow it again
-        for _ in range(5):
-            await page.click("#hm-zin")
-            await page.wait_for_timeout(110)
-        lo2, hi2 = await band()
-        if not (hi2 - lo2) < (hi1 - lo1):
-            ctl_bad.append("zoom in did not narrow the band")
-        # 2. FIT must restore the sourced window
-        await page.click("#hm-fit")
-        await page.wait_for_timeout(250)
-        lo3, hi3 = await band()
-        if abs((hi3 - lo3) - (hi0 - lo0)) > max(1.0, (hi0 - lo0) * 0.02):
-            ctl_bad.append(f"FIT did not restore the sourced band "
-                           f"({hi3-lo3:.0f} vs {hi0-lo0:.0f})")
-        # 3. the chart must be draggable
-        # The field is taller than the viewport, so its geometric centre sits
-        # below the fold and mouse.move() there never lands on it. Grab the
-        # middle of the part that is actually visible.
-        box = await page.eval_on_selector("#hm-canvas", """c => {
-            const r = c.getBoundingClientRect();
-            const top = Math.max(r.y + 8, 8);
-            const bot = Math.min(r.y + r.height - 8, window.innerHeight - 8);
-            return [r.x + r.width / 2, (top + bot) / 2, bot - top];
+        tbl = await page.evaluate("""() => {
+          const rows = [...document.querySelectorAll("table.lq tbody tr")];
+          return rows.map(r => {
+            const c = [...r.children].map(x => x.textContent.trim());
+            return {band: c[0], from: c[1], side: c[2], lev: c[3], n: c[4],
+                    near: r.hasAttribute("data-near")};
+          });
         }""")
-        if box[2] < 80:
-            ctl_bad.append("heatmap not visible enough in the viewport to drag")
-        await page.click("#hm-zin")          # zoomed in, so panning has headroom
-        await page.wait_for_timeout(200)
-        before = await canvas_sig()
-        await page.mouse.move(box[0], box[1])
-        await page.mouse.down()
-        for dy in (14, 28, 46, 70):
-            await page.mouse.move(box[0], box[1] + dy)
-            await page.wait_for_timeout(45)
-        await page.mouse.up()
-        await page.wait_for_timeout(260)
-        if await canvas_sig() == before:
-            ctl_bad.append("dragging the field did not pan the chart")
-        await page.click("#hm-reset")
-        await page.wait_for_timeout(200)
-        # 4. the price axis must itself be a zoom control (dragging the tags)
-        ab = await page.eval_on_selector("#hm-price", """el => {
-            const r = el.getBoundingClientRect();
-            const top = Math.max(r.y + 6, 6);
-            const bot = Math.min(r.y + r.height - 6, window.innerHeight - 6);
-            return [r.x + r.width / 2, (top + bot) / 2, bot - top];
-        }""")
-        if ab[2] < 60:
-            ctl_bad.append("price axis not visible enough to drag")
-        else:
-            lo4, hi4 = await band()
-            await page.mouse.move(ab[0], ab[1])
-            await page.mouse.down()
-            for dy in (18, 40, 68, 96):
-                await page.mouse.move(ab[0], ab[1] + dy)
-                await page.wait_for_timeout(45)
-            await page.mouse.up()
-            await page.wait_for_timeout(260)
-            lo5, hi5 = await band()
-            if not (hi5 - lo5) > (hi4 - lo4) * 1.05:
-                ctl_bad.append(
-                    f"dragging the price tags down did not widen the scale: "
-                    f"{hi4-lo4:.0f} -> {hi5-lo5:.0f}")
-            await page.click("#hm-fit")
-            await page.wait_for_timeout(200)
-            # and the wheel over the axis must rescale too
-            lo6, hi6 = await band()
-            await page.mouse.move(ab[0], ab[1])
-            await page.mouse.wheel(0, 400)
-            await page.wait_for_timeout(280)
-            lo7, hi7 = await band()
-            if abs((hi7 - lo7) - (hi6 - lo6)) < 1:
-                ctl_bad.append("scrolling the price axis did not rescale")
-            await page.click("#hm-fit")
-            await page.wait_for_timeout(200)
-
-        # 5. the crosshair readout must appear over the field and name a source
-        cbox = await page.eval_on_selector("#hm-canvas", """c => {
-            const r = c.getBoundingClientRect();
-            const top = Math.max(r.y + 8, 8);
-            const bot = Math.min(r.y + r.height - 8, window.innerHeight - 8);
-            return [r.x + r.width * 0.62, (top + bot) / 2];
-        }""")
-        await page.mouse.move(cbox[0], cbox[1])
-        await page.wait_for_timeout(220)
-        if await page.is_hidden("#hm-tip"):
-            ctl_bad.append("crosshair readout never appeared")
-        else:
-            txt = await page.inner_text("#hm-tip")
-            if "T" not in txt or len(txt.strip()) < 12:
-                ctl_bad.append(f"crosshair readout carries no provenance: {txt!r}")
-        await page.mouse.move(4, 4)
-        await page.wait_for_timeout(200)
-        if not await page.is_hidden("#hm-tip"):
-            ctl_bad.append("crosshair readout did not clear on leave")
-
-        # 6. scrolling the FIELD must scale TIME: zooming out brings more
-        #    observations on screen. Previously the field wheel drove the price
-        #    axis, so zooming out there never produced a single extra bar.
-        async def model() -> tuple[int, int]:
-            t = await meta()
-            obs = re.search(r"(\d+) observations", t)
-            bars = re.search(r"(\d+) (?:\d+)?[HDW] bars", t)
-            return (int(obs.group(1)) if obs else -1,
-                    int(bars.group(1)) if bars else -1)
-
-        await page.click("#hm-reset")
-        await page.wait_for_timeout(260)
-        fbox = await page.eval_on_selector("#hm-canvas", """c => {
-            const r = c.getBoundingClientRect();
-            const top = Math.max(r.y + 10, 10);
-            const bot = Math.min(r.y + r.height - 10, window.innerHeight - 10);
-            return [r.x + r.width / 2, (top + bot) / 2, bot - top];
-        }""")
-        if fbox[2] < 60:
-            ctl_bad.append("field not visible enough to scroll")
-        else:
-            await page.mouse.move(fbox[0], fbox[1])
-            wide_obs, _ = await model()
-            for _ in range(6):
-                await page.mouse.wheel(0, -300)     # zoom IN on time
-                await page.wait_for_timeout(120)
-            near_obs, _ = await model()
-            if not near_obs < wide_obs:
-                ctl_bad.append(
-                    f"scrolling the field in did not narrow the series: "
-                    f"{wide_obs} -> {near_obs} observations")
-            for _ in range(10):
-                await page.mouse.wheel(0, 300)      # zoom OUT on time
-                await page.wait_for_timeout(120)
-            back_obs, _ = await model()
-            if not back_obs > near_obs:
-                ctl_bad.append(
-                    f"scrolling the field out did not bring more observations: "
-                    f"{near_obs} -> {back_obs}")
-            # and the field wheel must NOT be moving the price band
-            await page.click("#hm-reset")
-            await page.wait_for_timeout(240)
-            plo, phi = await band()
-            await page.mouse.move(fbox[0], fbox[1])
-            await page.mouse.wheel(0, -300)
-            await page.wait_for_timeout(240)
-            zv = await page.inner_text("#hm-zv")
-            if not zv.startswith("1.00"):
-                ctl_bad.append(f"field wheel changed the PRICE zoom ({zv})")
-
-        # 7. liquidity must scale with the timeframe: a long window models more
-        #    leverage tiers than a short one, because its band is wider.
-        await page.click("#hm-reset")
-        await page.wait_for_timeout(240)
-
-        async def tiers_now() -> int:
-            m2 = re.search(r"(\d+) leverage tiers", await meta())
-            return int(m2.group(1)) if m2 else -1
-
-        wide_tiers = await tiers_now()
-        short = [t for t in live if t["d"] not in ("0",)]
-        if short:
-            await page.click(f'[data-tf="{short[0]["d"]}"]')
-            await page.wait_for_timeout(300)
-            short_tiers = await tiers_now()
-            if not short_tiers < wide_tiers:
-                ctl_bad.append(
-                    f"liquidity did not scale with the timeframe: "
-                    f"{short[0]['d']}D models {short_tiers} tiers vs "
-                    f"{wide_tiers} on ALL")
-            if "(auto)" not in await meta():
-                ctl_bad.append("leverage floor is not being derived")
-        await page.click("#hm-reset")
-        await page.wait_for_timeout(240)
-
-        # threshold slider - baseline taken immediately before the change, or
-        # the comparison is against unrelated state and passes vacuously
-        pre_thr = await canvas_sig()
-        await page.evaluate("""() => {
-          const r = document.getElementById("hm-thr");
-          r.value = 60; r.dispatchEvent(new Event("input", {bubbles:true}));
-        }""")
-        await page.wait_for_timeout(250)
-        if await canvas_sig() == pre_thr:
-            ctl_bad.append("threshold slider had no effect")
-        await page.evaluate("""() => {
-          const r = document.getElementById("hm-thr");
-          r.value = 0; r.dispatchEvent(new Event("input", {bubbles:true}));
-        }""")
-        await page.wait_for_timeout(200)
-
-        # 4. an inverted leverage range would empty the model and blank the
-        #    field; it must collapse to at least one tier instead.
-        async def set_lev(which: str, val: int) -> None:
-            await page.fill(f"#hm-{which}", str(val))
-            await page.dispatch_event(f"#hm-{which}", "change")
-            await page.wait_for_timeout(200)
-
-        await set_lev("lmin", 90)
-        await set_lev("lmax", 10)          # inverted on purpose
-        lmin = int(await page.input_value("#hm-lmin"))
-        lmax = int(await page.input_value("#hm-lmax"))
-        if lmin > lmax:
-            ctl_bad.append(f"inverted leverage range survived ({lmin}-{lmax})")
-        if "0 leverage tiers" in await meta():
-            ctl_bad.append("leverage range emptied the model")
-        # out-of-range input must clamp, not propagate
-        await set_lev("lmin", -40)
-        await set_lev("lmax", 9999)
-        lmin = int(await page.input_value("#hm-lmin"))
-        lmax = int(await page.input_value("#hm-lmax"))
-        if not (2 <= lmin <= 125 and 2 <= lmax <= 125):
-            ctl_bad.append(f"leverage inputs did not clamp ({lmin}-{lmax})")
-        await page.click('[data-lrange="2-125"]')
-        await page.wait_for_timeout(200)
-        left = int(await page.input_value("#hm-lmax")) - \
-            int(await page.input_value("#hm-lmin")) + 1
-
+        if len(tbl) < 4:
+            ctl_bad.append(f"only {len(tbl)} liquidity bands rendered")
+        for r in tbl:
+            if not re.match(r"^[\d,]+", r["band"]):
+                ctl_bad.append(f"band is not a price range: {r['band']!r}")
+                break
+            if not re.search(r"\d+×–\d+×", r["lev"]):
+                ctl_bad.append(f"no leverage range in row: {r['lev']!r}")
+                break
+            if r["side"] not in ("LONG", "SHORT", "MIXED"):
+                ctl_bad.append(f"bad side: {r['side']!r}")
+                break
+            if not re.match(r"^[+-]\d", r["from"]):
+                ctl_bad.append(f"distance from spot missing: {r['from']!r}")
+                break
+        # rows near spot must be highlighted, or the panel buries its own lede
+        if not any(r["near"] for r in tbl):
+            ctl_bad.append("no band marked as near spot")
+        # the density bars must actually vary
+        widths = await page.evaluate(
+            """() => [...document.querySelectorAll("table.lq .lq-bar span")]
+                     .map(s => parseFloat(s.style.width))""")
+        if len(set(widths)) < 2:
+            ctl_bad.append("density bars are all the same width")
+        if widths and max(widths) < 99:
+            ctl_bad.append(f"densest band is not full width (max {max(widths)})")
         real_cerr = [x for x in cerr if "fonts.g" not in x and "ERR_" not in x]
         if ctl_bad or real_cerr:
             failures += 1
-            print("FAIL heatmap controls")
+            print("FAIL liquidity table")
             for x in ctl_bad + real_cerr:
                 print(f"       - {x}")
         else:
-            print(f"PASS heatmap controls  {len(checks)} controls recompute, "
-                  f"zoom/pan/fit live, {left} leverage tiers modelled")
+            print(f"PASS liquidity table  {len(tbl)} bands, leverage + side + "
+                  f"distance on every row")
         await page.close()
 
         # ---- live behaviour: the parts that only exist at runtime ----------

@@ -33,7 +33,7 @@ __all__ = [
     "Quote", "Headline", "Gauge", "Liquidations", "GeoEvent", "Snapshot",
     "SOURCES", "RELEASE_CLOCK", "load", "save", "scan", "merge", "age_seconds",
     "liquidation_ladder", "liquidation_heatmap", "PriceAnchor", "HEAT_RAMP",
-    "HEAT_RAMPS", "Equity", "Earning", "leverage_tiers",
+    "HEAT_RAMPS", "Equity", "Earning", "leverage_tiers", "liquidity_levels",
 ]
 
 UA = "macro-radar/1.1 (institutional macro terminal; contact: operator)"
@@ -263,6 +263,99 @@ def leverage_tiers(lo: int = 2, hi: int = 125) -> tuple[int, ...]:
     lo = max(2, int(lo))
     hi = max(lo, int(hi))
     return tuple(range(lo, hi + 1))
+
+
+def liquidity_levels(
+    anchors: list["PriceAnchor"],
+    *,
+    levels: tuple[int, ...] | None = None,
+    bands: int = 24,
+    lo: float | None = None,
+    hi: float | None = None,
+) -> dict[str, Any]:
+    """Where unswept liquidation levels sit, and what leverage puts them there.
+
+    Same model as the heatmap, reported as data instead of pixels. A position
+    opened at observed price P at leverage n liquidates at ``P*(1-1/n)`` long and
+    ``P*(1+1/n)`` short; the level stays pending until price is later OBSERVED to
+    have swept through it, at which point it is removed because the liquidation
+    has happened.
+
+    What comes back is the surviving pending set, bucketed into price bands, with
+    the leverage tiers that put a level in each band. That answers the two
+    questions a chart only gestures at: where is the liquidity, and how levered
+    is it.
+
+    Counts are (observation, tier, side) contributions. They are NOT open
+    interest and NOT dollars - no per-exchange position data is reachable here,
+    and inventing a notional would be the whole contract broken. The count says
+    how many distinct leverage tiers put a level in that band, which is a real
+    statement about clustering and nothing more.
+    """
+    if levels is None:
+        levels = leverage_tiers()
+    if not levels:
+        return {"ok": False, "reason": "no leverage tiers in the model"}
+    pts = sorted(anchors, key=lambda a: a.date)
+    if len(pts) < 2:
+        return {"ok": False, "reason": "need at least two dated price anchors"}
+    if bands < 2:
+        return {"ok": False, "reason": "need at least two bands"}
+
+    pending: list[tuple[float, int, str]] = []
+    last_price = pts[0].price
+    for a in pts:
+        span_lo, span_hi = min(last_price, a.price), max(last_price, a.price)
+        pending = [p for p in pending if not (span_lo <= p[0] <= span_hi)]
+        for n in levels:
+            pending.append((a.price * (1 - 1.0 / n), n, "long"))
+            pending.append((a.price * (1 + 1.0 / n), n, "short"))
+        last_price = a.price
+
+    spot = pts[-1].price
+    prices = [a.price for a in pts]
+    lo = lo if lo is not None else min(prices) * 0.985
+    hi = hi if hi is not None else max(prices) * 1.015
+    if hi <= lo:
+        return {"ok": False, "reason": "degenerate price range"}
+    inside = [p for p in pending if lo <= p[0] <= hi]
+    if not inside:
+        return {"ok": False, "reason": "no pending levels fell inside the price range"}
+
+    width = (hi - lo) / bands
+    buckets: dict[int, dict[str, Any]] = {}
+    for level, n, side in inside:
+        # floor(x+0.5) is NOT wanted here: a band is a half-open interval, so
+        # plain floor is correct and the top edge is clamped into the last band.
+        i = min(bands - 1, int((level - lo) / width))
+        b = buckets.setdefault(i, {"tiers": [], "long": 0, "short": 0, "levels": []})
+        b["tiers"].append(n)
+        b[side] += 1
+        b["levels"].append(level)
+
+    peak = max(len(b["tiers"]) for b in buckets.values())
+    out = []
+    for i, b in sorted(buckets.items(), reverse=True):
+        tiers = sorted(b["tiers"])
+        out.append({
+            "lo": lo + i * width,
+            "hi": lo + (i + 1) * width,
+            "mid": lo + (i + 0.5) * width,
+            "count": len(tiers),
+            "share": math.floor(len(tiers) / peak * 1e4 + 0.5) / 1e4,
+            "lev_lo": tiers[0],
+            "lev_hi": tiers[-1],
+            "lev_median": tiers[len(tiers) // 2],
+            "long": b["long"],
+            "short": b["short"],
+            "side": "long" if b["long"] > b["short"] else
+                    ("short" if b["short"] > b["long"] else "mixed"),
+            "from_spot_pct": (lo + (i + 0.5) * width - spot) / spot * 100.0,
+        })
+    return {"ok": True, "spot": spot, "spot_at": pts[-1].date,
+            "spot_source": pts[-1].source, "lo": lo, "hi": hi, "bands": bands,
+            "peak": peak, "pending_total": len(inside),
+            "levels": list(levels), "rows": out}
 
 
 def liquidation_heatmap(

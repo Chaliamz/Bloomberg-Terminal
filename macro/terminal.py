@@ -392,68 +392,37 @@ noscript .ns{display:block;margin:14px 18px;padding:12px;border:1px solid var(--
 .statusbar span{padding:6px 14px;border-right:1px solid var(--edge);white-space:nowrap}
 .statusbar b{color:var(--ink-2);font-weight:500}
 
-/* ---------- liquidation heatmap ---------- */
-.hm-ctl{display:flex;flex-wrap:wrap;gap:7px 18px;align-items:center;
-  padding:9px 11px;border:1px solid var(--edge);border-radius:3px;
-  background:var(--raise);font-family:var(--mono);font-size:10.5px}
-.ctl-g{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.ctl-g>b{color:var(--faint);letter-spacing:.18em;font-weight:400;margin-right:2px}
-.ctl-v{font-style:normal;color:var(--gold);min-width:34px;text-align:right;
-  font-variant-numeric:tabular-nums}
-.ctl-x{font-style:normal;color:var(--faint);padding:0 2px}
-input[type=number]{width:52px;background:var(--panel);border:1px solid var(--edge-hi);
-  color:var(--ink);font-family:var(--mono);font-size:10.5px;padding:2px 4px;
-  border-radius:2px}
-.hm-hint{margin:0;font-family:var(--mono);font-size:10px;color:var(--faint);
-  letter-spacing:.06em}
-.pill{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;padding:3px 9px;
-  border-radius:2px;border:1px solid var(--edge-hi);background:var(--panel);
-  color:var(--dim);cursor:pointer;transition:all .14s ease}
-.pill:hover{color:var(--ink);border-color:var(--gold-dim)}
-.pill[data-on]{background:var(--gold);border-color:var(--gold);color:#05060A;
-  font-weight:700}
-.sw-btn{padding:2px;border:1px solid var(--edge-hi);background:var(--panel);
-  border-radius:2px;cursor:pointer;line-height:0}
-.sw-btn i{display:block;width:34px;height:12px;border-radius:1px}
-.sw-btn[data-on]{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
-input[type=range]{width:104px;accent-color:var(--gold);cursor:pointer}
-
-.hm-stage{display:grid;grid-template-columns:42px minmax(0,1fr) 70px;
-  grid-template-rows:auto auto;gap:0 8px;font-family:var(--mono);font-size:10.5px}
-.hm-scale{grid-row:1;display:flex;flex-direction:column;align-items:stretch;gap:4px;
-  color:var(--faint);text-align:right;font-size:9.5px}
-.hm-scale i{font-style:normal;white-space:nowrap}
-.hm-bar{flex:1 1 auto;border:1px solid var(--edge);border-radius:2px;min-height:60px}
-.hm{grid-row:1;border:1px solid var(--edge);background:#440154;width:100%;
-  display:block;aspect-ratio:1600/760}
-.hm-price{grid-row:1;display:flex;flex-direction:column;justify-content:space-between;
-  color:var(--faint);padding:1px 0;font-size:10px;text-align:left}
-.hm-time{grid-column:2;grid-row:2;display:flex;justify-content:space-between;
-  color:var(--faint);padding-top:5px;font-size:10px;overflow:hidden}
-.hm-time span{white-space:nowrap}
-.hm-key{display:flex;gap:14px;flex-wrap:wrap;color:var(--faint);
-  font-family:var(--mono);font-size:10.5px;padding-top:2px}
-.hm-key i{font-style:normal;display:inline-flex;align-items:center;gap:5px}
-.hm-field{grid-row:1;position:relative;min-width:0}
-.hm-field .hm{width:100%}
-.hm-hair{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:3}
-.hm-hair::before,.hm-hair::after{content:"";position:absolute;background:rgba(234,246,255,.42)}
-.hm-hair::before{left:0;top:-4000px;width:1px;height:8000px}
-.hm-hair::after{top:0;left:-4000px;height:1px;width:8000px}
-.hm-tip{position:absolute;z-index:4;pointer-events:none;transform:translate(14px,-50%);
-  background:rgba(6,8,14,.94);border:1px solid var(--edge-hi);border-radius:3px;
-  padding:7px 10px;font-family:var(--mono);font-size:11px;line-height:1.5;
-  display:grid;grid-template-columns:auto auto;gap:1px 10px;white-space:nowrap;
-  box-shadow:0 8px 26px rgba(0,0,0,.6)}
-.hm-tip[data-flip="1"]{transform:translate(-100%,-50%) translateX(-14px)}
-.hm-tip b{color:var(--ink);font-variant-numeric:tabular-nums;font-weight:600}
-.hm-tip i{font-style:normal;color:var(--dim);letter-spacing:.08em}
-.hm-tip u{grid-column:1/-1;text-decoration:none;color:var(--faint);font-size:10px;
-  border-top:1px solid var(--edge);padding-top:3px;margin-top:2px}
-.hm-price{cursor:ns-resize;transition:color .15s ease}
-.hm-price:hover{color:var(--gold)}
-.hm-ctl .pill[data-off]{opacity:.3;cursor:not-allowed;text-decoration:line-through}
-.hm-key .sw{width:16px;height:3px;border-radius:2px;display:inline-block}
+/* ---------- liquidity map ---------- */
+.lq-head{display:flex;flex-wrap:wrap;gap:10px 26px;padding:2px 0 10px}
+.lq-k{display:flex;flex-direction:column;gap:2px;min-width:0}
+.lq-k b{font-family:var(--mono);font-size:clamp(16px,1.6vw,21px);color:var(--ink);
+  font-variant-numeric:tabular-nums;line-height:1.1;font-weight:600}
+.lq-k b.up{color:var(--up)} .lq-k b.down{color:var(--down)}
+.lq-k i{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--faint);
+  letter-spacing:.09em;text-transform:uppercase}
+.lq-wrap{max-height:none}
+table.lq{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px}
+table.lq th{position:sticky;top:0;background:var(--panel);z-index:1}
+table.lq td{padding:6px 12px;border-bottom:1px solid rgba(26,32,48,.6);
+  font-variant-numeric:tabular-nums;vertical-align:middle;white-space:nowrap}
+table.lq tbody tr[data-near]{background:rgba(46,197,207,.07)}
+table.lq tbody tr[data-near] .lq-px{color:var(--gold)}
+table.lq tbody tr:hover td{background:var(--raise)}
+.lq-px{color:var(--ink);font-weight:600}
+.lq-px i{font-style:normal;color:var(--faint);font-weight:400}
+.lq-d.up{color:var(--up)} .lq-d.down{color:var(--down)} .lq-d.flat{color:var(--dim)}
+.lq-side{font-size:10px;letter-spacing:.12em}
+.lq-side.up{color:var(--up)} .lq-side.down{color:var(--down)} .lq-side.flat{color:var(--dim)}
+.lq-lev{color:var(--ink-2)}
+.lq-lev i{font-style:normal;color:var(--faint);margin-left:8px;font-size:10.5px}
+.lq-n{color:var(--ink);text-align:right}
+.lq-bar{width:26%;min-width:90px}
+.lq-bar span{display:block;height:9px;border-radius:2px;
+  background:linear-gradient(90deg,var(--gold-dim),var(--gold))}
+.lq-sp{color:var(--dim);font-size:11.5px}
+.lq-sp i{font-style:normal;color:var(--faint);padding:0 3px}
+@media(max-width:700px){.lq-bar{display:none}
+  table.lq td,table.lq th{padding:6px 7px;font-size:11.5px}}
 
 /* ---------- stocks & earnings ---------- */
 .eq{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
@@ -572,623 +541,9 @@ function tick(){
 tick();setInterval(tick,1000);
 
 
-/* ---- liquidation heatmap engine: a direct port of macro/live.py.
-   tests/test_live.py runs this in node against the Python implementation and
-   fails if the two grids diverge, so the controls below cannot drift from the
-   reference model. ---- */
-function heatmapCompute(anchors, opts){
-  opts = opts || {};
-  var levels = opts.levels;
-  /* omitted -> full spectrum; explicitly empty -> refuse. Must match live.py. */
-  if(levels == null){ levels = []; for(var L=2;L<=125;L++) levels.push(L); }
-  if(!levels.length) return {ok:false, reason:"no leverage tiers in the model"};
-  var columns = opts.columns || 36, rows = opts.rows || 34;
-  var pts = anchors.slice().sort(function(a,b){return a.date < b.date ? -1 : 1;});
-  if(pts.length < 2 || columns < 2 || rows < 2)
-    return {ok:false, reason:"need at least two dated price anchors"};
-  var prices = pts.map(function(a){return a.price;});
-  var lo = opts.lo != null ? opts.lo : Math.min.apply(null, prices)*0.97;
-  var hi = opts.hi != null ? opts.hi : Math.max.apply(null, prices)*1.03;
-  if(hi <= lo) return {ok:false, reason:"degenerate price range"};
-  /* caller may widen the axis to bar boundaries - see macro/live.py */
-  var _t0 = opts.t0 != null ? opts.t0 : pts[0].date;
-  var _t1 = opts.t1 != null ? opts.t1 : pts[pts.length-1].date;
-  var t0 = Date.parse(_t0), t1 = Date.parse(_t1);
-  if(isNaN(t0)||isNaN(t1)) return {ok:false, reason:"unparseable time bounds"};
-  var span = (t1 - t0)/1000;
-  if(!(span > 0)) return {ok:false, reason:"all anchors share one timestamp"};
-
-  function colOf(iso){
-    var f = ((Date.parse(iso)-t0)/1000)/span;
-    return Math.max(0, Math.min(columns-1, Math.floor(f*(columns-1)+0.5)));
-  }
-  function rowOf(p){
-    var f = (p-lo)/(hi-lo);
-    return Math.max(0, Math.min(rows-1, Math.floor(f*rows)));
-  }
-  var grid = [], x, y;
-  for(x=0;x<columns;x++){ grid.push(new Array(rows).fill(0)); }
-  var pending = [], lastPrice = pts[0].price, anchorAt = {};
-  pts.forEach(function(a){ anchorAt[colOf(a.date)] = a; });
-
-  for(var c=0;c<columns;c++){
-    var a = anchorAt[c];
-    if(a){
-      var sLo = Math.min(lastPrice,a.price), sHi = Math.max(lastPrice,a.price);
-      pending = pending.filter(function(p){ return !(sLo <= p[0] && p[0] <= sHi); });
-      levels.forEach(function(n){
-        pending.push([a.price*(1-1/n), n, "long"]);
-        pending.push([a.price*(1+1/n), n, "short"]);
-      });
-      lastPrice = a.price;
-    }
-    for(var k=0;k<pending.length;k++){
-      var lv = pending[k][0];
-      /* uniform weight per (anchor, tier, side) - see macro/live.py */
-      if(lv >= lo && lv <= hi) grid[c][rowOf(lv)] += 1.0;
-    }
-  }
-  var peak = 0;
-  for(x=0;x<columns;x++) for(y=0;y<rows;y++) if(grid[x][y]>peak) peak=grid[x][y];
-  if(!(peak > 0)) return {ok:false, reason:"no pending levels fell inside the price range"};
-  var norm = grid.map(function(col){
-    /* floor(x+0.5), not Math.round: must match macro/live.py exactly */
-    return col.map(function(v){ return Math.floor(v/peak*1e4+0.5)/1e4; });
-  });
-  return {ok:true, columns:columns, rows:rows, lo:lo, hi:hi, grid:norm, peak:peak,
-          levels:levels, t0:_t0, t1:_t1,
-          anchors: pts.map(function(a){
-            return {col:colOf(a.date), row:rowOf(a.price), price:a.price,
-                    date:a.date, source:a.source, tier:a.tier};
-          })};
-}
-
-/* ---- heatmap controller: every control recomputes the model ---- */
-(function(){
-  var cv=q("hm-canvas"); if(!cv||!cv.getContext||!D.anchors||D.anchors.length<2) return;
-  var g=cv.getContext("2d"); if(!g) return;
-  var BASE={lo:D.window&&D.window.lo, hi:D.window&&D.window.hi};
-  function tiers(a,b){var o=[];for(var i=a;i<=b;i++)o.push(i);return o;}
-  var ST={days:0, lmin:2, lmax:125, lauto:true, cols:160, rows:90,
-          scheme:"viridis", thr:0, zoom:1, pan:0, chart:"candle",
-          tz:1, tpan:0, bar:0};
-  /* screen positions of the drawn observations, rebuilt on every draw and read
-     by the crosshair. Declared here so a crosshair move before the first draw
-     finds an empty array rather than throwing. */
-  var LAST=[];
-  var BARS=[];
-  /* the band currently painted, so the crosshair reports the price under the
-     cursor rather than the un-zoomed sourced band. */
-  var CUR={lo:0, hi:1};
-
-  function hex(h){return [parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),
-                          parseInt(h.substr(5,2),16)];}
-  function ramp(){ return (D.ramps[ST.scheme]||D.ramps.viridis).map(hex); }
-  function colour(v,st){
-    if(v<=ST.thr) return st[0];
-    var t=(v-ST.thr)/(1-ST.thr||1);
-    var f=Math.min(1,Math.max(0,Math.pow(t,0.55)))*(st.length-1);
-    var i=Math.floor(f), k=f-i, A=st[i], B=st[Math.min(i+1,st.length-1)];
-    return [A[0]+(B[0]-A[0])*k, A[1]+(B[1]-A[1])*k, A[2]+(B[2]-A[2])*k];
-  }
-  /* ---- time viewport -------------------------------------------------
-     The window is continuous, not a set of fixed buckets: the timeframe pills
-     seed it and the wheel over the field scales it, so scrolling out really
-     does bring more observations on screen. */
-  var FULL={lo:Date.parse(D.anchors[0].date),
-            hi:Date.parse(D.anchors[D.anchors.length-1].date)};
-  function tWindow(){
-    var full=Math.max(1, FULL.hi-FULL.lo);
-    var span=(ST.days? ST.days*86400000 : full)/ST.tz;
-    span=Math.max(3600000, Math.min(full*1.5, span));
-    var hi=FULL.hi+ST.tpan*full;
-    return {lo:hi-span, hi:hi};
-  }
-  function windowed(){
-    var w=tWindow();
-    return D.anchors.filter(function(a){
-      var t=Date.parse(a.date); return t>=w.lo && t<=w.hi;
-    });
-  }
-  /* ---- price band follows the window ----------------------------------
-     A 24h view must not be drawn against the whole month's price range: the
-     band is the extent of what is actually in view, padded. This is what makes
-     the leverage model below respond to the timeframe at all. */
-  function fitBand(pts){
-    if(!pts.length) return {lo:BASE.lo, hi:BASE.hi};
-    var lo=pts[0].price, hi=pts[0].price;
-    for(var i=1;i<pts.length;i++){
-      if(pts[i].price<lo) lo=pts[i].price;
-      if(pts[i].price>hi) hi=pts[i].price;
-    }
-    var pad=Math.max((hi-lo)*0.14, hi*0.006);
-    return {lo:lo-pad, hi:hi+pad};
-  }
-  function bounds(pts){
-    var b=fitBand(pts);
-    if(b.lo==null||b.hi==null||!(b.hi>b.lo)) return {};
-    var mid=(b.lo+b.hi)/2 + ST.pan*(b.hi-b.lo);
-    var half=(b.hi-b.lo)/2/ST.zoom;   /* zoom < 1 widens the window */
-    return {lo:mid-half, hi:mid+half};
-  }
-  /* ---- which leverage tiers can actually liquidate inside this view ----
-     A position at leverage n opened at P liquidates at P(1-1/n) long and
-     P(1+1/n) short. For that level to fall inside the band [lo,hi] the tier
-     must satisfy n >= P/(P-lo) on the long side and n >= P/(hi-P) on the
-     short. Tiers below that threshold put their levels off-screen and add
-     nothing, so the modelled floor IS that threshold.
-
-     This is why the field fills as the timeframe lengthens: a 24h band is
-     narrow, so only very high leverage reaches into it; a three-month band is
-     wide, so 3x and 5x positions land inside too and the accumulated liquidity
-     is genuinely larger. The relationship is derived from the liquidation
-     formula, not tuned to look right. */
-  function autoFloor(pts, lo, hi){
-    var need=125;
-    for(var i=0;i<pts.length;i++){
-      var P=pts[i].price;
-      if(P>lo) need=Math.min(need, P/(P-lo));
-      if(hi>P) need=Math.min(need, P/(hi-P));
-    }
-    if(!isFinite(need)) need=2;
-    return Math.max(2, Math.min(125, Math.ceil(need)));
-  }
-  /* ---- OHLC buckets ---------------------------------------------------
-     No exchange OHLC is reachable from here, so a bar is built by aggregating
-     the observations that fall inside it: open is the first print in the
-     bucket, close the last, high and low the extremes OF THOSE PRINTS. Nothing
-     is interpolated and no intrabar range is invented. A bucket holding one
-     print is a doji, which is the honest rendering of one observation - and
-     zooming out merges prints, so the bars gain real bodies and real wicks
-     exactly as they do in any charting package. */
-  var STEPS=[3600000,10800000,21600000,43200000,86400000,
-             172800000,259200000,432000000,604800000];
-  function barMs(w, pts){
-    if(ST.bar) return ST.bar;
-    /* AUTO picks the FINEST interval in which no slot is empty.
-       Bars can only touch if every slot between the first and the last holds an
-       observation; choose a finer interval than the data supports and the holes
-       are real gaps in observation, which no amount of styling can close
-       without inventing a bar. This rule scales by itself: sparse prints give
-       coarse bars, and as the scanner fills the feed in it walks down to 1D,
-       6H, 1H without anything being retuned.
-       If nothing is fully contiguous, take the most contiguous. */
-    var best=STEPS[STEPS.length-1], bestRatio=-1;
-    for(var i=0;i<STEPS.length;i++){
-      var bk=buckets(pts, STEPS[i]);
-      if(bk.length<2) continue;
-      var span=bk[bk.length-1].k-bk[0].k+1;
-      var ratio=bk.length/span;
-      if(ratio>=1) return STEPS[i];
-      if(ratio>bestRatio){ bestRatio=ratio; best=STEPS[i]; }
-    }
-    return best;
-  }
-  function buckets(pts, ms){
-    var out=[], cur=null;
-    for(var i=0;i<pts.length;i++){
-      var t=Date.parse(pts[i].date), k=Math.floor(t/ms);
-      if(!cur||cur.k!==k){
-        cur={k:k, t0:k*ms, t1:k*ms+ms, o:pts[i].price, h:pts[i].price,
-             l:pts[i].price, c:pts[i].price, n:1, first:pts[i], last:pts[i]};
-        out.push(cur);
-      } else {
-        cur.c=pts[i].price; cur.last=pts[i]; cur.n++;
-        if(pts[i].price>cur.h) cur.h=pts[i].price;
-        if(pts[i].price<cur.l) cur.l=pts[i].price;
-      }
-    }
-    return out;
-  }
-  /* both engines parse exactly %Y-%m-%dT%H:%M:%SZ, so build that shape and not
-     whatever toISOString() decides to append */
-  function iso(ms){
-    var d=new Date(ms);
-    return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1)+"-"+pad(d.getUTCDate())+
-      "T"+pad(d.getUTCHours())+":"+pad(d.getUTCMinutes())+":"+
-      pad(d.getUTCSeconds())+"Z";
-  }
-  function fmt(n){
-    return n>=1000 ? n.toLocaleString("en-US",{maximumFractionDigits:0})
-                   : n.toFixed(2);
-  }
-  function draw(){
-    var pts=windowed();
-    var meta=q("hm-meta"), price=q("hm-price"), time=q("hm-time");
-    if(pts.length<2){
-      g.fillStyle="#0A0C14"; g.fillRect(0,0,cv.width,cv.height);
-      g.fillStyle="#66738C"; g.font="20px monospace"; g.textAlign="center";
-      g.fillText("only "+pts.length+" sourced anchor in this window",
-                 cv.width/2, cv.height/2);
-      g.textAlign="left";
-      LAST=[];
-      if(meta) meta.textContent="window too short for the data held";
-      if(price) price.innerHTML=""; if(time) time.innerHTML="";
-      return;
-    }
-    var bb=bounds(pts);
-    /* AUTO derives the floor from the band actually in view, so the modelled
-       liquidity scales with the timeframe instead of being fixed at 2x-125x. */
-    var lo0=ST.lauto? autoFloor(pts, bb.lo, bb.hi) : ST.lmin;
-    var hi0=ST.lauto? 125 : ST.lmax;
-    if(ST.lauto){ ST.lmin=lo0; ST.lmax=hi0; syncLev(); }
-    /* Buckets are decided BEFORE the field is computed so both share one grid.
-       The axis then runs from the first bar's opening edge to the last bar's
-       closing edge, which is why no bar is half off-canvas any more. */
-    var BMS=barMs(null, pts), BK=buckets(pts, BMS);
-    var ax0=BK.length?BK[0].t0:Date.parse(pts[0].date);
-    var ax1=BK.length?BK[BK.length-1].t1:Date.parse(pts[pts.length-1].date);
-    var H=heatmapCompute(pts,{levels:tiers(lo0,hi0), columns:ST.cols,
-                              rows:ST.rows, lo:bb.lo, hi:bb.hi,
-                              t0:iso(ax0), t1:iso(ax1)});
-    if(!H.ok){
-      g.fillStyle="#0A0C14"; g.fillRect(0,0,cv.width,cv.height);
-      g.fillStyle="#66738C"; g.font="18px monospace"; g.textAlign="center";
-      g.fillText(H.reason, cv.width/2, cv.height/2); g.textAlign="left";
-      LAST=[];
-      if(meta) meta.textContent=H.reason;
-      return;
-    }
-    CUR={lo:H.lo, hi:H.hi};
-    var st=ramp(), CW=cv.width/H.columns, CH=cv.height/H.rows, x, y;
-    for(x=0;x<H.columns;x++){
-      for(y=0;y<H.rows;y++){
-        var c=colour(H.grid[x][y],st);
-        g.fillStyle="rgb("+(c[0]|0)+","+(c[1]|0)+","+(c[2]|0)+")";
-        g.fillRect(Math.floor(x*CW),Math.floor((H.rows-1-y)*CH),
-                   Math.ceil(CW),Math.ceil(CH));
-      }
-    }
-    /* ---- price series ---------------------------------------------------
-       Bars are OHLC buckets over the observations in view (see buckets()):
-       open is the first print in the bucket, close the last, high and low the
-       extremes of those prints. A one-print bucket is a doji - that is what one
-       observation looks like, and inventing a body for it would be a lie.
-       Zoom out and prints merge, so bodies and wicks become real.
-
-       Up is near-white and down is hot red rather than green/red: green
-       disappears into the middle of every sequential ramp on the field behind
-       it, and a series you cannot see is not a series. */
-    var t0m=Date.parse(H.t0), t1m=Date.parse(H.t1), tspan=t1m-t0m;
-    function px(iso){ return tspan>0 ? (Date.parse(iso)-t0m)/tspan*cv.width : cv.width/2; }
-    function pxt(ms){ return tspan>0 ? (ms-t0m)/tspan*cv.width : cv.width/2; }
-    function py(v){ return (1-(v-H.lo)/(H.hi-H.lo))*cv.height; }
-    LAST=H.anchors.map(function(a){
-      return {x:px(a.date), y:py(a.price), price:a.price, date:a.date,
-              source:a.source, tier:a.tier};
-    });
-    BARS=BK;
-    var slot=tspan>0 ? BMS/tspan*cv.width : cv.width/12;
-    /* Bars fill their slot, leaving a single hairline. The old 48px cap was a
-       leftover from sizing by the median observation gap: with a 240px slot it
-       drew a 48px body and a 192px hole, which is what made the series look
-       like scattered blocks rather than a chart. */
-    var bw=Math.max(2, slot-1);
-
-    g.save(); g.lineJoin="miter"; g.lineCap="butt";
-    if(ST.chart!=="off"){
-      if(ST.chart==="line"||ST.chart==="area"){
-        if(ST.chart==="area"){
-          var grd=g.createLinearGradient(0,0,0,cv.height);
-          grd.addColorStop(0,"rgba(46,197,207,.42)");
-          grd.addColorStop(1,"rgba(46,197,207,0)");
-          g.beginPath(); g.moveTo(LAST[0].x,cv.height);
-          LAST.forEach(function(p){g.lineTo(p.x,p.y);});
-          g.lineTo(LAST[LAST.length-1].x,cv.height); g.closePath();
-          g.fillStyle=grd; g.fill();
-        }
-        g.strokeStyle="rgba(5,6,10,.85)"; g.lineWidth=4.6; g.lineJoin="round";
-        g.beginPath(); LAST.forEach(function(p,k){k?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y);});
-        g.stroke();
-        g.strokeStyle="#7FE9F2"; g.lineWidth=1.9;
-        g.beginPath(); LAST.forEach(function(p,k){k?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y);});
-        g.stroke();
-      } else {
-        for(var i=0;i<BK.length;i++){
-          var b=BK[i];
-          var cx=Math.round(pxt(b.t0+BMS/2))+0.5;
-          var up=b.c>=b.o;
-          var col=up?"#EAF6FF":"#FF4D6D";
-          var yH=py(b.h), yL=py(b.l), yO=py(b.o), yC=py(b.c);
-          var top=Math.min(yO,yC), bot=Math.max(yO,yC);
-          if(ST.chart==="bar"){
-            /* OHLC bar: wick with an open tick left and a close tick right */
-            g.strokeStyle=col; g.lineWidth=Math.max(1,Math.round(bw*0.12));
-            g.beginPath(); g.moveTo(cx,yH); g.lineTo(cx,yL); g.stroke();
-            g.beginPath();
-            g.moveTo(cx-bw*0.5,yO); g.lineTo(cx,yO);
-            g.moveTo(cx,yC); g.lineTo(cx+bw*0.5,yC);
-            g.stroke();
-          } else {
-            /* candle, drawn the way an exchange chart draws one: a 1px wick
-               through the centre and a body from open to close */
-            g.strokeStyle=col; g.lineWidth=Math.max(1,Math.round(slot*0.06));
-            g.beginPath(); g.moveTo(cx,yH); g.lineTo(cx,yL); g.stroke();
-            var h=bot-top;
-            if(h<1.15){
-              /* open == close: a doji is a line, never a fabricated body */
-              g.lineWidth=Math.max(2.2,Math.round(bw*0.2));
-              g.beginPath(); g.moveTo(cx-bw/2,Math.round(top)+0.5);
-              g.lineTo(cx+bw/2,Math.round(top)+0.5); g.stroke();
-            } else {
-              g.fillStyle=col;
-              g.fillRect(Math.round(cx-bw/2), Math.round(top),
-                         Math.max(1,Math.round(bw)), Math.max(1,Math.round(h)));
-            }
-          }
-        }
-      }
-      /* last price, marked the way an exchange chart marks it */
-      var L=LAST[LAST.length-1];
-      g.setLineDash([5,5]); g.strokeStyle="rgba(127,233,242,.55)"; g.lineWidth=1;
-      g.beginPath(); g.moveTo(0,Math.round(L.y)+0.5);
-      g.lineTo(cv.width,Math.round(L.y)+0.5); g.stroke();
-      g.setLineDash([]);
-    }
-    g.restore();
-
-    if(price){
-      var out="";
-      for(var i=6;i>=0;i--) out+="<span>"+fmt(H.lo+(H.hi-H.lo)*i/6)+"</span>";
-      price.innerHTML=out;
-    }
-    if(time){
-      var t0=H.t0.slice(5,10), t1=H.t1.slice(5,10);
-      var m0=Date.parse(H.t0), m1=Date.parse(H.t1), tout="";
-      for(var j=0;j<5;j++){
-        var d2=new Date(m0+(m1-m0)*j/4);
-        tout+="<span>"+String(d2.getUTCMonth()+1).padStart(2,"0")+"-"+
-              String(d2.getUTCDate()).padStart(2,"0")+"</span>";
-      }
-      time.innerHTML=tout;
-    }
-    var bar=q("hm-bar");
-    if(bar) bar.style.background="linear-gradient(0deg,"+
-      (D.ramps[ST.scheme]||D.ramps.viridis).join(",")+")";
-    setText("hm-peak",H.peak.toFixed(1));
-    if(meta){
-      var bl=BMS>=604800000?"1W":(BMS>=86400000?(BMS/86400000)+"D":(BMS/3600000)+"H");
-      meta.textContent=pts.length+" observations · "+BK.length+" "+bl+" bars · "+
-        H.columns+"×"+H.rows+" grid · "+(hi0-lo0+1)+" leverage tiers "+
-        lo0+"x-"+hi0+"x"+(ST.lauto?" (auto)":"")+" · "+
-        fmt(H.lo)+"-"+fmt(H.hi)+" · zoom "+ST.zoom.toFixed(2)+"x";
-    }
-    setText("hm-zv",ST.zoom.toFixed(2)+"×");
-  }
-
-  function bindPills(sel, fn){
-    document.querySelectorAll(sel).forEach(function(b){
-      b.addEventListener("click",function(){ fn(b); draw(); });
-    });
-  }
-  /* Not every window the bar offers is a view the data can support. A window
-     holding fewer than two sourced anchors cannot produce a heatmap at all, and
-     one holding the same anchors as a narrower window renders identically - both
-     would be buttons that do nothing. Gate them, and say why on hover, rather
-     than shipping dead controls. Anchor sets are nested as the window widens, so
-     an equal count means an equal set. */
-  function anchorsIn(days){
-    if(!days) return D.anchors.length;
-    var last=Date.parse(D.anchors[D.anchors.length-1].date);
-    var cut=last-days*86400000;
-    return D.anchors.filter(function(a){return Date.parse(a.date)>=cut;}).length;
-  }
-  (function gateWindows(){
-    var seen={}, btns=[].slice.call(document.querySelectorAll("[data-tf]"));
-    btns.sort(function(a,b){
-      var x=parseInt(a.getAttribute("data-tf"),10)||1e9;
-      var y=parseInt(b.getAttribute("data-tf"),10)||1e9;
-      return x-y;
-    });
-    btns.forEach(function(b){
-      var d=parseInt(b.getAttribute("data-tf"),10);
-      var n=anchorsIn(d), why=null;
-      if(n<2) why=n+" sourced anchor in this window \u2014 a heatmap needs two";
-      else if(seen[n]) why="same anchors as "+seen[n]+" \u2014 no observation between them";
-      else seen[n]=(d?d+"D":"ALL");
-      if(why){
-        b.disabled=true; b.setAttribute("data-off","1");
-        b.removeAttribute("data-on"); b.title=why;
-      } else b.title=n+" sourced anchors in this window";
-    });
-  })();
-  bindPills("[data-tf]",function(b){
-    document.querySelectorAll("[data-tf]").forEach(function(o){o.removeAttribute("data-on");});
-    b.setAttribute("data-on","1"); ST.days=parseInt(b.getAttribute("data-tf"),10);
-    /* a pill states a span, so it clears any accumulated scroll and pan */
-    ST.tz=1; ST.tpan=0;
-  });
-  bindPills("[data-bar]",function(b){
-    document.querySelectorAll("[data-bar]").forEach(function(o){o.removeAttribute("data-on");});
-    b.setAttribute("data-on","1"); ST.bar=parseInt(b.getAttribute("data-bar"),10);
-  });
-  bindPills("[data-lauto]",function(b){
-    ST.lauto=!ST.lauto;
-    if(ST.lauto) b.setAttribute("data-on","1"); else b.removeAttribute("data-on");
-    if(!ST.lauto){ ST.lmin=2; ST.lmax=125; }
-    syncLev();
-  });
-  bindPills("[data-res]",function(b){
-    document.querySelectorAll("[data-res]").forEach(function(o){o.removeAttribute("data-on");});
-    b.setAttribute("data-on","1");
-    var r=b.getAttribute("data-res").split("x");
-    ST.cols=parseInt(r[0],10); ST.rows=parseInt(r[1],10);
-  });
-  bindPills("[data-scheme]",function(b){
-    document.querySelectorAll("[data-scheme]").forEach(function(o){o.removeAttribute("data-on");});
-    b.setAttribute("data-on","1"); ST.scheme=b.getAttribute("data-scheme");
-  });
-  function syncLev(){
-    var a=q("hm-lmin"), b=q("hm-lmax");
-    if(a) a.value=ST.lmin; if(b) b.value=ST.lmax;
-    document.querySelectorAll("[data-lrange]").forEach(function(o){
-      var r=o.getAttribute("data-lrange").split("-");
-      if(+r[0]===ST.lmin && +r[1]===ST.lmax) o.setAttribute("data-on","1");
-      else o.removeAttribute("data-on");
-    });
-  }
-  bindPills("[data-lrange]",function(b){
-    var r=b.getAttribute("data-lrange").split("-");
-    ST.lmin=+r[0]; ST.lmax=+r[1]; ST.lauto=false;
-    var ab=document.querySelector("[data-lauto]");
-    if(ab) ab.removeAttribute("data-on");
-    syncLev();
-  });
-  ["hm-lmin","hm-lmax"].forEach(function(id){
-    var el=q(id); if(!el) return;
-    el.addEventListener("change",function(){
-      var v=parseInt(el.value,10);
-      if(isNaN(v)) v = id==="hm-lmin" ? 2 : 125;
-      v=Math.min(125,Math.max(2,v));
-      if(id==="hm-lmin") ST.lmin=v; else ST.lmax=v;
-      ST.lauto=false;
-      var ab=document.querySelector("[data-lauto]");
-      if(ab) ab.removeAttribute("data-on");
-      /* an inverted range is an empty model: keep at least one tier */
-      if(ST.lmin>ST.lmax){ if(id==="hm-lmin") ST.lmax=ST.lmin; else ST.lmin=ST.lmax; }
-      syncLev(); draw();
-    });
-  });
-  var thr=q("hm-thr");
-  if(thr) thr.addEventListener("input",function(){
-    ST.thr=parseInt(thr.value,10)/100;
-    setText("hm-thr-v",ST.thr.toFixed(2)); draw();
-  });
-  /* Zoom out was clamped at 1, so the chart could not be widened past the
-     sourced window at all. The floor is now 0.2x. */
-  function zoom(f){ ST.zoom=Math.min(25,Math.max(0.2,ST.zoom*f)); draw(); }
-  var zi=q("hm-zin"), zo=q("hm-zout"), pu=q("hm-pan-up"), pd=q("hm-pan-dn"),
-      rs=q("hm-reset");
-  if(zi) zi.addEventListener("click",function(){zoom(1.5);});
-  if(zo) zo.addEventListener("click",function(){zoom(1/1.5);});
-  if(pu) pu.addEventListener("click",function(){ST.pan=Math.min(1,ST.pan+0.12/ST.zoom);draw();});
-  if(pd) pd.addEventListener("click",function(){ST.pan=Math.max(-1,ST.pan-0.12/ST.zoom);draw();});
-  var fit=q("hm-fit");
-  if(fit) fit.addEventListener("click",function(){
-    ST.zoom=1; ST.pan=0; ST.tz=1; ST.tpan=0; draw();});
-  if(rs) rs.addEventListener("click",function(){
-    ST.zoom=1; ST.pan=0; ST.thr=0; ST.lmin=2; ST.lmax=125; ST.lauto=true;
-    ST.days=0; ST.cols=160; ST.rows=90; ST.scheme="viridis";
-    ST.tz=1; ST.tpan=0; ST.bar=0; ST.chart="candle";
-    document.querySelectorAll("[data-bar]").forEach(function(o){
-      o.toggleAttribute("data-on", o.getAttribute("data-bar")==="0"); });
-    document.querySelectorAll("[data-ct]").forEach(function(o){
-      o.toggleAttribute("data-on", o.getAttribute("data-ct")==="candle"); });
-    document.querySelectorAll("[data-lauto]").forEach(function(o){
-      o.setAttribute("data-on","1"); });
-    if(thr){thr.value=0; setText("hm-thr-v","0.00");}
-    document.querySelectorAll("[data-tf]").forEach(function(o){
-      o.toggleAttribute("data-on", o.getAttribute("data-tf")==="0"); });
-    document.querySelectorAll("[data-res]").forEach(function(o){
-      o.toggleAttribute("data-on", o.getAttribute("data-res")==="160x90"); });
-    document.querySelectorAll("[data-scheme]").forEach(function(o){
-      o.toggleAttribute("data-on", o.getAttribute("data-scheme")==="viridis"); });
-    syncLev(); draw();
-  });
-
-  /* drag to pan the price axis, as on a real chart */
-  var dragging=false, lastY=0, lastX=0;
-  cv.addEventListener("mousedown",function(ev){
-    dragging=true; lastY=ev.clientY; lastX=ev.clientX;
-    cv.style.cursor="grabbing"; ev.preventDefault();
-  });
-  addEventListener("mouseup",function(){dragging=false; cv.style.cursor="grab";});
-  addEventListener("mousemove",function(ev){
-    if(!dragging) return;
-    var r=cv.getBoundingClientRect();
-    var dy=(ev.clientY-lastY)/Math.max(1,r.height);
-    var dx=(ev.clientX-lastX)/Math.max(1,r.width);
-    lastY=ev.clientY; lastX=ev.clientX;
-    ST.pan=Math.max(-3,Math.min(3,ST.pan+dy/ST.zoom));
-    /* dragging right walks backwards through time, as on any chart */
-    var prev=ST.tpan;
-    ST.tpan=Math.max(-1.2,Math.min(0.35,ST.tpan-dx/ST.tz));
-    if(windowed().length<2) ST.tpan=prev;
-    draw();
-  });
-  cv.style.cursor="grab";
-  /* ---- time zoom -------------------------------------------------------
-     Scrolling the FIELD scales time, so zooming out brings more observations
-     on screen. Scrolling the price tags scales price. That is the split every
-     charting package uses, and the previous build had the field bound to price,
-     which is why zooming out there never produced more bars.
-
-     A zoom that would leave fewer than two observations on screen is refused
-     rather than clamped to an arbitrary number: two is what the model needs. */
-  function tzoom(f){
-    var prev=ST.tz;
-    ST.tz=Math.min(60,Math.max(0.35,ST.tz*f));
-    if(windowed().length<2) ST.tz=prev;
-    draw();
-  }
-  cv.addEventListener("wheel",function(ev){
-    ev.preventDefault(); tzoom(ev.deltaY<0?1.18:1/1.18);
-  },{passive:false});
-  bindPills("[data-ct]",function(b){
-    document.querySelectorAll("[data-ct]").forEach(function(o){o.removeAttribute("data-on");});
-    b.setAttribute("data-on","1"); ST.chart=b.getAttribute("data-ct");
-  });
-
-  /* ---- zoom from the price tags, the way a charting package does it -------
-     Drag the price axis down to compress the scale, up to expand it; the wheel
-     does the same in discrete steps. Without this the axis is decoration. */
-  /* q("hm-price") again, deliberately: `price` inside draw() is function-local
-     and referencing it here threw, which killed the whole controller. */
-  var axis=q("hm-price");
-  if(axis){
-    axis.setAttribute("title","drag or scroll the price axis to rescale");
-    var pdrag=false, pY=0;
-    axis.addEventListener("mousedown",function(ev){
-      pdrag=true; pY=ev.clientY; ev.preventDefault();
-    });
-    addEventListener("mouseup",function(){pdrag=false;});
-    addEventListener("mousemove",function(ev){
-      if(!pdrag) return;
-      var dy=ev.clientY-pY; pY=ev.clientY;
-      /* down widens the band (zoom out), up narrows it - matches every chart */
-      if(dy) zoom(Math.exp(-dy/140));
-    });
-    axis.addEventListener("wheel",function(ev){
-      ev.preventDefault(); zoom(ev.deltaY<0?1.12:1/1.12);
-    },{passive:false});
-  }
-
-  /* ---- crosshair + readout ------------------------------------------------ */
-  var hair=q("hm-hair"), tip=q("hm-tip");
-  function nearest(x){
-    var best=null, d=1e18;
-    for(var i=0;i<LAST.length;i++){
-      var dx=Math.abs(LAST[i].x-x);
-      if(dx<d){d=dx; best=LAST[i];}
-    }
-    return best;
-  }
-  cv.addEventListener("mousemove",function(ev){
-    if(!hair||!LAST.length) return;
-    var r=cv.getBoundingClientRect();
-    if(!r.width||!r.height) return;
-    var sx=(ev.clientX-r.left)/r.width, sy=(ev.clientY-r.top)/r.height;
-    hair.style.left=(sx*100)+"%"; hair.style.top=(sy*100)+"%"; hair.hidden=false;
-    var pr=CUR.hi-(CUR.hi-CUR.lo)*sy;
-    var n=nearest(sx*cv.width);
-    if(tip&&n){
-      tip.hidden=false;
-      tip.style.left=(sx*100)+"%";
-      tip.style.top=(sy*100)+"%";
-      tip.setAttribute("data-flip", sx>0.62 ? "1" : "");
-      tip.innerHTML="<b>"+fmt(pr)+"</b><i>cursor</i>"+
-        "<b>"+fmt(n.price)+"</b><i>"+n.date.slice(0,10)+" "+n.date.slice(11,16)+"Z</i>"+
-        "<u>"+n.source+" &middot; T"+n.tier+"</u>";
-    }
-  });
-  cv.addEventListener("mouseleave",function(){
-    if(hair) hair.hidden=true; if(tip) tip.hidden=true;
-  });
-
-  syncLev(); draw();
-})();
-
-/* ---- relative time on the geopolitical board, recomputed every tick ---- */
+/* ---- relative time on the geopolitical board, recomputed every tick ----
+   This lived next to the heatmap controller and was cut out with it. The
+   browser harness caught it: every geo timestamp rendered as an em dash. */
 function relTime(){
   var now=Date.now();
   var els=document.querySelectorAll("[data-ago]");
@@ -1490,122 +845,79 @@ def render_liquidations(snap) -> str:
     return "".join(out)
 
 
-def render_heatmap(snap) -> str:
-    """CoinGlass-form heatmap with live controls.
+def render_liquidity(snap) -> str:
+    """Where the unswept liquidation levels sit, and what leverage puts them there.
 
-    The grid is recomputed in the browser by a direct port of
-    ``macro.live.liquidation_heatmap``; a cross-implementation test runs the two
-    against each other so the controls cannot drift from the reference model.
+    This replaces the heatmap canvas. The chart was the wrong instrument for this
+    data: 27 irregular observations cannot make a convincing candle series, and a
+    picture of a model is harder to check than the model's numbers. A table can
+    be read, sorted and argued with, and it answers the two questions directly -
+    which price bands hold levels, and how levered those levels are.
     """
-    if len(snap.price_anchors) < 2:
-        return ('<p class="note">Heatmap UNAVAILABLE &mdash; needs at least two dated '
-                'price anchors, and they are not interpolated into existence.</p>')
+    from .live import liquidity_levels
 
-    tf = "".join(
-        f'<button class="pill" data-tf="{d}"{" data-on=1" if d == 0 else ""}>'
-        f'{"ALL" if d == 0 else str(d) + "D"}</button>'
-        for d in (3, 7, 14, 21, 30, 0)
-    )
-    lev = "".join(
-        f'<button class="pill" data-lrange="{a}-{b}"'
-        f'{" data-on=1" if (a, b) == (2, 125) else ""}>{lbl}</button>'
-        for a, b, lbl in ((2, 125, "ALL"), (2, 10, "LOW"), (10, 50, "MID"),
-                          (50, 125, "HIGH"), (100, 125, "EXTREME"))
-    )
-    schemes = "".join(
-        f'<button class="sw-btn" data-scheme="{k}" title="{k}"'
-        f'{" data-on=1" if k == "viridis" else ""}>'
-        f'<i style="background:linear-gradient(90deg,{",".join(v)})"></i></button>'
-        for k, v in HEAT_RAMPS.items()
-    )
-    bars = "".join(
-        f'<button class="pill" data-bar="{ms}"{" data-on=1" if ms == 0 else ""}>'
-        f'{lbl}</button>'
-        for ms, lbl in ((0, "AUTO"), (3600000, "1H"), (21600000, "6H"),
-                        (86400000, "1D"), (259200000, "3D"), (604800000, "1W"))
-    )
-    charts = "".join(
-        f'<button class="pill" data-ct="{k}"{" data-on=1" if k == "candle" else ""}>'
-        f'{lbl}</button>'
-        for k, lbl in (("candle", "CANDLES"), ("bar", "OHLC BARS"),
-                       ("area", "AREA"), ("line", "LINE"), ("off", "OFF"))
-    )
-    res = "".join(
-        f'<button class="pill" data-res="{c}x{r}"{" data-on=1" if c == 160 else ""}>'
-        f'{lbl}</button>'
-        for c, r, lbl in ((60, 40, "COARSE"), (110, 64, "MED"), (160, 90, "FINE"),
-                          (240, 130, "ULTRA"))
-    )
+    r = liquidity_levels(snap.price_anchors, bands=22)
+    if not r["ok"]:
+        return (f'<p class="note bad">Liquidity map UNAVAILABLE &mdash; {e(r["reason"])}. '
+                'Nothing is estimated in its place.</p>')
+
+    spot = r["spot"]
+    rows = r["rows"]
+    top = max(rows, key=lambda x: x["count"])
+    above = [x for x in rows if x["mid"] > spot]
+    below = [x for x in rows if x["mid"] <= spot]
+    up_n = sum(x["count"] for x in above)
+    dn_n = sum(x["count"] for x in below)
+
+    def band_row(x: dict) -> str:
+        pct = x["from_spot_pct"]
+        cls = "up" if pct > 0 else ("down" if pct < 0 else "flat")
+        side = x["side"]
+        sc = {"long": "down", "short": "up", "mixed": "flat"}[side]
+        bar = max(2.0, x["share"] * 100.0)
+        near = ' data-near="1"' if abs(pct) <= 2.0 else ""
+        return (
+            f'<tr{near}>'
+            f'<td class="lq-px">{x["lo"]:,.0f}<i>&ndash;{x["hi"]:,.0f}</i></td>'
+            f'<td class="lq-d {cls}">{pct:+.2f}%</td>'
+            f'<td class="lq-side {sc}">{side.upper()}</td>'
+            f'<td class="lq-lev">{x["lev_lo"]}&times;&ndash;{x["lev_hi"]}&times;'
+            f'<i>median {x["lev_median"]}&times;</i></td>'
+            f'<td class="lq-n">{x["count"]:,}</td>'
+            f'<td class="lq-bar"><span style="width:{bar:.1f}%"></span></td>'
+            f'<td class="lq-sp">{x["long"]:,}<i>/</i>{x["short"]:,}</td>'
+            f'</tr>'
+        )
+
+    body = "".join(band_row(x) for x in rows)
+    src = e(r["spot_source"])
+    when = e(r["spot_at"].replace("T", " ").rstrip("Z"))
     return (
-        '<div class="hm-ctl">'
-        f'<span class="ctl-g"><b>WINDOW</b>{tf}</span>'
-        f'<span class="ctl-g"><b>LEVERAGE</b>'
-        '<button class="pill" data-lauto="1" data-on=1 '
-        'title="Model the tiers that can liquidate inside the band in view. '
-        'A short window is narrow, so only high leverage reaches into it; a '
-        'long window is wide, so low leverage lands inside too and the '
-        'accumulated liquidity is larger.">AUTO</button>'
-        f'{lev}'
-        '<input id="hm-lmin" type="number" min="2" max="125" value="2" '
-        'aria-label="Minimum leverage"><i class="ctl-x">&ndash;</i>'
-        '<input id="hm-lmax" type="number" min="2" max="125" value="125" '
-        'aria-label="Maximum leverage"><i class="ctl-v">&times;</i></span>'
-        f'<span class="ctl-g"><b>GRID</b>{res}</span>'
-        f'<span class="ctl-g"><b>SCHEME</b>{schemes}</span>'
-        '<span class="ctl-g"><b>THRESHOLD</b>'
-        '<input id="hm-thr" type="range" min="0" max="90" value="0" step="5" '
-        'aria-label="Intensity threshold">'
-        '<i id="hm-thr-v" class="ctl-v">0.00</i></span>'
-        f'<span class="ctl-g"><b>PRICE</b>{charts}</span>'
-        f'<span class="ctl-g"><b>BAR</b>{bars}</span>'
-        '<span class="ctl-g"><b>ZOOM</b>'
-        '<button class="pill" id="hm-zin" title="Zoom in on price">+</button>'
-        '<button class="pill" id="hm-zout" title="Zoom out">&minus;</button>'
-        '<i id="hm-zv" class="ctl-v">1.00&times;</i>'
-        '<button class="pill" id="hm-pan-up" title="Pan up">&uarr;</button>'
-        '<button class="pill" id="hm-pan-dn" title="Pan down">&darr;</button>'
-        '<button class="pill" id="hm-fit" title="Fit to the sourced window">FIT</button>'
-        '<button class="pill" id="hm-reset">RESET</button></span>'
+        '<div class="lq-head">'
+        f'<span class="lq-k"><b>{spot:,.0f}</b><i>spot &middot; {src} &middot; {when}Z</i></span>'
+        f'<span class="lq-k"><b>{r["pending_total"]:,}</b><i>unswept levels in range</i></span>'
+        f'<span class="lq-k"><b>{len(r["levels"])}</b><i>leverage tiers modelled '
+        f'({r["levels"][0]}&times;&ndash;{r["levels"][-1]}&times;)</i></span>'
+        f'<span class="lq-k"><b>{top["lo"]:,.0f}&ndash;{top["hi"]:,.0f}</b>'
+        f'<i>densest band &middot; {top["count"]:,} levels</i></span>'
+        f'<span class="lq-k"><b class="up">{up_n:,}</b><i>above spot (shorts)</i></span>'
+        f'<span class="lq-k"><b class="down">{dn_n:,}</b><i>below spot (longs)</i></span>'
         '</div>'
-        '<div class="hm-stage">'
-        '<div class="hm-scale"><i id="hm-peak">&mdash;</i>'
-        '<span class="hm-bar" id="hm-bar"></span><i>0</i></div>'
-        '<div class="hm-field">'
-        '<canvas class="hm" id="hm-canvas" width="1600" height="760" role="img" '
-        'aria-label="Liquidation leverage density by price and time"></canvas>'
-        '<i class="hm-hair" id="hm-hair" hidden></i>'
-        '<div class="hm-tip" id="hm-tip" hidden></div>'
-        '</div>'
-        '<div class="hm-price" id="hm-price"></div>'
-        '<div class="hm-time" id="hm-time"></div>'
-        '</div>'
-        '<div class="hm-key">'
-        '<i><span class="sw" style="background:#EAF6FF"></span>close above open</i>'
-        '<i><span class="sw" style="background:#FF4D6D"></span>close below open</i>'
-        '<i><span class="sw" style="background:var(--gold)"></span>each bar is the '
-        'open, high, low and close OF THE OBSERVATIONS inside it &mdash; a bar '
-        'holding one print is a doji, because that is what one print is</i>'
-        '<i id="hm-meta">&mdash;</i></div>'
-        '<p class="hm-hint">scroll the field to zoom <b>time</b> &mdash; out for more '
-        'bars &middot; scroll or drag the price tags to zoom <b>price</b> &middot; '
-        'drag the field to pan either way &middot; hover for the reading &middot; '
-        'every control recomputes the model</p>'
-        '<p class="note warn"><b>Computed by the published method, on real prices.</b> '
-        'At each observed price, positions opened there liquidate at '
-        'price&times;(1&minus;1/N) and price&times;(1+1/N); those levels stay pending '
-        'until price sweeps through them. Between two observations nothing is known, '
-        'so the field is held and no price is ever interpolated. '
-        'No exchange OHLC is reachable from here, so a bar is not downloaded &mdash; '
-        'it is <b>built</b>: open is the first observation inside the bar, close the '
-        'last, high and low the extremes of those same observations. A bar holding a '
-        'single print is therefore a doji rather than a fabricated body, and widening '
-        'the bar merges real prints into a real body and a real wick. '
-        'The modelled leverage floor is derived, not chosen: a tier only appears if '
-        'its liquidation level falls inside the band on screen, which is why a short '
-        'window shows high leverage only and a long one accumulates far more. '
-        'It is <b>not</b> open-interest weighted: that needs per-exchange position '
-        'data. Every control below recomputes the model rather than restyling a '
-        'picture of it.</p>'
+        '<div class="scroll lq-wrap"><table class="lq">'
+        '<thead><tr><th>Price band</th><th>From spot</th><th>Side</th>'
+        '<th>Leverage at this band</th><th>Levels</th><th>Density</th>'
+        '<th>Long/Short</th></tr></thead>'
+        f'<tbody>{body}</tbody></table></div>'
+        '<p class="note warn"><b>Computed by the published method, on real observed '
+        'prices.</b> A position opened at an observed price P at leverage N liquidates '
+        'at price&times;(1&minus;1/N) long and price&times;(1+1/N) short. The level '
+        'stays pending until price is later <b>observed</b> to sweep through it, at '
+        'which point it is removed because the liquidation has happened. Between two '
+        'observations nothing is known, so nothing is interpolated. '
+        '&ldquo;Levels&rdquo; counts distinct (observation, tier, side) contributions '
+        'landing in the band &mdash; it is a statement about <b>clustering</b>, not '
+        'open interest and not dollars. Per-exchange position data is not reachable '
+        'from here, and inventing a notional would break the whole contract.</p>'
     )
 
 
@@ -1846,7 +1158,7 @@ def render(snap: Snapshot, standalone: bool = True) -> str:
     gauges_html = ("".join(render_gauge(g) for g in snap.gauges.values())
                    or '<p class="note">No sentiment gauges in this snapshot.</p>')
     liq_html = render_liquidations(snap)
-    heat_html = render_heatmap(snap)
+    heat_html = render_liquidity(snap)
     eq_html = render_equities(snap)
     earn_html = render_earnings(snap)
     geo_html = render_geo(snap)
@@ -2022,7 +1334,7 @@ timing field stays blank.</span></noscript>
   </section>
 
   <section class="card c12">
-    <h2>BTC liquidation heatmap <em>price &times; time &middot; leverage density &middot; every control recomputes the model</em></h2>
+    <h2>BTC liquidity map <em>unswept liquidation levels &middot; where they are and how levered</em></h2>
     <div class="bd">{heat_html}</div>
   </section>
 

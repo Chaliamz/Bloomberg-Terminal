@@ -53,6 +53,17 @@ confirmed — there is no way to read a fired session's transcript from another
 session. The heartbeat in step 2b is what will settle it: if a run leaves a line
 in `state/refresh-log.jsonl`, the loop reached the repo and worked.
 
+## Publishing does not depend on git
+
+The 10:41 run reported SUCCEEDED and took 2m21s — far longer than the ~40s
+no-checkout failures — yet still pushed nothing. The trigger config carries
+`allowed_push_branches: []`, which would refuse the push. So:
+
+**Publish the artifact FIRST, then attempt git.** The artifact is what the user
+looks at; the commit is bookkeeping. A run that publishes but cannot push has
+still done its job, and must say so rather than treating the failed push as a
+reason to abandon the run.
+
 ## Procedure
 
 ### 1. Find what is new

@@ -19,9 +19,11 @@ __all__ = ["build"]
 
 CLOSE = "2026-09-04T20:00:00Z"      # US cash close, 16:00 ET
 CRYPTO = "2026-09-04T11:21:00Z"     # 07:21 ET - crypto prints, PRE-payrolls
+SPOT   = "2026-09-07T10:50:00Z"     # live re-scan, 7 September
+SENT   = "2026-09-07T10:50:00Z"     # sentiment re-read, 7 September
 LIQ = "2026-09-04T03:52:00Z"        # liquidation window close
 SESSION = "2026-09-04T21:00:00Z"    # end of the US session
-CAPTURE = "2026-09-06T17:40:00Z"    # when this scan was performed
+CAPTURE = "2026-09-07T10:50:00Z"    # when this scan was performed
 
 _CNBC = "https://www.cnbc.com/2026/09/04/treasurys-bonds-nonfarm-payrolls-unemployment-data.html"
 _TS = "https://www.thestreet.com/stock-market-today/stock-market-today-dow-jones-sp-500-nasdaq-updates-sept-04-2026"
@@ -43,11 +45,13 @@ _Q = [
          url=_CNBC, label="UST 2Y", change=8.0, change_unit="bp", confidence=0.75,
          note="Reported as an 8bp climb breaching 4.416%, highest since Jan 2025. "
               "A second, lower-tier report said +12bp to 4.35% - see conflicts."),
-    dict(key="US10Y", value=4.79, unit="pct", as_of=CLOSE, source="Rio Times briefing",
-         tier=3, url=_RIO, label="UST 10Y", change=3.0, change_unit="bp", confidence=0.8,
-         note="Reported as 4.789% on the 5 September briefing, corroborating a second "
-              "account of a climb to roughly 4.80% after payrolls. CNBC separately "
-              "described the close as 'little changed at 4.76%' - see conflicts."),
+    dict(key="US10Y", value=4.818, unit="pct", as_of=SPOT, source="CNBC", tier=2,
+         url="https://www.cnbc.com/2026/09/01/stock-market-today-live-updates.html",
+         label="UST 10Y", change=6.0, change_unit="bp", confidence=0.8,
+         note="RE-SCANNED 7 September: the benchmark reached 4.818%, a level not seen "
+              "since November 2023. The board previously carried 4.79% from the "
+              "5 September briefing. Japan's 10y is at its highest since 1996 and the "
+              "Bund at a 2011 high, so this is a global term-premium move, not a US one."),
     # ---- equities -------------------------------------------------------
     dict(key="SPX", value=7718.60, unit="index", as_of=CLOSE, source="TheStreet", tier=2,
          url=_TS, label="S&P 500", change=-0.38, change_unit="pct", confidence=0.9),
@@ -86,13 +90,15 @@ _Q = [
               "-1.14% session. Real yields up on the payrolls beat is consistent "
               "with gold down."),
     # ---- crypto ---------------------------------------------------------
-    dict(key="BTC", value=81240.29, unit="usd", as_of=CRYPTO, source="Yahoo Finance",
-         tier=2, url=_YF, label="Bitcoin", change=5.10, change_unit="pct",
-         confidence=0.85,
-         note="CORRECTED from an earlier Tier-4 read of 'near $79K'. Priced at "
-              "07:21 ET - BEFORE the 08:30 ET payrolls print - so this rally belongs "
-              "to the dovish Waller/ETF story, not to the hawkish payrolls story that "
-              "set the equity and rates closes. The timestamps are not interchangeable."),
+    dict(key="BTC", value=79571.82, unit="usd", as_of=SPOT,
+         source="Search aggregate (CoinGecko / Coinbase / Bybit)", tier=3,
+         url="https://www.coingecko.com/en/coins/bitcoin", label="Bitcoin",
+         change=-2.05, change_unit="pct", confidence=0.7,
+         note="RE-SCANNED 7 September. The board previously carried 81,240.29 from "
+              "4 September and was three days stale. Carriers disagreed 79,458-79,899 "
+              "at retrieval - a normal cross-venue spread, not a conflict - and the "
+              "reported 24h range was 79,081-80,494. No carrier stated a quote time, "
+              "so the stamp is the retrieval time and the tier reflects that."),
     dict(key="ETH", value=2507.70, unit="usd", as_of=CRYPTO, source="Yahoo Finance",
          tier=2, url=_YF, label="Ethereum", change=4.90, change_unit="pct",
          confidence=0.85,
@@ -100,6 +106,47 @@ _Q = [
 ]
 
 _H = [
+    dict(title="UST 10-year reaches 4.818%, a level not seen since November 2023",
+         summary="Japan's 10y is at its highest since 1996 and the Bund at a 2011 high. "
+                 "A global term-premium repricing, not a US-only story.",
+         source="CNBC", tier=2, published="2026-09-07T10:00:00Z", impact=89,
+         url="https://www.cnbc.com/2026/09/01/stock-market-today-live-updates.html",
+         assets=("UST 10Y", "Bunds", "JGBs", "2s10s")),
+    dict(title="NY Fed's Williams: the yield surge is a strong economy, not market "
+               "dysfunction",
+         summary="Explicitly rules out the intervention narrative. Removes the "
+                 "'Fed put on duration' bid that a dysfunction framing would imply.",
+         source="Federal Reserve / CNBC", tier=1, published="2026-09-07T09:30:00Z",
+         impact=80, url="https://www.federalreserve.gov/newsevents/speeches.htm",
+         assets=("UST 10Y", "USD", "S&P 500"), primary_confirmed=True),
+    dict(title="Fed's Waller 'inclined to support' holding at 3.50-3.75% on 15-16 September",
+         summary="The clearest steer yet from a governor against the hike the front end "
+                 "has been pricing. Sets up a live meeting either way.",
+         source="Federal Reserve / CNBC", tier=1, published="2026-09-07T09:00:00Z",
+         impact=87, url="https://www.federalreserve.gov/newsevents/speeches.htm",
+         assets=("UST 2Y", "USD", "BTC"), primary_confirmed=True),
+    dict(title="US and Iran exchange strikes near the Strait of Hormuz for the first "
+               "time in weeks; crude rises on supply risk",
+         summary="Transit risk is the transmission channel: insurance, then freight, "
+                 "then headline CPI, then the policy path.",
+         source="T. Rowe Price global markets update", tier=3,
+         published="2026-09-07T08:00:00Z", impact=88,
+         url="https://www.troweprice.com/personal-investing/resources/insights/global-markets-weekly-update.html",
+         assets=("Brent", "WTI", "Breakevens")),
+    dict(title="Bitcoin trades near $79.5K, roughly 2% below the 4 September print",
+         summary="Carriers spread 79,458-79,899 with a 24h range of 79,081-80,494. The "
+                 "post-payrolls squeeze has given back most of its gain.",
+         source="Search aggregate (CoinGecko / Coinbase / Bybit)", tier=3,
+         published="2026-09-07T10:50:00Z", impact=64,
+         url="https://www.coingecko.com/en/coins/bitcoin",
+         assets=("BTC", "ETH")),
+    dict(title="Crypto sentiment deepens to Greed at 71 while equity sentiment "
+               "recovers to Neutral at 54",
+         summary="Both gauges moved a full band since the last read. The divergence "
+                 "that opened on 4 September has closed from the equity side.",
+         source="CFGI / CNN Business", tier=3, published="2026-09-07T10:50:00Z",
+         impact=57, url="https://cfgi.io/",
+         assets=("BTC", "S&P 500")),
     dict(title="Tesla falls more than 6% after the Cybercab launch, its worst session "
                "since 23 July",
          source="CNBC", tier=2, published="2026-09-04T20:00:00Z", url=_CNBC_MKT,
@@ -214,6 +261,23 @@ _H = [
 ]
 
 CONFLICTS = [
+    "BTC 7 September: carriers quoted 79,458.00, 79,571.82 and 79,899.09 within the "
+    "same retrieval, with a reported 24h range of 79,081-80,494. That is a normal "
+    "cross-venue spread rather than a disagreement about fact. The middle quote is "
+    "carried at Tier 3 with the spread stated, and no carrier published a quote time "
+    "so the stamp is the retrieval time.",
+    "The board previously carried BTC at 81,240.29 from 4 September and showed it for "
+    "three days. It was not wrong when captured; it was stale, which the age counter "
+    "said and the number did not. Re-scanned to 79,571.82 on 7 September.",
+    "Crypto Fear & Greed on 7 September: trackers spread 60 to 74 on the same day. The "
+    "band (GREED) is robust, the digit is not. 71 is carried at reduced confidence and "
+    "the spread is recorded rather than resolved to the most convenient reading.",
+    "NVIDIA market cap: one carrier gives $5.58tn, another $5.42tn at $224.41 a share "
+    "in the same week. Both are carried in the note; the larger is shown and the "
+    "disagreement is not hidden.",
+    "Broadcom and Meta were searched for and WITHHELD: no market cap or session move "
+    "could be attributed to a named carrier, so no number is shown. The gap is "
+    "recorded here rather than filled with an estimate.",
     "Bitcoin was initially carried at ~$79,000 from a Tier-4 description. That was "
     "WRONG: two Tier-2 sources price it at $81,240 after a 5% short squeeze. The "
     "corrected figure is carried and the error is recorded rather than erased.",
@@ -296,16 +360,17 @@ REGIME_BASIS = (
 
 
 GAUGES = [
-    dict(key="CNN_FG", label="Equity Fear & Greed", value=42.0, band="FEAR",
-         as_of="2026-09-04T21:00:00Z", source="CNN Business", tier=2,
-         url="https://edition.cnn.com/markets/fear-and-greed", confidence=0.75,
-         note="A second read gave 43.77 the same day; both sit in the FEAR band, so "
-              "the band is robust even though the digit is not."),
-    dict(key="CRYPTO_FG", label="Crypto Fear & Greed", value=61.0, band="GREED",
-         as_of="2026-09-04T21:00:00Z", source="Crypto Fear & Greed Index", tier=3,
-         url="https://cfgi.io/", confidence=0.8,
-         note="Flipped from Fear to Greed overnight on the ETF-inflow and short-squeeze "
-              "rally."),
+    dict(key="CNN_FG", label="Equity Fear & Greed", value=54.0, band="NEUTRAL",
+         as_of=SENT, source="CNN Business", tier=2,
+         url="https://edition.cnn.com/markets/fear-and-greed", confidence=0.7,
+         note="RE-READ 7 September: 54, NEUTRAL, for the 4 September session. It was "
+              "42 (FEAR) when last carried - the band changed, not just the digit."),
+    dict(key="CRYPTO_FG", label="Crypto Fear & Greed", value=71.0, band="GREED",
+         as_of=SENT, source="Crypto Fear & Greed Index", tier=3,
+         url="https://cfgi.io/", confidence=0.7,
+         note="RE-READ 7 September: 71, deeper into GREED from 61. Trackers spread "
+              "60-74 on the day; the band is robust, the digit is not, and the spread "
+              "is recorded rather than resolved to the most convenient number."),
 ]
 
 LIQUIDATIONS = dict(
@@ -443,10 +508,13 @@ BTC_WINDOW = {"lo": round(min(_PX) * 0.985, 2), "hi": round(max(_PX) * 1.015, 2)
 
 # Largest listings by market value, September 2026.
 EQUITIES = [
-    dict(ticker="NVDA", name="NVIDIA", mktcap_usd=5.58e12, change_pct=1.80,
+    dict(ticker="NVDA", name="NVIDIA", mktcap_usd=5.58e12, change_pct=7.00,
          as_of=CLOSE, source="Motley Fool / CNBC", tier=3, url=_FOOL,
-         note="Rose on the announced $12.9bn acquisition of AI developer platform "
-              "Hugging Face. Largest listed company in the world."),
+         note="RE-SCANNED 7 September: +7.0% on the week at $224.41 a share. The "
+              "board previously carried the +1.8% single session on the $12.9bn "
+              "Hugging Face acquisition; the weekly move is the larger fact. Largest "
+              "listed company in the world. A second carrier put the cap at $5.42tn "
+              "the same week - the spread is recorded, not resolved."),
     dict(ticker="AAPL", name="Apple", mktcap_usd=4.70e12,
          as_of=CLOSE, source="Motley Fool", tier=3, url=_FOOL,
          note="Session move not sourced; the market cap is."),
@@ -460,7 +528,24 @@ EQUITIES = [
          as_of=CLOSE, source="CNBC", tier=2, url=_CNBC_MKT,
          note="Fell more than 6% after the Cybercab launch, its worst session since "
               "23 July. Market cap not sourced at this timestamp."),
+    dict(ticker="AMZN", name="Amazon", mktcap_usd=2.78e12,
+         as_of=SPOT, source="Motley Fool", tier=3, url=_FOOL,
+         note="Fifth largest listing. Session move not sourced; the market cap is."),
+    dict(ticker="AVGO", name="Broadcom",
+         as_of=SPOT, source="Search aggregate", tier=4, url=_FOOL,
+         note="WITHHELD. Named in the scan but no market cap or session move could be "
+              "attributed to a carrier, so nothing is carried. Listed here only so the "
+              "gap is visible rather than silently absent."),
+    dict(ticker="META", name="Meta Platforms",
+         as_of=SPOT, source="Search aggregate", tier=4, url=_FOOL,
+         note="WITHHELD for the same reason as AVGO: searched, not attributable, so "
+              "no number is invented."),
 ]
+# Entries that carry neither a market cap nor a session move are a record of a
+# known gap, not data. They are dropped before the board is built - the note
+# survives in the source, the empty row never reaches the page.
+EQUITIES = [x for x in EQUITIES
+            if x.get("mktcap_usd") is not None or x.get("change_pct") is not None]
 
 # Earnings. Where only a date is published the countdown runs at day granularity
 # and says so; where only a week is published there is no countdown at all.
