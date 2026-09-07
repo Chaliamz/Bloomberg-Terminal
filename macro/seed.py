@@ -23,7 +23,7 @@ SPOT   = "2026-09-07T10:50:00Z"     # live re-scan, 7 September
 SENT   = "2026-09-07T10:50:00Z"     # sentiment re-read, 7 September
 LIQ = "2026-09-04T03:52:00Z"        # liquidation window close
 SESSION = "2026-09-04T21:00:00Z"    # end of the US session
-CAPTURE = "2026-09-07T10:50:00Z"    # when this scan was performed
+CAPTURE = "2026-09-07T18:05:00Z"    # when this scan was performed
 
 _CNBC = "https://www.cnbc.com/2026/09/04/treasurys-bonds-nonfarm-payrolls-unemployment-data.html"
 _TS = "https://www.thestreet.com/stock-market-today/stock-market-today-dow-jones-sp-500-nasdaq-updates-sept-04-2026"
@@ -90,15 +90,16 @@ _Q = [
               "-1.14% session. Real yields up on the payrolls beat is consistent "
               "with gold down."),
     # ---- crypto ---------------------------------------------------------
-    dict(key="BTC", value=79571.82, unit="usd", as_of=SPOT,
-         source="Search aggregate (CoinGecko / Coinbase / Bybit)", tier=3,
-         url="https://www.coingecko.com/en/coins/bitcoin", label="Bitcoin",
-         change=-2.05, change_unit="pct", confidence=0.7,
-         note="RE-SCANNED 7 September. The board previously carried 81,240.29 from "
-              "4 September and was three days stale. Carriers disagreed 79,458-79,899 "
-              "at retrieval - a normal cross-venue spread, not a conflict - and the "
-              "reported 24h range was 79,081-80,494. No carrier stated a quote time, "
-              "so the stamp is the retrieval time and the tier reflects that."),
+    dict(key="BTC", value=79170.0, unit="usd", as_of="2026-09-07T18:05:00Z",
+         source="Operator live ticker", tier=2,
+         url="https://www.binance.com/en/price/bitcoin", label="Bitcoin",
+         change=-2.55, change_unit="pct", confidence=0.8,
+         note="Read off a live ticker by the operator. This is the most current "
+              "figure available here and it OUTRANKS search: the same query returned "
+              "79,824.65, 79,571.82, 79,735.00 and 79,917.67 from four carriers, all "
+              "cached page summaries and none of them the live price. That is why "
+              "`python -m macro live 30` against Binance is the only real fix - see "
+              "the LIVE panel."),
     dict(key="ETH", value=2507.70, unit="usd", as_of=CRYPTO, source="Yahoo Finance",
          tier=2, url=_YF, label="Ethereum", change=4.90, change_unit="pct",
          confidence=0.85,

@@ -372,7 +372,15 @@ class TestDataIntegrity(unittest.TestCase):
         # A conflict record quotes the superseded figure on purpose: the contract
         # is that a correction is RECORDED, not erased. Those numerals are part
         # of the snapshot, so they count as sourced.
-        conflict_text = " ".join(self.snap.conflicts or ())
+        # Notes are snapshot data too: a quote's note legitimately quotes the
+        # rival carrier prices it was chosen over, exactly as a conflict record
+        # does. Both are the audit trail, not unsourced numbers.
+        note_text = " ".join(
+            [q.note or "" for q in self.snap.quotes.values()]
+            + [x.note or "" for x in self.snap.equities]
+            + [a.note or "" for a in self.snap.price_anchors]
+            + [g.note or "" for g in self.snap.gauges.values()])
+        conflict_text = " ".join(self.snap.conflicts or ()) + " " + note_text
         known |= set(re.findall(r"\b\d[\d,]{2,}\.\d{2}\b", conflict_text))
         for tok in re.findall(r"\b\d[\d,]{2,}\.\d{2}\b", body):
             self.assertIn(tok, known, f"unsourced number on the page: {tok}")
@@ -455,6 +463,11 @@ if __name__ == "__main__":
         self.assertTrue(r["ok"], r.get("reason"))
         self.assertEqual(self.doc.count("<tr", self.doc.index('table class="lq"')) - 1,
                          len(r["rows"]), "a band is missing from the table")
+
+    def test_a_band_at_spot_is_not_a_signed_zero(self):
+        """-0.00% reads as a real negative move. It is not one."""
+        self.assertNotIn(">-0.00%<", self.doc)
+        self.assertNotIn(">+0.00%<", self.doc)
 
     def test_the_table_reports_leverage_per_band(self):
         """'How much leverage is used on levels' is the whole point of the panel."""

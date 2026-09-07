@@ -288,7 +288,8 @@ async def run(path: str) -> int:
             if r["side"] not in ("LONG", "SHORT", "MIXED"):
                 ctl_bad.append(f"bad side: {r['side']!r}")
                 break
-            if not re.match(r"^[+-]\d", r["from"]):
+            # a band straddling spot is an unsigned 0.00%, not a signed zero
+            if not re.match(r"^([+-]\d|0\.00%)", r["from"]):
                 ctl_bad.append(f"distance from spot missing: {r['from']!r}")
                 break
         # rows near spot must be highlighted, or the panel buries its own lede

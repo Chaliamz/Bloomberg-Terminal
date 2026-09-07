@@ -392,6 +392,23 @@ noscript .ns{display:block;margin:14px 18px;padding:12px;border:1px solid var(--
 .statusbar span{padding:6px 14px;border-right:1px solid var(--edge);white-space:nowrap}
 .statusbar b{color:var(--ink-2);font-weight:500}
 
+/* ---------- live feed panel ---------- */
+.lv{display:flex;flex-direction:column;gap:11px}
+.lv-cmd{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;padding:11px 13px;
+  border:1px solid var(--gold-dim);border-radius:3px;
+  background:linear-gradient(90deg,rgba(46,197,207,.10),rgba(46,197,207,.02))}
+.lv-cmd code{font-family:var(--mono);font-size:15px;color:var(--gold);font-weight:700;
+  letter-spacing:.02em}
+.lv-cmd span{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.06em}
+.lv-src{list-style:none;margin:0;padding:0;display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1px;background:var(--edge)}
+.lv-src li{background:var(--panel);padding:8px 11px;font-family:var(--mono);
+  font-size:11.5px;color:var(--ink-2);display:flex;flex-direction:column;gap:2px}
+.lv-src li b{color:var(--ink);font-weight:600}
+.lv-src li i{font-style:normal;color:var(--faint);font-size:10px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.note code{font-family:var(--mono);font-size:12px;color:var(--gold)}
+
 /* ---------- liquidity map ---------- */
 .lq-head{display:flex;flex-wrap:wrap;gap:10px 26px;padding:2px 0 10px}
 .lq-k{display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -845,6 +862,44 @@ def render_liquidations(snap) -> str:
     return "".join(out)
 
 
+def render_live(snap) -> str:
+    """How to make this terminal actually live, stated on the page itself.
+
+    A published artifact cannot fetch - the viewer's CSP blocks fetch, XHR and
+    WebSocket - so this page is a snapshot with an honest age counter and it
+    cannot be anything else. The scanner in the repo CAN be live, because it
+    runs where there is egress. Saying so here is the difference between a
+    limitation the reader understands and one they keep discovering.
+    """
+    from .live import CRYPTO_SOURCES, ANCHOR_MIN_GAP
+
+    venues = "".join(
+        f'<li><b>{e(x.name)}</b> &middot; T{x.tier} &middot; polls every '
+        f'{x.interval}s<i>{e(x.url)}</i></li>' for x in CRYPTO_SOURCES)
+    return (
+        '<div class="lv">'
+        '<div class="lv-cmd"><code>python -m macro live 30</code>'
+        '<span>runs the scanner every 30s and rewrites this page in place</span></div>'
+        f'<ul class="lv-src">{venues}</ul>'
+        '<p class="note warn"><b>This published page cannot fetch.</b> The viewer '
+        'sandbox blocks fetch, XHR and WebSocket, so an artifact is a snapshot by '
+        'construction &mdash; which is why the age counter in the masthead is there '
+        'and why it climbs. It reports the age of the <b>newest observation</b>, not '
+        'of the last scan, so a scan that reaches nothing cannot make it look fresh.</p>'
+        '<p class="note"><b>The scanner is not.</b> Run the command above anywhere '
+        'with outbound network and Bitcoin comes from Binance\'s own '
+        '<code>/api/v3/ticker/24hr</code> &mdash; the venue is Tier 1 for its own '
+        'last traded price. Every field is validated: a malformed body, a missing or '
+        'non-numeric field, the wrong symbol, a non-positive price, a future stamp or '
+        'a seconds-epoch sent where milliseconds belong all make the adapter return '
+        'nothing rather than guess, and an unreachable venue leaves the previous '
+        f'price with its <b>original</b> timestamp. Price anchors are throttled to one '
+        f'per {ANCHOR_MIN_GAP // 60} minutes, so a 30-second poll keeps the liquidity '
+        'map current without turning the series into a log.</p>'
+        '</div>'
+    )
+
+
 def render_liquidity(snap) -> str:
     """Where the unswept liquidation levels sit, and what leverage puts them there.
 
@@ -871,6 +926,10 @@ def render_liquidity(snap) -> str:
 
     def band_row(x: dict) -> str:
         pct = x["from_spot_pct"]
+        # A band straddling spot rounds to zero; -0.00% is a signed zero, which
+        # reads as a real (negative) move and is not one.
+        if abs(pct) < 0.005:
+            pct = 0.0
         cls = "up" if pct > 0 else ("down" if pct < 0 else "flat")
         side = x["side"]
         sc = {"long": "down", "short": "up", "mixed": "flat"}[side]
@@ -879,7 +938,7 @@ def render_liquidity(snap) -> str:
         return (
             f'<tr{near}>'
             f'<td class="lq-px">{x["lo"]:,.0f}<i>&ndash;{x["hi"]:,.0f}</i></td>'
-            f'<td class="lq-d {cls}">{pct:+.2f}%</td>'
+            f'<td class="lq-d {cls}">{"0.00" if pct == 0 else format(pct, "+.2f")}%</td>'
             f'<td class="lq-side {sc}">{side.upper()}</td>'
             f'<td class="lq-lev">{x["lev_lo"]}&times;&ndash;{x["lev_hi"]}&times;'
             f'<i>median {x["lev_median"]}&times;</i></td>'
@@ -1159,6 +1218,7 @@ def render(snap: Snapshot, standalone: bool = True) -> str:
                    or '<p class="note">No sentiment gauges in this snapshot.</p>')
     liq_html = render_liquidations(snap)
     heat_html = render_liquidity(snap)
+    live_html = render_live(snap)
     eq_html = render_equities(snap)
     earn_html = render_earnings(snap)
     geo_html = render_geo(snap)
@@ -1331,6 +1391,11 @@ timing field stays blank.</span></noscript>
       pointing opposite ways inside one session is a positioning fact, not a
       contradiction.</p>
     </div>
+  </section>
+
+  <section class="card c12">
+    <h2>Live feed <em>how this page updates &middot; and what it cannot do</em></h2>
+    <div class="bd">{live_html}</div>
   </section>
 
   <section class="card c12">

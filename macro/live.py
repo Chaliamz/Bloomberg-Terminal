@@ -34,6 +34,7 @@ __all__ = [
     "SOURCES", "RELEASE_CLOCK", "load", "save", "scan", "merge", "age_seconds",
     "liquidation_ladder", "liquidation_heatmap", "PriceAnchor", "HEAT_RAMP",
     "HEAT_RAMPS", "Equity", "Earning", "leverage_tiers", "liquidity_levels",
+    "parse_binance_ticker", "CRYPTO_SOURCES",
 ]
 
 UA = "macro-radar/1.1 (institutional macro terminal; contact: operator)"
@@ -696,7 +697,26 @@ SOURCES: tuple[Source, ...] = (
     Source("Reuters business", 2, "https://feeds.reuters.com/reuters/businessNews", "rss", 120),
     Source("CNBC markets", 2, "https://www.cnbc.com/id/100003114/device/rss/rss.html", "rss", 120),
     Source("WSJ markets", 2, "https://feeds.a.dj.com/rss/RSSMarketsMain.xml", "rss", 180),
+    # -- crypto: the venue itself, which is Tier 1 for its own last trade -----
+    Source("Binance BTCUSDT", 1,
+           "https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT",
+           "crypto", 30, ("BTC",)),
+    Source("Binance ETHUSDT", 1,
+           "https://api.binance.com/api/v3/ticker/24hr?symbol=ETHUSDT",
+           "crypto", 30, ("ETH",)),
 )
+
+# The exchange is the primary source for its own last traded price, so these are
+# Tier 1. They are listed separately because they are the only sources in the
+# set that are reachable often enough to make `python -m macro live` worth
+# running: everything else moves daily at best.
+CRYPTO_SOURCES: tuple[Source, ...] = tuple(x for x in SOURCES if x.kind == "crypto")
+
+# A live poll every 30s would append a price anchor every 30s and the series
+# would grow without bound - 2,880 a day, and the liquidity map recomputes over
+# all of them. One anchor per this many seconds is enough to keep the map
+# current while the series stays a series rather than a log.
+ANCHOR_MIN_GAP = 900
 
 # Scheduled primary releases: the exact moment a number becomes public, and the
 # URL that carries it first. Polling this at T+0 is how the terminal sees a
@@ -732,6 +752,75 @@ RELEASE_CLOCK: tuple[dict[str, Any], ...] = (
 # ---------------------------------------------------------------------------
 # Scanner
 # ---------------------------------------------------------------------------
+
+
+def parse_binance_ticker(body: str, *, symbol: str = "BTCUSDT") -> dict | None:
+    """Parse Binance ``GET /api/v3/ticker/24hr``.
+
+    This is the live crypto adapter. The scanner had no crypto source at all,
+    which is why running it never moved Bitcoin: it was polling Treasury, FRED
+    and RSS and nothing else.
+
+    Binance returns every numeric field as a STRING and the times as millisecond
+    epochs. Everything is validated rather than trusted: a malformed body, a
+    missing field, a non-numeric string, the wrong symbol, a non-finite or
+    non-positive price, or a close time in the future all return None, because
+    an adapter that guesses is worse than one that reports nothing.
+    """
+    try:
+        raw = json.loads(body)
+    except (ValueError, TypeError):
+        return None
+    if isinstance(raw, list):               # symbol-less call returns an array
+        raw = next((x for x in raw
+                    if isinstance(x, dict) and x.get("symbol") == symbol), None)
+    if not isinstance(raw, dict):
+        return None
+    if str(raw.get("symbol", "")).upper() != symbol.upper():
+        return None
+
+    def num(key: str) -> float | None:
+        v = raw.get(key)
+        if v is None:
+            return None
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return None
+        return f if math.isfinite(f) else None
+
+    price = num("lastPrice")
+    if price is None or price <= 0:
+        return None
+
+    close_ms = num("closeTime")
+    if close_ms is None or close_ms <= 0:
+        return None
+    # Binance sends milliseconds. A seconds-epoch value here would put the
+    # stamp in 1970 and the age counter would read decades.
+    when = datetime.fromtimestamp(close_ms / 1000.0, tz=timezone.utc)
+    now = utcnow()
+    if when > now + timedelta(minutes=5):
+        return None                          # clock skew
+    # A seconds-epoch sent where milliseconds are expected parses cleanly and
+    # lands in 1970 - the guard above does not catch it, and the age counter
+    # would read decades. A live ticker is seconds old, so anything older than
+    # a week is the wrong unit or a stale mirror either way.
+    if when < now - timedelta(days=7):
+        return None
+
+    out = {"symbol": symbol.upper(), "price": price,
+           "as_of": when.strftime("%Y-%m-%dT%H:%M:%SZ")}
+    for key, field in (("change_pct", "priceChangePercent"), ("open", "openPrice"),
+                       ("high", "highPrice"), ("low", "lowPrice"),
+                       ("volume", "volume")):
+        v = num(field)
+        if v is not None:
+            out[key] = v
+    # A high below the low is a corrupt payload, not a market condition.
+    if "high" in out and "low" in out and out["high"] < out["low"]:
+        return None
+    return out
 
 
 def _http(url: str, timeout: float = 12.0) -> str | None:
@@ -861,6 +950,50 @@ def scan(previous: Snapshot | None = None, *, now: datetime | None = None,
 
     heads: list[Headline] = []
     for src in (sources if sources is not None else SOURCES):
+        if src.kind == "crypto":
+            body = _http(src.url)
+            if body is None:
+                snap.errors.append(f"{src.name}: unreachable")
+                continue
+            key = (src.provides or ("BTC",))[0]
+            sym = "ETHUSDT" if key == "ETH" else "BTCUSDT"
+            got = parse_binance_ticker(body, symbol=sym)
+            if got is None:
+                snap.errors.append(f"{src.name}: unparseable ticker")
+                continue
+            label = {"BTC": "Bitcoin", "ETH": "Ethereum"}.get(key, key)
+            snap.quotes[key] = Quote(
+                key=key, value=got["price"], unit="usd", as_of=got["as_of"],
+                source=src.name, tier=src.tier, url=src.url, label=label,
+                change=got.get("change_pct"),
+                change_unit="pct" if "change_pct" in got else "",
+                confidence=0.95,
+                note=("Last traded price on the venue itself. 24h range "
+                      f"{got['low']:,.2f}-{got['high']:,.2f}."
+                      if "high" in got and "low" in got
+                      else "Last traded price on the venue itself."))
+            if key == "BTC":
+                # Feed the liquidity map, but only when the series has room:
+                # see ANCHOR_MIN_GAP.
+                last = max((a for a in snap.price_anchors), key=lambda a: a.date,
+                           default=None)
+                gap = None
+                if last is not None:
+                    try:
+                        gap = (datetime.strptime(got["as_of"], "%Y-%m-%dT%H:%M:%SZ")
+                               - datetime.strptime(last.date, "%Y-%m-%dT%H:%M:%SZ")
+                               ).total_seconds()
+                    except ValueError:
+                        gap = None
+                if last is None or gap is None or gap >= ANCHOR_MIN_GAP:
+                    if not any(a.date == got["as_of"] and a.source == src.name
+                               for a in snap.price_anchors):
+                        snap.price_anchors.append(PriceAnchor(
+                            date=got["as_of"], price=got["price"],
+                            source=src.name, tier=src.tier, url=src.url,
+                            note="Live last trade."))
+                        snap.price_anchors.sort(key=lambda a: a.date)
+            continue
         if src.kind == "curve":
             body = _http(src.url.format(year=now.year))
             if body is None:

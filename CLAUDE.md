@@ -59,6 +59,26 @@ convention:
 - Regenerate with `python3 -m macro terminal` after touching `macro/`; a test
   asserts the committed HTML matches the render.
 
+## Live data: what is and is not possible (verified)
+
+- **A published artifact can never be live.** The viewer sandbox blocks fetch,
+  XHR and WebSocket — this is in the Artifact tool contract, not a guess. The
+  page is a snapshot with an age counter measured from the newest observation.
+- **WebSearch is not a live feed either.** One query for the BTC price returned
+  79,824.65 / 79,571.82 / 79,735.00 / 79,917.67 from four carriers, all cached
+  page summaries, none matching the operator's live ticker at 79,170. Any loop
+  built on WebSearch inherits that lag — this is the ceiling on the scheduled
+  Routine and no amount of scheduling fixes it.
+- **`python -m macro live 30` IS live**, run anywhere with egress. Binance
+  `/api/v3/ticker/24hr` is Tier 1 for its own last trade. The adapter is
+  `parse_binance_ticker`; it returns None rather than guess on a malformed body,
+  missing or non-numeric field, wrong symbol, non-positive price, future stamp,
+  high-below-low, or a seconds-epoch sent where milliseconds belong.
+- Price anchors from a live poll are throttled by `ANCHOR_MIN_GAP` (900s). A 30s
+  poll would otherwise append 2,880 anchors a day and the liquidity map
+  recomputes over all of them; a test polls 40 times and asserts the series does
+  not grow.
+
 ## Unattended refresh (standing, set by the user)
 
 The user asked for continuous refresh: "Data should refresh 24/7. Anything new
