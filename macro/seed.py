@@ -262,6 +262,12 @@ _H = [
 ]
 
 CONFLICTS = [
+    "The hourly scheduled run IS working. It cloned the repo, searched, found a "
+    "BTC print of 79,349.91 at 13:41Z from Yahoo Finance that this session did not "
+    "have, stored it and republished the page at 17:49Z. What it could not do is "
+    "push to git - the trigger carries allowed_push_branches: [] - so its find was "
+    "recovered by reading the artifact it published and merged back here. The loop "
+    "is alive; only its write-back to the repository is broken.",
     "BTC 7 September: carriers quoted 79,458.00, 79,571.82 and 79,899.09 within the "
     "same retrieval, with a reported 24h range of 79,081-80,494. That is a normal "
     "cross-venue spread rather than a disagreement about fact. The middle quote is "

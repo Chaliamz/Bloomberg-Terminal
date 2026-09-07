@@ -48,6 +48,14 @@
   "note": "Retrieved 10:50Z; the carriers did not state a quote time. Carriers disagreed 79,458-79,899 (normal cross-venue spread); 24h range reported 79,081-80,494."
  },
  {
+  "date": "2026-09-07T13:41:00Z",
+  "price": 79349.91,
+  "source": "Yahoo Finance",
+  "tier": 2,
+  "url": "https://finance.yahoo.com/quote/BTC-USD/",
+  "note": "Found and stored by the hourly scheduled run at 13:41Z, recovered from the artifact it published at 17:49Z because that run could not push to git."
+ },
+ {
   "date": "2026-09-07T18:05:00Z",
   "price": 79170.0,
   "source": "Operator live ticker",
