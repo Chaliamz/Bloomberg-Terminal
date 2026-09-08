@@ -127,14 +127,17 @@ class SpotHTTP(threading.Thread):
     stream" from "nothing polled at all".
     """
 
-    def __init__(self, body: str | None, status: int = 200):
+    def __init__(self, body: str | None, status: int = 200, delay: float = 0.0):
         super().__init__(daemon=True)
         outer = self
+        self.delay = delay
 
         class H(BaseHTTPRequestHandler):
             def do_GET(self):
                 outer.hits += 1
                 outer.paths[self.path] = outer.paths.get(self.path, 0) + 1
+                if outer.delay:
+                    time.sleep(outer.delay)
                 if body is None:
                     self.send_response(500)
                     self.send_header("Access-Control-Allow-Origin", "*")
@@ -487,6 +490,27 @@ async def run(path: str) -> int:
             if (r.get("DXY") or {}).get("fix") == "1":
                 bad.append(f"DXY REJECTION FAILED [{name}]: marked as a fixing")
         notes.append("ecb refused  -> 6 unusable fixings, DXY unchanged in all")
+
+        # -- 5f. a REST response IN FLIGHT when a stream tick lands -----------
+        # This is the ONLY window in which the second stand-down guard does
+        # anything, and a local mock answers in milliseconds, so it has to be
+        # built deliberately: the poll fires at load, the server sits on the
+        # response, and the stream tick arrives while it is still in the air.
+        # Without the guard the stale REST price overwrites the fresher tick.
+        ws = TickerWS([ticker(82500.0)])
+        ws.start()
+        slow = SpotHTTP(json.dumps({"data": {"amount": "60000.00"}}), delay=1.5)
+        slow.start()
+        race = await load(stage(html, tmp, ws.port, slow.port), 4000)
+        ws.shutdown()
+        slow.shutdown()
+        if race["val"] != "82,500":
+            bad.append(f"an in-flight REST response overwrote a fresher stream "
+                       f"tick: {race['val']!r} (expected 82,500)")
+        if "Binance stream" not in (race["state"] or ""):
+            bad.append(f"in-flight REST took the venue label: {race['state']!r}")
+        notes.append(f"in-flight    -> {race['val']} · stream tick beat a REST "
+                     "response already in the air")
 
         # -- 6. a 500 from the fallback must change nothing -------------------
         spot = SpotHTTP(None)

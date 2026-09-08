@@ -289,5 +289,43 @@ class TestCrossLanguageFormatting(unittest.TestCase):
         self.assertEqual(bad, [], f"{len(bad)} formatting divergences: {bad[:8]}")
 
 
+class TestPanelCopyIsTrue(unittest.TestCase):
+    """The panel explains the two modes. It must not overclaim EITHER way.
+
+    These checks existed, were lost in the multi-asset rewrite, and the prose
+    immediately went stale - it still said only "Bitcoin" is real time after
+    Ethereum and gold had joined. Understating is inaccurate too.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.doc = terminal.render(seed.build())
+        cls.para = cls.doc[cls.doc.index("The badge above says which one you have"):]
+        cls.para = cls.para[:cls.para.index("</p>")]
+
+    def test_says_an_artifact_cannot_fetch(self):
+        self.assertIn("blocks fetch, XHR and WebSocket", self.doc)
+
+    def test_says_a_local_file_can(self):
+        self.assertIn("open it in your own browser", self.doc)
+
+    def test_does_not_promise_live_unconditionally(self):
+        self.assertIn("The badge above says which one you have", self.doc)
+
+    def test_prose_names_every_real_time_asset(self):
+        # The status table is generated from the registry and cannot drift.
+        # This paragraph is hand written, so it can and did.
+        names = {"BTC": "Bitcoin", "ETH": "Ethereum", "GOLD": "gold"}
+        for f in BROWSER_FEEDS:
+            if f["mode"] == "realtime":
+                self.assertIn(names[f["key"]], self.para,
+                              f"{f['key']} is real time but the prose omits it")
+
+    def test_prose_does_not_claim_a_snapshot_asset_is_live(self):
+        for word in ("S&P", "Nasdaq", "Treasury", "Brent", "WTI", "VIX"):
+            self.assertNotIn(word, self.para,
+                             f"the live paragraph mentions {word}, which is not live")
+
+
 if __name__ == "__main__":
     unittest.main()
