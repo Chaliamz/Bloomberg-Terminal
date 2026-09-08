@@ -26,7 +26,7 @@ SESSION = "2026-09-04T21:00:00Z"    # end of the US session
 CAPTURE = "2026-09-08T18:51:00Z"    # when this scan was performed
 SPOT8  = "2026-09-08T18:40:00Z"     # 8 Sep re-scan; carriers state no quote time,
                                     # so this is retrieval, not a print time
-BTC8   = "2026-09-08T11:20:00Z"     # newest BTC observation, found by the loop
+BTC8   = "2026-09-08T20:00:00Z"     # newest BTC observation, found by the loop
 
 _CNBC = "https://www.cnbc.com/2026/09/04/treasurys-bonds-nonfarm-payrolls-unemployment-data.html"
 _TS = "https://www.thestreet.com/stock-market-today/stock-market-today-dow-jones-sp-500-nasdaq-updates-sept-04-2026"
@@ -113,18 +113,18 @@ _Q = [
               "-1.14% session. Real yields up on the payrolls beat is consistent "
               "with gold down."),
     # ---- crypto ---------------------------------------------------------
-    dict(key="BTC", value=78370.62, unit="usd", as_of=BTC8,
-         source="Yahoo Finance", tier=2,
-         url="https://finance.yahoo.com/quote/BTC-USD/", label="Bitcoin",
+    dict(key="BTC", value=78450.0, unit="usd", as_of=BTC8,
+         source="CoinDesk", tier=2,
+         url="https://www.coindesk.com/price/bitcoin", label="Bitcoin",
          confidence=0.75,
-         note="MERGED FROM THE SCHEDULED LOOP, which found six BTC prints "
-              "overnight that this session did not have and could not push to git. "
-              "This is the newest of them and the highest tier, so it outranks the "
-              "Coinpedia print of 78,564.71 the board briefly carried. NO 24h CHANGE "
-              "IS SHOWN because Yahoo quoted none and borrowing another carrier\'s "
-              "would attribute one venue\'s move to another\'s price. THIS NUMBER IS "
-              "NOT LIVE: open this file in a browser and the client replaces it with "
-              "a Binance stream tick within a second."),
+         note="MERGED FROM THE SCHEDULED LOOP, which has now delivered seven BTC "
+              "prints this session did not have. This is the newest and it "
+              "outranks the Yahoo Finance print of 78,370.62 at 11:20Z the board "
+              "briefly carried. NO 24h CHANGE IS SHOWN because CoinDesk quoted "
+              "none here and borrowing another carrier\'s would attribute one "
+              "venue\'s move to another\'s price. THIS NUMBER IS NOT LIVE: open "
+              "this file in a browser and the Binance stream replaces it within "
+              "a second."),
     dict(key="ETH", value=2507.70, unit="usd", as_of=CRYPTO, source="Yahoo Finance",
          tier=2, url=_YF, label="Ethereum", change=4.90, change_unit="pct",
          confidence=0.85,
@@ -294,6 +294,11 @@ CONFLICTS = [
     "browser. Opened from disk it is real time to the second. Viewed as a published "
     "artifact the sandbox blocks the connection and you get exactly what you see "
     "here, honestly aged. The badge at the top of the LIVE panel says which.",
+    "THE SCHEDULED LOOP NOW PUBLISHES THE LIVE PAGE ITSELF. Its 21:41 run pulled "
+    "this session\'s commits, regenerated the multi-asset terminal and republished "
+    "it - the first end-to-end proof that the loop ships the real page rather than "
+    "an old one. It also found a seventh BTC print, CoinDesk 78,450.00 at 20:00Z, "
+    "which is what the board now carries. It still cannot push to git.",
     "THE SCHEDULED LOOP DELIVERED. It found six BTC prints this session did not "
     "have - CoinDesk 79,175.68 at 22:27Z on the 7th, CoinGecko 79,384.83 at "
     "01:30Z, CoinDesk 78,800.00 at 05:39Z, Coinpedia 78,564.71 at 06:37Z, "

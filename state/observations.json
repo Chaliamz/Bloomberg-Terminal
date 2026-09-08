@@ -1,114 +1,122 @@
 [
-  {
-    "date": "2026-08-07T09:30:00Z",
-    "price": 64744.92,
-    "source": "Fortune",
-    "tier": 3,
-    "url": "https://fortune.com/article/price-of-bitcoin-08-07-2026/",
-    "note": "5:30 a.m. ET print."
-  },
-  {
-    "date": "2026-08-11T10:30:00Z",
-    "price": 64190.41,
-    "source": "Fortune",
-    "tier": 3,
-    "url": "https://fortune.com/article/price-of-bitcoin-08-11-2026/",
-    "note": "6:30 a.m. ET print."
-  },
-  {
-    "date": "2026-08-12T10:45:00Z",
-    "price": 64085.21,
-    "source": "Fortune",
-    "tier": 3,
-    "url": "https://fortune.com/article/price-of-bitcoin-08-12-2026/",
-    "note": "6:45 a.m. ET print."
-  },
-  {
-    "date": "2026-08-13T10:30:00Z",
-    "price": 63558.45,
-    "source": "Fortune",
-    "tier": 3,
-    "url": "https://fortune.com/article/price-of-bitcoin-08-13-2026/",
-    "note": "6:30 a.m. ET print."
-  },
-  {
-    "date": "2026-08-25T12:00:00Z",
-    "price": 79111.64,
-    "source": "Fortune",
-    "tier": 3,
-    "url": "https://fortune.com/article/price-of-bitcoin-08-25-2026/",
-    "note": "8:00 a.m. ET print."
-  },
-  {
-    "date": "2026-09-07T10:50:00Z",
-    "price": 79571.82,
-    "source": "Search aggregate (CoinGecko / Coinbase / Bybit)",
-    "tier": 3,
-    "url": "https://www.coingecko.com/en/coins/bitcoin",
-    "note": "Retrieved 10:50Z; the carriers did not state a quote time. Carriers disagreed 79,458-79,899 (normal cross-venue spread); 24h range reported 79,081-80,494."
-  },
-  {
-    "date": "2026-09-07T13:41:00Z",
-    "price": 79349.91,
-    "source": "Yahoo Finance",
-    "tier": 2,
-    "url": "https://finance.yahoo.com/quote/BTC-USD/",
-    "note": "Found and stored by the hourly scheduled run at 13:41Z, recovered from the artifact it published at 17:49Z because that run could not push to git."
-  },
-  {
-    "date": "2026-09-07T18:05:00Z",
-    "price": 79170.0,
-    "source": "Operator live ticker",
-    "tier": 2,
-    "url": "https://www.binance.com/en/price/bitcoin",
-    "note": "Read off a live ticker by the operator and reported directly. More current than any page WebSearch can reach: the same search returned 79,824.65 / 79,571.82 / 79,735.00 / 79,917.67 from four carriers, all cached and none matching."
-  },
-  {
-    "date": "2026-09-07T22:27:00Z",
-    "price": 79175.68,
-    "source": "CoinDesk",
-    "tier": 2,
-    "url": "https://www.coindesk.com/price/bitcoin",
-    "note": "Found by the hourly scheduled run; recovered from the artifact it published because the trigger cannot push to git."
-  },
-  {
-    "date": "2026-09-08T01:30:00Z",
-    "price": 79384.83,
-    "source": "CoinGecko (via CoinGabbar)",
-    "tier": 3,
-    "url": "https://www.coingecko.com/en/coins/bitcoin",
-    "note": "Found by the hourly scheduled run; recovered from its published artifact."
-  },
-  {
-    "date": "2026-09-08T05:39:00Z",
-    "price": 78800.0,
-    "source": "CoinDesk",
-    "tier": 2,
-    "url": "https://www.coindesk.com/price/bitcoin",
-    "note": "Found by the hourly scheduled run; recovered from its published artifact."
-  },
-  {
-    "date": "2026-09-08T06:37:00Z",
-    "price": 78564.71,
-    "source": "Coinpedia",
-    "tier": 3,
-    "url": "https://coinpedia.org/crypto-live-news/bitcoin-price-today-september-8th/",
-    "note": "Found by the hourly scheduled run at 06:37Z. THIS IS THE SAME ARTICLE this session retrieved at 18:40Z and stamped with its own retrieval time; the earlier stamp is the correct one because it is the earliest moment the print is known to have existed."
-  },
-  {
-    "date": "2026-09-08T06:43:00Z",
-    "price": 78393.0,
-    "source": "FinanceFeeds (CoinGecko, cross-checked vs Coinbase/Binance/Kraken)",
-    "tier": 3,
-    "url": "https://financefeeds.com/",
-    "note": "Found by the hourly scheduled run; recovered from its published artifact."
-  },
-  {
-    "date": "2026-09-08T11:20:00Z",
-    "price": 78370.62,
-    "source": "Yahoo Finance",
-    "tier": 2,
-    "url": "https://finance.yahoo.com/quote/BTC-USD/",
-    "note": "Found by the hourly scheduled run. Newest observation on the board and Tier 2, so it outranks the Tier 3 Coinpedia print for the carried BTC quote."
-  }
+ {
+  "date": "2026-08-07T09:30:00Z",
+  "price": 64744.92,
+  "source": "Fortune",
+  "tier": 3,
+  "url": "https://fortune.com/article/price-of-bitcoin-08-07-2026/",
+  "note": "5:30 a.m. ET print."
+ },
+ {
+  "date": "2026-08-11T10:30:00Z",
+  "price": 64190.41,
+  "source": "Fortune",
+  "tier": 3,
+  "url": "https://fortune.com/article/price-of-bitcoin-08-11-2026/",
+  "note": "6:30 a.m. ET print."
+ },
+ {
+  "date": "2026-08-12T10:45:00Z",
+  "price": 64085.21,
+  "source": "Fortune",
+  "tier": 3,
+  "url": "https://fortune.com/article/price-of-bitcoin-08-12-2026/",
+  "note": "6:45 a.m. ET print."
+ },
+ {
+  "date": "2026-08-13T10:30:00Z",
+  "price": 63558.45,
+  "source": "Fortune",
+  "tier": 3,
+  "url": "https://fortune.com/article/price-of-bitcoin-08-13-2026/",
+  "note": "6:30 a.m. ET print."
+ },
+ {
+  "date": "2026-08-25T12:00:00Z",
+  "price": 79111.64,
+  "source": "Fortune",
+  "tier": 3,
+  "url": "https://fortune.com/article/price-of-bitcoin-08-25-2026/",
+  "note": "8:00 a.m. ET print."
+ },
+ {
+  "date": "2026-09-07T10:50:00Z",
+  "price": 79571.82,
+  "source": "Search aggregate (CoinGecko / Coinbase / Bybit)",
+  "tier": 3,
+  "url": "https://www.coingecko.com/en/coins/bitcoin",
+  "note": "Retrieved 10:50Z; the carriers did not state a quote time. Carriers disagreed 79,458-79,899 (normal cross-venue spread); 24h range reported 79,081-80,494."
+ },
+ {
+  "date": "2026-09-07T13:41:00Z",
+  "price": 79349.91,
+  "source": "Yahoo Finance",
+  "tier": 2,
+  "url": "https://finance.yahoo.com/quote/BTC-USD/",
+  "note": "Found and stored by the hourly scheduled run at 13:41Z, recovered from the artifact it published at 17:49Z because that run could not push to git."
+ },
+ {
+  "date": "2026-09-07T18:05:00Z",
+  "price": 79170.0,
+  "source": "Operator live ticker",
+  "tier": 2,
+  "url": "https://www.binance.com/en/price/bitcoin",
+  "note": "Read off a live ticker by the operator and reported directly. More current than any page WebSearch can reach: the same search returned 79,824.65 / 79,571.82 / 79,735.00 / 79,917.67 from four carriers, all cached and none matching."
+ },
+ {
+  "date": "2026-09-07T22:27:00Z",
+  "price": 79175.68,
+  "source": "CoinDesk",
+  "tier": 2,
+  "url": "https://www.coindesk.com/price/bitcoin",
+  "note": "Found by the hourly scheduled run; recovered from the artifact it published because the trigger cannot push to git."
+ },
+ {
+  "date": "2026-09-08T01:30:00Z",
+  "price": 79384.83,
+  "source": "CoinGecko (via CoinGabbar)",
+  "tier": 3,
+  "url": "https://www.coingecko.com/en/coins/bitcoin",
+  "note": "Found by the hourly scheduled run; recovered from its published artifact."
+ },
+ {
+  "date": "2026-09-08T05:39:00Z",
+  "price": 78800.0,
+  "source": "CoinDesk",
+  "tier": 2,
+  "url": "https://www.coindesk.com/price/bitcoin",
+  "note": "Found by the hourly scheduled run; recovered from its published artifact."
+ },
+ {
+  "date": "2026-09-08T06:37:00Z",
+  "price": 78564.71,
+  "source": "Coinpedia",
+  "tier": 3,
+  "url": "https://coinpedia.org/crypto-live-news/bitcoin-price-today-september-8th/",
+  "note": "Found by the hourly scheduled run at 06:37Z. THIS IS THE SAME ARTICLE this session retrieved at 18:40Z and stamped with its own retrieval time; the earlier stamp is the correct one because it is the earliest moment the print is known to have existed."
+ },
+ {
+  "date": "2026-09-08T06:43:00Z",
+  "price": 78393.0,
+  "source": "FinanceFeeds (CoinGecko, cross-checked vs Coinbase/Binance/Kraken)",
+  "tier": 3,
+  "url": "https://financefeeds.com/",
+  "note": "Found by the hourly scheduled run; recovered from its published artifact."
+ },
+ {
+  "date": "2026-09-08T11:20:00Z",
+  "price": 78370.62,
+  "source": "Yahoo Finance",
+  "tier": 2,
+  "url": "https://finance.yahoo.com/quote/BTC-USD/",
+  "note": "Found by the hourly scheduled run. Newest observation on the board and Tier 2, so it outranks the Tier 3 Coinpedia print for the carried BTC quote."
+ },
+ {
+  "date": "2026-09-08T20:00:00Z",
+  "price": 78450.0,
+  "source": "CoinDesk",
+  "tier": 2,
+  "url": "https://www.coindesk.com/price/bitcoin",
+  "note": "Found by the 21:41 scheduled run; recovered from the artifact it published, which is also the first time the loop republished the multi-asset page end to end."
+ }
 ]
