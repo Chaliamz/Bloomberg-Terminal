@@ -181,6 +181,7 @@ READ = """() => {
     val: cell ? cell.querySelector(".val").textContent : null,
     src: cell ? cell.querySelector(".src").textContent : null,
     live: cell ? cell.getAttribute("data-live") : null,
+    tier: cell ? ((cell.querySelector(".lab .t") || {}).textContent || "") : null,
     state: st ? st.textContent : null,
     on: st ? st.getAttribute("data-on") : null,
     px: (document.getElementById("lv-px") || {}).textContent,
@@ -255,6 +256,9 @@ async def run(path: str) -> int:
             bad.append(f"stream tick did not light the badge: {good['state']!r}")
         if good["live"] != "1":
             bad.append("quote cell not marked live")
+        if good["tier"] != "T1":
+            bad.append(f"tier badge contradicts the live source line: {good['tier']!r} "
+                       "(a venue's own last trade is Tier 1)")
         if not re.search(r"conf \d", good["src"] or ""):
             bad.append(f"live cell lost its provenance line: {good['src']!r}")
         if good["tape"] != "81,250":
@@ -333,14 +337,19 @@ async def run(path: str) -> int:
         ws.start()
         spot = SpotHTTP(json.dumps({"data": {"amount": "70000.00"}}))
         spot.start()
-        both = await load(stage(html, tmp, ws.port, spot.port), 2600)
+        both = await load(stage(html, tmp, ws.port, spot.port), 23000)
+        hits = spot.hits
         ws.shutdown()
         spot.shutdown()
         if both["val"] != "81,999":
             bad.append(f"REST overwrote the stream: {both['val']!r} (expected 81,999)")
         if "Binance stream" not in (both["state"] or ""):
             bad.append(f"venue flicker: badge reads {both['state']!r}")
-        notes.append(f"both feeds   -> {both['val']} · {both['state']!r} (stream wins)")
+        if hits != 1:
+            bad.append(f"REST polled {hits}x while the stream was live; expected the "
+                       "one call at load, then silence for STREAM_OWNS")
+        notes.append(f"both feeds   -> {both['val']} · {both['state']!r} "
+                     f"(stream wins, REST polled {hits}x in 23s)")
 
         # -- 6. a 500 from the fallback must change nothing -------------------
         spot = SpotHTTP(None)
