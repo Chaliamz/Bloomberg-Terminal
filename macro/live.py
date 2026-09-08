@@ -718,6 +718,106 @@ CRYPTO_SOURCES: tuple[Source, ...] = tuple(x for x in SOURCES if x.kind == "cryp
 # current while the series stays a series rather than a log.
 ANCHOR_MIN_GAP = 900
 
+
+# --------------------------------------------------------------------------
+# What the page can reach FROM THE VIEWER'S OWN BROWSER.
+#
+# This is the single source of truth for the live client: the JS feed registry
+# and the status table on the page are both rendered from it, so what the page
+# claims and what it actually connects to cannot drift apart.
+#
+# The constraint is not ambition, it is CORS plus credentials:
+#   - WebSockets are exempt from CORS, so any host will accept a browser socket.
+#     Binance is the only venue here that streams over one without a key.
+#   - Coinbase sends Access-Control-Allow-Origin on unauthenticated price
+#     endpoints; Kraken does not; Binance REST does not.
+#   - Frankfurter (ECB reference rates) documents CORS and needs no key.
+#   - Yahoo Finance sends no ACAO header on query1/query2, so the whole equity,
+#     index, rates and oil complex is unreachable. Every remaining vendor wants
+#     an API key, and a key shipped inside this page would be a leaked
+#     credential the moment anyone opened it.
+# So crypto and gold go real-time, the dollar index gets a daily ECB-derived
+# figure, and the rest stay honest snapshots that SAY they are snapshots.
+# --------------------------------------------------------------------------
+
+BINANCE_WS = "wss://stream.binance.com:9443/stream?streams="
+COINBASE_SPOT = "https://api.coinbase.com/v2/prices/{pair}/spot"
+FRANKFURTER = ("https://api.frankfurter.dev/v1/latest"
+               "?base=USD&symbols=EUR,JPY,GBP,CAD,SEK,CHF")
+
+BROWSER_FEEDS: tuple[dict[str, Any], ...] = (
+    {"key": "BTC", "label": "Bitcoin", "unit": "usd", "mode": "realtime",
+     "stream": "btcusdt@ticker", "symbol": "BTCUSDT", "tier": 1,
+     "src": "Binance stream", "rest": "BTC-USD", "rest_src": "Coinbase spot",
+     "why": "Venue's own last traded price, streamed."},
+    {"key": "ETH", "label": "Ethereum", "unit": "usd", "mode": "realtime",
+     "stream": "ethusdt@ticker", "symbol": "ETHUSDT", "tier": 1,
+     "src": "Binance stream", "rest": "ETH-USD", "rest_src": "Coinbase spot",
+     "why": "Venue's own last traded price, streamed."},
+    {"key": "GOLD", "label": "Gold", "unit": "usd_oz", "mode": "realtime",
+     "stream": "paxgusdt@ticker", "symbol": "PAXGUSDT", "tier": 2,
+     "src": "Binance PAXGUSDT", "proxy": True,
+     "why": "PROXY, not spot XAU. One PAXG is one fine troy ounce in an LBMA "
+            "vault, redeemable, and it trades within roughly a third of a "
+            "percent of spot - but it is a token with its own basis, so it is "
+            "Tier 2 and the cell says PAXG."},
+    {"key": "DXY", "label": "Dollar index", "unit": "index", "mode": "daily",
+     "tier": 3, "src": "ECB fixing", "derived": True,
+     "why": "DERIVED once a day from the ECB's published reference rates via "
+            "the ICE weights. Not the live index and does not claim to be: it "
+            "moves at the fixing, and it never resets the page's age counter."},
+)
+
+# Named so the page can state WHY a cell is not live instead of leaving the
+# reader to wonder whether it is broken.
+NOT_LIVE_REASON: tuple[tuple[str, str], ...] = (
+    ("SPX / DJIA / NDX / VIX",
+     "No keyless, CORS-open feed exists. Yahoo Finance sends no "
+     "Access-Control-Allow-Origin, so a browser cannot read it; every other "
+     "vendor requires an API key, and a key shipped in this page would be "
+     "readable by anyone who opened it."),
+    ("UST 2Y / UST 10Y",
+     "Same. The Treasury's own daily curve is not CORS-open either, and it is "
+     "a daily file rather than a quote."),
+    ("Brent / WTI",
+     "Same. No free venue streams a crude benchmark to an anonymous browser."),
+)
+
+# ICE US Dollar Index: a geometric mean of six USD pairs with published fixed
+# weights and a scaling constant set at the 1973 base.
+DXY_CONST = 50.14348112
+DXY_LEGS: tuple[tuple[str, float, bool], ...] = (
+    ("EUR", -0.576, True),    # True: the quote is X/USD, so invert the USD-base rate
+    ("JPY", 0.136, False),
+    ("GBP", -0.119, True),
+    ("CAD", 0.091, False),
+    ("SEK", 0.042, False),
+    ("CHF", 0.036, False),
+)
+
+
+def dxy_from_usd_rates(rates: Any) -> float | None:
+    """ICE dollar index from USD-base reference rates, or None.
+
+    Returns None rather than a plausible number on anything malformed: a
+    non-mapping, a missing leg, a non-numeric, non-finite or non-positive rate.
+    A dollar index computed from five of six legs is not a dollar index.
+    """
+    if not isinstance(rates, dict):
+        return None
+    out = DXY_CONST
+    for code, power, invert in DXY_LEGS:
+        raw = rates.get(code)
+        if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+            return None
+        v = float(raw)
+        if not math.isfinite(v) or v <= 0:
+            return None
+        out *= (1.0 / v if invert else v) ** power
+    if not math.isfinite(out) or out <= 0:
+        return None
+    return out
+
 # Scheduled primary releases: the exact moment a number becomes public, and the
 # URL that carries it first. Polling this at T+0 is how the terminal sees a
 # print before wire coverage clears - the whole point of section 16.

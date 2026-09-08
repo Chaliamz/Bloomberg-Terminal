@@ -12,11 +12,13 @@ Design contract, and the reason this file is not a template:
 
 from __future__ import annotations
 
+import math
 import html
 import json
 from datetime import datetime, timezone
 
-from .live import HEAT_RAMPS, Snapshot
+from .live import (HEAT_RAMPS, Snapshot, BROWSER_FEEDS, NOT_LIVE_REASON,
+                   BINANCE_WS, COINBASE_SPOT, FRANKFURTER, DXY_CONST, DXY_LEGS)
 from .reaction import ASSETS, build_matrix
 from .regime import MacroRegime
 from .surprise import Impulse
@@ -407,6 +409,23 @@ noscript .ns{display:block;margin:14px 18px;padding:12px;border:1px solid var(--
   70%{opacity:.75;box-shadow:0 0 0 6px rgba(99,184,92,0)}}
 .q[data-live="1"]{box-shadow:inset 2px 0 0 var(--up)}
 .q[data-live="1"] .val{color:var(--up)}
+/* A PROXY instrument and a DERIVED daily fixing are real data but they are not
+   live venue prints of the thing named on the cell. They get their own colour so
+   the reader is never invited to mistake one for the other. */
+.q[data-proxy="1"]{box-shadow:inset 2px 0 0 var(--amber)}
+.q[data-proxy="1"] .val{color:var(--amber)}
+.q[data-fix="1"]{box-shadow:inset 2px 0 0 var(--live)}
+.q[data-fix="1"] .val{color:var(--live)}
+.lv-tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px}
+.lv-tbl th{text-align:left;font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--faint);padding:6px 10px;border-bottom:1px solid var(--edge)}
+.lv-tbl td{padding:6px 10px;border-bottom:1px solid rgba(26,32,48,.6);
+  color:var(--ink-2);vertical-align:top}
+.lv-tbl tr:last-child td{border-bottom:0}
+.lv-tbl .a{color:var(--ink);font-weight:600;white-space:nowrap}
+.lv-tbl .st{white-space:nowrap;font-size:10px;letter-spacing:.1em}
+.lv-tbl .st.rt{color:var(--up)} .lv-tbl .st.px{color:var(--amber)}
+.lv-tbl .st.dv{color:var(--live)} .lv-tbl .st.no{color:var(--dim)}
 .lv-cmd{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;padding:11px 13px;
   border:1px solid var(--gold-dim);border-radius:3px;
   background:linear-gradient(90deg,rgba(46,197,207,.10),rgba(46,197,207,.02))}
@@ -597,17 +616,21 @@ relTime(); setInterval(relTime,30000);
    The published artifact cannot do this: its sandbox blocks fetch, XHR and
    WebSocket, so there every attempt below fails and the page stays the honest
    snapshot it already was. Opened as a local file, there is no such sandbox and
-   this is a real-time feed. Nothing about the page changes between the two
-   cases except whether the ticks arrive.
+   the feeds below are real time.
 
-   Two transports, because each is blocked in a different place:
-     1. Binance WebSocket. WebSockets are NOT subject to CORS, so a browser can
-        open one to any host. Binance's REST API sends no Access-Control-Allow-
-        Origin header at all, which is why the stream is used and not /api/v3.
-     2. Coinbase REST, polled. Coinbase documents CORS support on unauthenticated
-        price endpoints, so this one survives where websockets are blocked. It is
-        the FALLBACK: it only writes when the stream has gone quiet, or the two
-        would fight every 20s and the venue label would flicker.
+   WHAT IS REACHABLE, and why the rest of the board is not. WebSockets are exempt
+   from CORS, so a browser may open one to any host - Binance is the only venue
+   here that streams without a key. Coinbase sends Access-Control-Allow-Origin on
+   unauthenticated price endpoints (Binance REST and Kraken do not), so it is the
+   fallback. Frankfurter serves ECB reference rates CORS-open and keyless. Yahoo
+   Finance sends no ACAO header at all, which removes the entire equity, index,
+   rates and oil complex, and every other vendor wants an API key - a key shipped
+   inside this page would be readable by anyone who opened it. So crypto and gold
+   go real time, the dollar index gets a daily ECB-derived figure, and the rest
+   stay snapshots that SAY they are snapshots.
+
+   The registry is D.feeds, rendered from macro.live.BROWSER_FEEDS, so the status
+   table on the page and the sockets actually opened come from one list.
 
    Validation mirrors macro.live.parse_binance_ticker field for field. Anything
    that fails it changes NOTHING - no price, no timestamp, no state. A feed that
@@ -616,7 +639,9 @@ relTime(); setInterval(relTime,30000);
 (function(){
   var STREAM_OWNS=30000,      /* REST stands down this long after a stream tick */
       WATCHDOG=60000,         /* no tick for this long and the badge stops saying LIVE */
-      LIVE={src:"", at:0, price:0, rx:0, bad:0};
+      FX_EVERY=3600000;       /* ECB publishes once a day; hourly is already generous */
+  var FEEDS=(D&&D.feeds)||{}, LIVE={}, SYM={}, BAD=0;
+  for(var k in FEEDS){ if(FEEDS[k].symbol) SYM[FEEDS[k].symbol]=k; }
 
   /* the one place a live number is allowed to enter the page */
   function ok(price, ms){
@@ -629,37 +654,67 @@ relTime(); setInterval(relTime,30000);
     if(ms<now-604800000) return 0;       /* seconds-epoch sent as milliseconds */
     return price;
   }
-  /* floor(x+0.5) is the house rounding on BOTH sides of the language line;
-     toLocaleString alone would not be, and Math.round mishandles 0.49999999999999994 */
-  function money(v){
-    return v>=1000 ? Math.floor(v+0.5).toLocaleString("en-US")
-                   : v.toFixed(2);
+  /* grp/fmt mirror macro.terminal._grp and _fmt unit for unit. floor(x+0.5) is
+     the house rounding on BOTH sides of the language line: Math.round mishandles
+     0.49999999999999994 and toLocaleString does its own thing. A cross-language
+     test runs these against the Python pair in node. */
+  function grp(v, dp){
+    var neg=v<0, p=Math.pow(10,dp);
+    var n=Math.floor(Math.abs(v)*p+0.5)/p;
+    var s=n.toFixed(dp), parts=s.split(".");
+    parts[0]=parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,",");
+    return (neg?"-":"")+parts.join(".");
   }
+  function fmt(v, unit){
+    if(unit==="pct") return (Math.floor(Math.abs(v)*100+0.5)/100*(v<0?-1:1)).toFixed(2)+"%";
+    if(unit==="usd"||unit==="usd_oz"||unit==="usd_bbl")
+      return v<1000 ? grp(v,2) : grp(v,0);
+    return grp(v,2);
+  }
+  function live(key){ return LIVE[key]||(LIVE[key]={src:"",at:0,price:0,rx:0}); }
+  function fresh(key){ var L=LIVE[key]; return !!(L&&L.at>0&&(Date.now()-L.rx)<WATCHDOG); }
+
   function badge(){
-    var b=q("lv-state"), lp=q("lv-px"), on=LIVE.at>0&&(Date.now()-LIVE.rx)<WATCHDOG;
-    if(b){
-      b.textContent = on ? ("LIVE · "+LIVE.src)
-                    : (LIVE.bad ? ("FEED REJECTED · "+LIVE.bad+" tick"+(LIVE.bad>1?"s":"")+" failed validation")
-                    : (LIVE.at ? "FEED LOST · showing last good tick"
-                               : "NO FEED · snapshot only"));
-      b.setAttribute("data-on", on?"1":"0");
-      if(b.parentNode&&b.parentNode.setAttribute) b.parentNode.setAttribute("data-on", on?"1":"0");
+    var on=[], newest=0, src="", primary=null;
+    for(var k in FEEDS){
+      if(FEEDS[k].mode!=="realtime") continue;
+      if(fresh(k)){ on.push(k); if(LIVE[k].rx>newest){newest=LIVE[k].rx; src=LIVE[k].src;} }
+      if(k==="BTC") primary=LIVE[k];
     }
+    var b=q("lv-state");
+    if(b){
+      var n=0; for(var j in FEEDS){ if(FEEDS[j].mode==="realtime") n++; }
+      b.textContent = on.length
+        ? ("LIVE · "+src+" · "+on.length+" of "+n+" streams · "+on.join(" "))
+        : (BAD ? ("FEED REJECTED · "+BAD+" tick"+(BAD>1?"s":"")+" failed validation")
+        : (anyStamped() ? "FEED LOST · showing last good tick"
+                        : "NO FEED · snapshot only"));
+      b.setAttribute("data-on", on.length?"1":"0");
+      if(b.parentNode&&b.parentNode.setAttribute) b.parentNode.setAttribute("data-on", on.length?"1":"0");
+    }
+    var lp=q("lv-px");
     if(lp){
-      lp.textContent = LIVE.at
-        ? (money(LIVE.price)+"  ·  "+new Date(LIVE.at).toISOString().slice(11,19)+"Z")
+      lp.textContent = (primary&&primary.at)
+        ? ("BTC "+fmt(primary.price,"usd")+"  ·  "
+           +new Date(primary.at).toISOString().slice(11,19)+"Z")
         : "—";
     }
   }
-  function apply(key, price, pct, src, ms){
+  function anyStamped(){ for(var k in LIVE){ if(LIVE[k].at) return true; } return false; }
+
+  /* opts: {tier, proxy, derived, stamp, advance} */
+  function apply(key, price, pct, src, ms, opts){
+    var F=FEEDS[key]; if(!F) return false;
+    opts=opts||{};
     price=ok(price, ms);
-    if(!price){ if(key==="BTC"){ LIVE.bad++; badge(); } return false; }
+    if(!price){ BAD++; badge(); return false; }
     /* ok() parsed its own copy. Without this the raw argument reaches
        new Date(ms), and a venue sending the event time as a JSON STRING gives
        an Invalid Date whose toISOString() throws - after the price has already
        been written to the cell, leaving a half-applied tick. */
     ms=parseFloat(ms);
-    var txt=money(price);
+    var txt=fmt(price, F.unit);
+    var tier=opts.tier||F.tier||1;
     var cell=document.querySelector('.q[data-k="'+key+'"]');
     if(cell){
       var v=cell.querySelector(".val"); if(v) v.textContent=txt;
@@ -669,22 +724,23 @@ relTime(); setInterval(relTime,30000);
           d.textContent=(pct>=0?"▲ ":"▼ ")+Math.abs(pct).toFixed(2)+"%";
           d.className="dlt "+(pct>=0?"up":"down");
         }else{
-          /* the venue quoted no 24h change; the snapshot's is not this tick's */
+          /* the venue quoted no change; the snapshot's is not this tick's */
           d.textContent="—"; d.className="dlt flat";
         }
       }
       var sr=cell.querySelector(".src");
-      /* Same shape as every other cell - "source · HH:MMZ · conf X" - so a live
+      /* Same shape as every other cell - "source · when · conf X" - so a live
          tick does not break the provenance rule the harness asserts on the rest
-         of the board. 0.95 is not invented here: it is the confidence
-         macro.live.scan() already assigns a Binance quote, mirrored. A trailing
-         " · LIVE" was tried and clipped mid-word, and the badge, the green value
-         and the rail say it three times over already. */
-      if(sr) sr.textContent=src+" · "+new Date(ms).toISOString().slice(11,16)
-                               +"Z · conf 0.95";
+         of the board. The confidence mirrors what macro.live.scan() assigns. */
+      if(sr) sr.textContent=src+" · "+(opts.stamp
+              || new Date(ms).toISOString().slice(11,16)+"Z")
+              +" · conf "+(opts.conf||"0.95");
       var tb=cell.querySelector(".lab .t");
-      if(tb){ tb.textContent="T1"; tb.className="t t1"; }  /* a venue tick is T1 */
-      cell.setAttribute("data-live","1");
+      if(tb){ tb.textContent="T"+tier; tb.className="t t"+tier; }
+      /* A PROXY or a DERIVED daily figure is not a live venue print and must not
+         be dressed as one: different attribute, different colour, no green. */
+      cell.setAttribute(opts.derived?"data-fix":"data-live","1");
+      if(F.proxy) cell.setAttribute("data-proxy","1");
     }
     var tks=document.querySelectorAll('.tk[data-tk="'+key+'"]');
     for(var i=0;i<tks.length;i++){
@@ -697,37 +753,42 @@ relTime(); setInterval(relTime,30000);
         }else{ td.textContent="—"; td.className="d flat"; }
       }
     }
-    if(key==="BTC"){
-      LIVE.src=src; LIVE.price=price; LIVE.rx=Date.now();
-      LIVE.at=ms;                       /* this tick's own stamp, always */
-      /* Age is measured from the newest observation and a live tick IS one -
-         but only forward. A transport reporting an older event time than one
-         already seen must never wind the age counter back. */
-      if(typeof D!=="undefined"){
-        var prev=Date.parse(D.newest||D.captured);
-        if(isNaN(prev)||ms>prev) D.newest=new Date(ms).toISOString().replace(/\.\d+Z$/,"Z");
-      }
-      badge();
+    var L=live(key);
+    L.src=src; L.price=price; L.rx=Date.now();
+    L.at=ms;                          /* this tick's own stamp, always */
+    /* Age is the age of the newest OBSERVATION, and only a real-time venue tick
+       is one. A daily ECB fixing is real data but it is not evidence that the
+       board as a whole is current, so it must never reset the masthead. Forward
+       only: a transport reporting an older event time cannot wind it back. */
+    if(opts.advance && typeof D!=="undefined"){
+      var prev=Date.parse(D.newest||D.captured);
+      if(isNaN(prev)||ms>prev) D.newest=new Date(ms).toISOString().replace(/\.\d+Z$/,"Z");
     }
+    badge();
     return true;
   }
 
-  /* ---- 1. Binance stream: <symbol>@ticker, fields e/E/s/c/P/h/l ---- */
+  /* ---- 1. Binance combined stream: {stream, data} with data.e/E/s/c/P/h/l --- */
   var sock=null, retry=0, reconnecting=false;
   function stream(){
     reconnecting=false;
     if(typeof WebSocket==="undefined") return;
-    try{
-      sock=new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@ticker");
-    }catch(err){ return; }        /* artifact CSP throws right here */
+    if(!D||!D.wsUrl) return;
+    try{ sock=new WebSocket(D.wsUrl); }
+    catch(err){ return; }             /* artifact CSP throws right here */
     sock.onopen=function(){ retry=0; };
     sock.onmessage=function(ev){
       var m;
       try{ m=JSON.parse(ev.data); }catch(err){ return; }
-      if(!m||m.s!=="BTCUSDT") return;
-      var hi=parseFloat(m.h), lo=parseFloat(m.l);
+      /* a combined socket wraps each event; a single-stream one does not */
+      var t=(m&&m.data)?m.data:m;
+      if(!t||!t.s) return;
+      var key=SYM[t.s];
+      if(!key) return;                /* a symbol we did not subscribe to */
+      var hi=parseFloat(t.h), lo=parseFloat(t.l);
       if(isFinite(hi)&&isFinite(lo)&&hi<lo) return;   /* corrupt payload */
-      apply("BTC", m.c, parseFloat(m.P), "Binance stream", m.E);
+      apply(key, t.c, parseFloat(t.P), FEEDS[key].src, t.E,
+            {tier:FEEDS[key].tier, advance:true});
     };
     sock.onclose=function(){ again(); };
     sock.onerror=function(){ try{ sock.close(); }catch(err){} again(); };
@@ -741,19 +802,58 @@ relTime(); setInterval(relTime,30000);
     setTimeout(stream, Math.min(60000, 2000*retry));
   }
 
-  /* ---- 2. Coinbase REST, polled: CORS-enabled, no websocket needed ---- */
+  /* ---- 2. Coinbase spot, polled: CORS-enabled, no websocket needed ---- */
   function rest(){
-    if(typeof fetch==="undefined") return;
-    if(Date.now()-LIVE.rx < STREAM_OWNS) return;   /* the stream has it */
-    fetch("https://api.coinbase.com/v2/prices/BTC-USD/spot")
+    if(typeof fetch==="undefined" || !D || !D.spotUrl) return;
+    for(var k in FEEDS){
+      if(!FEEDS[k].rest) continue;
+      if(Date.now()-live(k).rx < STREAM_OWNS) continue;   /* the stream has it */
+      pollSpot(k);
+    }
+  }
+  function pollSpot(key){
+    var F=FEEDS[key];
+    fetch(D.spotUrl.replace("{pair}", F.rest))
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(j){
         var amt=j&&j.data&&j.data.amount;
         if(amt==null) return;
-        if(Date.now()-LIVE.rx < STREAM_OWNS) return; /* stream woke mid-flight */
+        if(Date.now()-live(key).rx < STREAM_OWNS) return; /* stream woke mid-flight */
         /* the endpoint states no time, so the tick time is the moment it
            arrived - which is true, and is why it is labelled as a spot read */
-        apply("BTC", amt, null, "Coinbase spot", Date.now());
+        apply(key, amt, null, F.rest_src, Date.now(), {tier:2, advance:true});
+      })
+      .catch(function(){ /* blocked or offline: change nothing */ });
+  }
+
+  /* ---- 3. Dollar index, DERIVED from the ECB's daily reference rates ----
+     The ICE index is a geometric mean of six USD pairs with published weights.
+     This computes it from the fixing, which is real and dated but is NOT the
+     live index: it moves once a day, it is Tier 3, and it does not touch the
+     age counter. Five of six legs is not a dollar index, so a missing or
+     unusable leg returns nothing rather than a partial number. */
+  function fx(){
+    if(typeof fetch==="undefined" || !D || !D.fxUrl || !D.dxy) return;
+    fetch(D.fxUrl)
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        if(!j || !j.rates || typeof j.rates!=="object") return;
+        var out=D.dxy.c, legs=D.dxy.legs, i, leg, raw, v;
+        for(i=0;i<legs.length;i++){
+          leg=legs[i]; raw=j.rates[leg[0]];
+          if(typeof raw!=="number" || !isFinite(raw) || raw<=0) return;
+          v = leg[2] ? (1/raw) : raw;
+          out *= Math.pow(v, leg[1]);
+        }
+        if(!isFinite(out) || out<=0) return;
+        /* Frankfurter states the fixing DATE and no time. Stamping a time would
+           invent one, so the cell shows the date and the tick is stamped now
+           purely so the validation gate has a real instant to check. */
+        var when=(typeof j.date==="string" && /^\d{4}-\d{2}-\d{2}$/.test(j.date))
+                 ? j.date : null;
+        if(!when) return;
+        apply("DXY", out, null, "ECB fixing", Date.now(),
+              {tier:3, derived:true, advance:false, stamp:when, conf:"0.60"});
       })
       .catch(function(){ /* blocked or offline: change nothing */ });
   }
@@ -766,6 +866,7 @@ relTime(); setInterval(relTime,30000);
   try{
     stream();
     rest(); setInterval(rest, 20000);
+    fx(); setInterval(fx, FX_EVERY);
     /* A half-open socket goes silent without ever firing close. Without this the
        badge would claim LIVE for ever off one tick from an hour ago. */
     setInterval(badge, 5000);
@@ -1069,6 +1170,28 @@ def render_live(snap) -> str:
     """
     from .live import CRYPTO_SOURCES, ANCHOR_MIN_GAP
 
+    STATUS = {"realtime": ("rt", "REAL TIME"), "daily": ("dv", "DAILY")}
+
+    def frow(f: dict) -> str:
+        cls, lab = STATUS[f["mode"]]
+        if f.get("proxy"):
+            cls, lab = "px", "REAL TIME &middot; PROXY"
+        if f.get("derived"):
+            cls, lab = "dv", "DAILY &middot; DERIVED"
+        transport = (f"Binance <code>{e(f['stream'])}</code>" if f.get("stream")
+                     else "ECB via Frankfurter")
+        if f.get("rest"):
+            transport += f" &middot; fallback Coinbase {e(f['rest'])}"
+        return (f'<tr><td class="a">{e(f["label"])} <span class="t t{f["tier"]}">'
+                f'T{f["tier"]}</span></td><td class="st {cls}">{lab}</td>'
+                f'<td>{transport}</td><td>{e(f["why"])}</td></tr>')
+
+    rows = "".join(frow(f) for f in BROWSER_FEEDS)
+    rows += "".join(
+        f'<tr><td class="a">{e(a)}</td><td class="st no">SNAPSHOT</td>'
+        f'<td>&mdash; none reachable</td><td>{e(why)}</td></tr>'
+        for a, why in NOT_LIVE_REASON)
+
     venues = "".join(
         f'<li><b>{e(x.name)}</b> &middot; T{x.tier} &middot; polls every '
         f'{x.interval}s<i>{e(x.url)}</i></li>' for x in CRYPTO_SOURCES)
@@ -1079,6 +1202,8 @@ def render_live(snap) -> str:
         '<span id="lv-px">&mdash;</span></div>'
         '<div class="lv-cmd"><code>python -m macro live 30</code>'
         '<span>runs the scanner every 30s and rewrites this page in place</span></div>'
+        f'<table class="lv-tbl"><thead><tr><th>Asset</th><th>Status</th>'
+        f'<th>Transport</th><th>Why</th></tr></thead><tbody>{rows}</tbody></table>'
         '<p class="lv-lbl">What <code>macro live</code> polls &mdash; these are the '
         '<b>scanner\'s</b> sources, not the browser client\'s. The scanner runs where '
         'there is egress and may use REST; the browser cannot, and uses the websocket '
@@ -1321,14 +1446,30 @@ def render_squawk(snap) -> str:
     return f'<div class="sq">{"".join(rows)}</div>'
 
 
+def _half_up(v: float, dp: int) -> float:
+    """floor(x + 0.5) at dp decimals - the house rounding on BOTH sides.
+
+    Python's format spec rounds half to even, so f"{2.675:,.2f}" and the live
+    client's JS would disagree on an exact half. The live client now formats the
+    same units as this function, so they have to round the same way or a tick
+    would silently restyle the number it replaced.
+    """
+    p = 10 ** dp
+    return math.floor(abs(v) * p + 0.5) / p * (-1 if v < 0 else 1)
+
+
+def _grp(v: float, dp: int) -> str:
+    return f"{_half_up(v, dp):,.{dp}f}"
+
+
 def _fmt(v: float, unit: str) -> str:
     if unit in ("pct",):
-        return f"{v:.2f}%"
+        return f"{_half_up(v, 2):.2f}%"
     if unit in ("usd_bbl", "usd_oz", "usd"):
-        return f"{v:,.2f}" if v < 1000 else f"{v:,.0f}"
+        return _grp(v, 2) if v < 1000 else _grp(v, 0)
     if unit == "index":
-        return f"{v:,.2f}"
-    return f"{v:,.2f}"
+        return _grp(v, 2)
+    return _grp(v, 2)
 
 
 def _delta(q) -> tuple[str, str]:
@@ -1524,6 +1665,15 @@ def render(snap: Snapshot, standalone: bool = True) -> str:
         "captured": snap.captured,
         "newest": newest,
         "ramps": {k: list(v) for k, v in HEAT_RAMPS.items()},
+        # The live client's feed registry travels with the data rather than
+        # being spliced into the script text, so the status table on the page
+        # and the sockets the page actually opens come from ONE list.
+        "feeds": {f["key"]: f for f in BROWSER_FEEDS},
+        "wsUrl": BINANCE_WS + "/".join(
+            f["stream"] for f in BROWSER_FEEDS if f.get("stream")),
+        "spotUrl": COINBASE_SPOT,
+        "fxUrl": FRANKFURTER,
+        "dxy": {"c": DXY_CONST, "legs": [list(x) for x in DXY_LEGS]},
         "window": snap.btc_window or {},
         # Sorted here, not merely by authoring luck: windowed() and anchorsIn()
         # both read anchors[len-1] as the latest observation, and the scanner

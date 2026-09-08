@@ -156,50 +156,89 @@ class SpotHTTP(threading.Thread):
         self.srv.shutdown()
 
 
-WSS = "wss://stream.binance.com:9443/ws/btcusdt@ticker"
-SPOT = "https://api.coinbase.com/v2/prices/BTC-USD/spot"
+WSS = "wss://stream.binance.com:9443/stream?streams="
+SPOT = "https://api.coinbase.com/v2/prices/{pair}/spot"
+FX = "https://api.frankfurter.dev/v1/latest"
 
 
-def stage(html: str, tmp: str, ws_port: int | None, spot_port: int | None) -> str:
+def endpoints(html: str) -> dict:
+    """The URLs the shipped page will actually open, read from its payload."""
+    m = re.search(r"window\.__TERM__=(\{.*?\});</script>", html, re.S)
+    assert m, "no __TERM__ payload in the page"
+    return json.loads(m.group(1))
+
+
+def stage(html: str, tmp: str, ws_port=None, spot_port=None, fx_port=None) -> str:
     """A copy of the page pointed at the local mocks. Never the shipped file."""
-    ws = (f"ws://127.0.0.1:{ws_port}/ws/btcusdt@ticker" if ws_port
-          else "ws://127.0.0.1:1/dead")          # port 1: refused, instantly
+    p = endpoints(html)
+    # port 1 is refused instantly, which is the "nothing reachable" case
+    ws = (f"ws://127.0.0.1:{ws_port}/stream" if ws_port else "ws://127.0.0.1:1/dead")
     spot = (f"http://127.0.0.1:{spot_port}/spot" if spot_port
             else "http://127.0.0.1:1/dead")
-    assert WSS in html and SPOT in html, "endpoint anchors missing from the page"
-    out = html.replace(WSS, ws).replace(SPOT, spot)
-    path = os.path.join(tmp, f"stage-{ws_port}-{spot_port}.html")
+    fx = (f"http://127.0.0.1:{fx_port}/fx" if fx_port else "http://127.0.0.1:1/dead")
+    assert p["wsUrl"].startswith(WSS), p["wsUrl"]
+    assert p["spotUrl"] == SPOT, p["spotUrl"]
+    assert p["fxUrl"].startswith(FX), p["fxUrl"]
+    out = (html.replace(p["wsUrl"], ws)
+               .replace(p["spotUrl"], spot)
+               .replace(p["fxUrl"], fx))
+    path = os.path.join(tmp, f"stage-{ws_port}-{spot_port}-{fx_port}.html")
     with open(path, "w") as fh:
         fh.write(out)
     return path
 
 
 READ = """() => {
-  const cell = document.querySelector('.q[data-k="BTC"]');
+  const one = k => {
+    const cell = document.querySelector('.q[data-k="' + k + '"]');
+    if (!cell) return null;
+    return {
+      val: cell.querySelector(".val").textContent,
+      src: cell.querySelector(".src").textContent,
+      live: cell.getAttribute("data-live"),
+      fix: cell.getAttribute("data-fix"),
+      proxy: cell.getAttribute("data-proxy"),
+      tier: (cell.querySelector(".lab .t") || {}).textContent || "",
+      tape: (document.querySelector('.tk[data-tk="' + k + '"] .v') || {}).textContent,
+    };
+  };
   const st = document.getElementById("lv-state");
-  return {
-    val: cell ? cell.querySelector(".val").textContent : null,
-    src: cell ? cell.querySelector(".src").textContent : null,
-    live: cell ? cell.getAttribute("data-live") : null,
-    tier: cell ? ((cell.querySelector(".lab .t") || {}).textContent || "") : null,
+  const out = {
     state: st ? st.textContent : null,
     on: st ? st.getAttribute("data-on") : null,
     px: (document.getElementById("lv-px") || {}).textContent,
     age: (document.getElementById("age") || {}).textContent,
-    tape: (document.querySelector('.tk[data-tk="BTC"] .v') || {}).textContent,
   };
+  ["BTC", "ETH", "GOLD", "DXY"].forEach(k => { out[k] = one(k); });
+  // flat aliases keep the BTC assertions readable
+  const b = out.BTC || {};
+  out.val = b.val; out.src = b.src; out.live = b.live; out.tier = b.tier;
+  out.tape = b.tape;
+  return out;
 }"""
 
 
-def ticker(price, *, sym="BTCUSDT", pct=1.25, hi=None, lo=None, ms=None):
+def ticker(price, *, sym="BTCUSDT", pct=1.25, hi=None, lo=None, ms=None,
+           combined=True):
+    """A Binance @ticker event, wrapped the way a COMBINED stream wraps it."""
     now = int(time.time() * 1000)
-    return json.dumps({
+    data = {
         "e": "24hrTicker", "E": now if ms is None else ms, "s": sym,
         "c": f"{price}", "P": f"{pct}",
-        "h": f"{hi if hi is not None else price * 1.02}",
-        "l": f"{lo if lo is not None else price * 0.98}",
+        "h": f"{hi if hi is not None else abs(price) * 1.02}",
+        "l": f"{lo if lo is not None else abs(price) * 0.98}",
         "o": f"{price}",
-    })
+    }
+    if not combined:
+        return json.dumps(data)
+    return json.dumps({"stream": sym.lower() + "@ticker", "data": data})
+
+
+def fx_body(date="2026-09-08", **over):
+    rates = {"EUR": 1 / 1.14, "JPY": 150.0, "GBP": 1 / 1.32,
+             "CAD": 1.38, "SEK": 9.50, "CHF": 0.80}
+    rates.update(over)
+    return json.dumps({"amount": 1, "base": "USD", "date": date, "rates": rates})
 
 
 async def run(path: str) -> int:
@@ -230,13 +269,13 @@ async def run(path: str) -> int:
             return out
 
         # -- baseline: what the untouched snapshot says -----------------------
-        base = await load(stage(html, tmp, None, None), 1200)
+        base = await load(stage(html, tmp), 1200)
         if base["val"] is None:
             bad.append("no BTC quote cell to update")
         notes.append(f"snapshot BTC {base['val']}  state={base['state']!r}")
 
         # -- 1. no feed at all: the page must be byte-identical in what it shows
-        dead = await load(stage(html, tmp, None, None), 3000)
+        dead = await load(stage(html, tmp), 3000)
         if dead["val"] != base["val"]:
             bad.append(f"dead feed changed the price {base['val']} -> {dead['val']}")
         if dead["live"] == "1" or dead["on"] == "1":
@@ -248,7 +287,7 @@ async def run(path: str) -> int:
         # -- 2. a good stream tick must land ----------------------------------
         ws = TickerWS([ticker(81234.5), ticker(81250.0)])
         ws.start()
-        good = await load(stage(html, tmp, ws.port, None), 2600)
+        good = await load(stage(html, tmp, ws.port), 2600)
         ws.shutdown()
         if good["val"] != "81,250":
             bad.append(f"stream tick not applied: val={good['val']!r}")
@@ -275,7 +314,7 @@ async def run(path: str) -> int:
         ws = TickerWS(['{"e":"24hrTicker","E":"%d","s":"BTCUSDT","c":"81111",'
                        '"P":"1","h":"99999","l":"1"}' % now])
         ws.start()
-        sv = await load(stage(html, tmp, ws.port, None), 2600)
+        sv = await load(stage(html, tmp, ws.port), 2600)
         ws.shutdown()
         if sv["val"] != "81,111":
             bad.append(f"string stamp broke the tick: val={sv['val']!r}")
@@ -306,7 +345,7 @@ async def run(path: str) -> int:
         for name, frames in cases:
             s = TickerWS(frames)
             s.start()
-            got = await load(stage(html, tmp, s.port, None), 2200)
+            got = await load(stage(html, tmp, s.port), 2200)
             s.shutdown()
             if got["val"] != base["val"]:
                 bad.append(f"REJECTION FAILED [{name}]: price moved "
@@ -351,6 +390,83 @@ async def run(path: str) -> int:
         notes.append(f"both feeds   -> {both['val']} · {both['state']!r} "
                      f"(stream wins, REST polled {hits}x in 23s)")
 
+        # -- 5b. every streamed asset must land on its OWN cell ---------------
+        ws = TickerWS([ticker(81250.0, sym="BTCUSDT"),
+                       ticker(2611.4, sym="ETHUSDT", pct=-0.8),
+                       ticker(4402.55, sym="PAXGUSDT", pct=0.4)])
+        ws.start()
+        multi = await load(stage(html, tmp, ws.port), 2800)
+        ws.shutdown()
+        for key, want, tier in (("BTC", "81,250", "T1"),
+                                ("ETH", "2,611", "T1"),
+                                ("GOLD", "4,403", "T2")):
+            cell = multi.get(key) or {}
+            if cell.get("val") != want:
+                bad.append(f"{key} not updated by the combined stream: "
+                           f"{cell.get('val')!r} (expected {want})")
+            if cell.get("tier") != tier:
+                bad.append(f"{key} tier badge {cell.get('tier')!r}, expected {tier}")
+            if cell.get("tape") != want:
+                bad.append(f"{key} ticker tape not updated: {cell.get('tape')!r}")
+        # gold is a PROXY: it must not be dressed as a live venue print of XAU
+        g = multi.get("GOLD") or {}
+        if g.get("proxy") != "1":
+            bad.append("gold cell is not marked a proxy")
+        if "PAXG" not in (g.get("src") or ""):
+            bad.append(f"gold source line hides the proxy: {g.get('src')!r}")
+        notes.append("combined     -> BTC %s · ETH %s · GOLD %s (proxy marked)"
+                     % (multi["BTC"]["val"], multi["ETH"]["val"], multi["GOLD"]["val"]))
+
+        # -- 5c. an unsubscribed symbol must land nowhere ---------------------
+        ws = TickerWS([ticker(999999.0, sym="DOGEUSDT")])
+        ws.start()
+        stray = await load(stage(html, tmp, ws.port), 2200)
+        ws.shutdown()
+        for key in ("BTC", "ETH", "GOLD"):
+            if (stray.get(key) or {}).get("val") != (base.get(key) or {}).get("val"):
+                bad.append(f"a DOGEUSDT event moved {key}")
+        notes.append("stray symbol -> routed nowhere, all cells unchanged")
+
+        # -- 5d. the dollar index: derived, dated, and NOT page-fresh ---------
+        fxs = SpotHTTP(fx_body())
+        fxs.start()
+        dxy = await load(stage(html, tmp, None, None, fxs.port), 2600)
+        fxs.shutdown()
+        d = dxy.get("DXY") or {}
+        if d.get("val") != "99.85":
+            bad.append(f"DXY not derived from the fixing: {d.get('val')!r} "
+                       "(expected 99.85)")
+        if d.get("fix") != "1":
+            bad.append("DXY not marked as a fixing")
+        if d.get("live") == "1":
+            bad.append("a daily fixing must not be marked live")
+        if "2026-09-08" not in (d.get("src") or ""):
+            bad.append(f"DXY does not show the fixing date: {d.get('src')!r}")
+        if dxy["age"] == "00h 00m":
+            bad.append("a daily ECB fixing reset the page age counter")
+        notes.append(f"ecb fixing   -> DXY {d.get('val')} · {d.get('src')}")
+
+        # -- 5e. a fixing missing one leg is not a dollar index ---------------
+        for name, body in (
+            ("missing CHF", json.dumps({"date": "2026-09-08", "rates":
+                {"EUR": 0.87, "JPY": 150.0, "GBP": 0.75, "CAD": 1.38, "SEK": 9.5}})),
+            ("zero leg", fx_body(SEK=0)),
+            ("negative leg", fx_body(CAD=-1.4)),
+            ("string leg", fx_body(JPY="150")),
+            ("no date", json.dumps({"rates": json.loads(fx_body())["rates"]})),
+            ("no rates", json.dumps({"date": "2026-09-08"})),
+        ):
+            fxs = SpotHTTP(body)
+            fxs.start()
+            r = await load(stage(html, tmp, None, None, fxs.port), 2200)
+            fxs.shutdown()
+            if (r.get("DXY") or {}).get("val") != (base.get("DXY") or {}).get("val"):
+                bad.append(f"DXY REJECTION FAILED [{name}]: value moved to "
+                           f"{(r.get('DXY') or {}).get('val')!r}")
+            if (r.get("DXY") or {}).get("fix") == "1":
+                bad.append(f"DXY REJECTION FAILED [{name}]: marked as a fixing")
+        notes.append("ecb refused  -> 6 unusable fixings, DXY unchanged in all")
+
         # -- 6. a 500 from the fallback must change nothing -------------------
         spot = SpotHTTP(None)
         spot.start()
@@ -369,6 +485,11 @@ async def run(path: str) -> int:
         bad.append("shipped page lost the Binance websocket endpoint")
     if SPOT not in html:
         bad.append("shipped page lost the Coinbase fallback endpoint")
+    if FX not in html:
+        bad.append("shipped page lost the ECB fixing endpoint")
+    for st in ("btcusdt@ticker", "ethusdt@ticker", "paxgusdt@ticker"):
+        if st not in html:
+            bad.append(f"shipped page lost the {st} subscription")
     if "127.0.0.1" in html:
         bad.append("a test endpoint leaked into the shipped page")
 

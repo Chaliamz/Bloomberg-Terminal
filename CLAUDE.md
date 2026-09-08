@@ -62,11 +62,32 @@ convention:
 
 ## Live data: what is and is not possible (verified)
 
+- **Which assets can be live at all, and why the rest cannot.** The registry is
+  `macro.live.BROWSER_FEEDS`; the JS feed table and the status table on the page
+  are both rendered from it, so the page's claims and the sockets it opens cannot
+  drift apart. Real time: **BTC, ETH** (Binance combined stream, T1) and **GOLD**
+  via **PAXGUSDT** — a 1:1 LBMA-backed token that holds ~±0.3% to spot, so it is
+  a **proxy at T2**, marked `data-proxy` in amber, never dressed as spot XAU.
+  Daily: **DXY**, derived from the ECB's published reference rates via the ICE
+  weights (`dxy_from_usd_rates`), marked `data-fix` in violet, Tier 3, and it
+  **never advances `D.newest`** — a daily fixing is real but is not evidence the
+  board is current. Unreachable, and the page says so with the reason: SPX,
+  DJIA, NDX, VIX, 2Y, 10Y, Brent, WTI. Yahoo sends no ACAO header, stooq the
+  same, and every other vendor needs an API key — which shipped inside this page
+  would be a leaked credential.
+- **The formatters are a cross-language pair.** `fmt()` in the page mirrors
+  `macro.terminal._fmt` unit for unit, both rounding `floor(x+0.5)` via
+  `_half_up` — Python's format spec alone rounds half to even. A node test runs
+  80 value/unit combinations through both and requires exact agreement, because
+  a live tick replaces a rendered snapshot value in the same cell.
 - **The page carries a live client and it works from `file://`.** Confirmed in
   Chromium by `tools/verify_live.py`, which stands up venue-shaped local servers
   and drives the real page against them. Two transports, each blocked in a
   different place:
-  - **Binance `wss://stream.binance.com:9443/ws/btcusdt@ticker`.** WebSockets are
+  - **Binance combined stream `wss://stream.binance.com:9443/stream?streams=…`.**
+    One socket carries every subscribed symbol; each event arrives wrapped as
+    `{stream, data}` and is routed by `data.s` through the symbol map, so an
+    event for a symbol nobody subscribed to lands nowhere. WebSockets are
     exempt from CORS, so a browser may open one to any host. Binance's REST API
     sends **no** `Access-Control-Allow-Origin` at all — that is why the stream is
     used and `/api/v3` is not.
