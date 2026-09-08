@@ -866,9 +866,14 @@ relTime(); setInterval(relTime,30000);
         }
       }
       var sr=cell.querySelector(".src");
-      /* the trailing " · LIVE" overflowed the cell, and the badge, the green
-         value and the rail already say it three times over */
-      if(sr) sr.textContent=src+" · "+new Date(ms).toISOString().slice(11,16)+"Z";
+      /* Same shape as every other cell - "source · HH:MMZ · conf X" - so a live
+         tick does not break the provenance rule the harness asserts on the rest
+         of the board. 0.95 is not invented here: it is the confidence
+         macro.live.scan() already assigns a Binance quote, mirrored. A trailing
+         " · LIVE" was tried and clipped mid-word, and the badge, the green value
+         and the rail say it three times over already. */
+      if(sr) sr.textContent=src+" · "+new Date(ms).toISOString().slice(11,16)
+                               +"Z · conf 0.95";
       var tb=cell.querySelector(".lab .t");
       if(tb){ tb.textContent="T1"; tb.className="t t1"; }  /* a venue tick is T1 */
       cell.setAttribute("data-live","1");

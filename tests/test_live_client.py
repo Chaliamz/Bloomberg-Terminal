@@ -94,6 +94,22 @@ class TestLiveClient(unittest.TestCase):
         # It read "Binance stream · T1 · 18:53Z · LIVE" and clipped mid-word.
         self.assertNotIn('+"Z · LIVE"', self.doc)
 
+    def test_live_cell_keeps_provenance(self):
+        # verify_terminal asserts every .q carries "conf <n>". A live tick
+        # rewrites .src, so it must keep that shape or the live path silently
+        # breaks a rule the rest of the board is held to.
+        self.assertIn('"Z · conf 0.95"', self.doc)
+
+    def test_live_confidence_mirrors_the_scanner(self):
+        # 0.95 is not a number chosen for the page: it is what scan() assigns a
+        # Binance quote. If one moves the other must.
+        import inspect
+        from macro import live
+        src = inspect.getsource(live.scan)
+        self.assertIn("confidence=0.95", src,
+                      "scan()'s Binance confidence changed; the live client's "
+                      "hard-coded 0.95 no longer mirrors it")
+
     # -- the age counter may only ever move forward ------------------------
     def test_age_stamp_only_advances(self):
         # Only D.newest is monotonic: it drives the age counter. LIVE.at is the

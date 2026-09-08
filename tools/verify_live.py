@@ -255,6 +255,8 @@ async def run(path: str) -> int:
             bad.append(f"stream tick did not light the badge: {good['state']!r}")
         if good["live"] != "1":
             bad.append("quote cell not marked live")
+        if not re.search(r"conf \d", good["src"] or ""):
+            bad.append(f"live cell lost its provenance line: {good['src']!r}")
         if good["tape"] != "81,250":
             bad.append(f"ticker tape not updated: {good['tape']!r}")
         if good["age"] not in ("00h 00m",):
