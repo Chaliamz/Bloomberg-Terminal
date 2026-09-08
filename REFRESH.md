@@ -21,7 +21,13 @@ time. Follow it in order and do not skip the gate.
   observed). Take the stamp from the article, never assume one. Aug–Sep 2026 is
   EDT, so ET + 4h = UTC.
 - A published artifact cannot fetch (CSP blocks fetch/XHR/WebSocket). The page
-  ships an honestly stamped snapshot whose age counter climbs.
+  ships an honestly stamped snapshot whose age counter climbs. **The same file
+  opened from disk IS live** — it carries a Binance websocket client with a
+  Coinbase poll behind it. That is a property of the file, not of this run: a
+  scheduled run neither enables nor breaks it, and must not claim credit for it.
+- The gate is now four commands, not three. `python3 tools/verify_live.py` drives
+  the live client against local venue-shaped servers and must pass before
+  publishing, like the other two.
 
 ## Nobody is watching this run
 
@@ -128,9 +134,10 @@ The cached snapshot must be removed or the render silently reuses the old data.
 python3 -m unittest discover -s tests -t .
 python3 tools/verify_terminal.py
 python3 tools/verify_board.py
+python3 tools/verify_live.py
 ```
 
-All three must pass. If any fails, **fix it and re-run**; do not publish a red
+All four must pass. If any fails, **fix it and re-run**; do not publish a red
 build. If it cannot be fixed in the run, leave the artifact untouched and say
 what broke.
 

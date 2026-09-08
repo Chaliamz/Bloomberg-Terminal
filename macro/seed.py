@@ -23,7 +23,9 @@ SPOT   = "2026-09-07T10:50:00Z"     # live re-scan, 7 September
 SENT   = "2026-09-07T10:50:00Z"     # sentiment re-read, 7 September
 LIQ = "2026-09-04T03:52:00Z"        # liquidation window close
 SESSION = "2026-09-04T21:00:00Z"    # end of the US session
-CAPTURE = "2026-09-07T18:05:00Z"    # when this scan was performed
+CAPTURE = "2026-09-08T18:51:00Z"    # when this scan was performed
+SPOT8  = "2026-09-08T18:40:00Z"     # 8 Sep re-scan; carriers state no quote time,
+                                    # so this is retrieval, not a print time
 
 _CNBC = "https://www.cnbc.com/2026/09/04/treasurys-bonds-nonfarm-payrolls-unemployment-data.html"
 _TS = "https://www.thestreet.com/stock-market-today/stock-market-today-dow-jones-sp-500-nasdaq-updates-sept-04-2026"
@@ -45,16 +47,31 @@ _Q = [
          url=_CNBC, label="UST 2Y", change=8.0, change_unit="bp", confidence=0.75,
          note="Reported as an 8bp climb breaching 4.416%, highest since Jan 2025. "
               "A second, lower-tier report said +12bp to 4.35% - see conflicts."),
-    dict(key="US10Y", value=4.818, unit="pct", as_of=SPOT, source="CNBC", tier=2,
-         url="https://www.cnbc.com/2026/09/01/stock-market-today-live-updates.html",
-         label="UST 10Y", change=6.0, change_unit="bp", confidence=0.8,
-         note="RE-SCANNED 7 September: the benchmark reached 4.818%, a level not seen "
-              "since November 2023. The board previously carried 4.79% from the "
-              "5 September briefing. Japan's 10y is at its highest since 1996 and the "
-              "Bund at a 2011 high, so this is a global term-premium move, not a US one."),
+    dict(key="US10Y", value=4.80, unit="pct", as_of=SPOT8,
+         source="Search aggregate (8 September market wraps)", tier=3,
+         url="https://finance.yahoo.com/markets/stocks/articles/stock-market-today-sept-8-133744027.html",
+         label="UST 10Y", change=-1.8, change_unit="bp", confidence=0.65,
+         note="RE-SCANNED 8 September: 4.80%, with the 30y at 5.27%. The carrier "
+              "could NOT be narrowed to one page - the figure came back inside a "
+              "summary of several 8 September wraps - so it is tiered as an "
+              "aggregate and the URL is the one dated 8 September article in that "
+              "set, not a page quoted as the source of the number. The board "
+              "carried 4.818% from the 7 September re-scan, so this is 1.8bp lower - "
+              "but both are aggregate reads to two decimals and the difference is "
+              "inside their own precision, which is what the Tier 3 and the 0.65 say. "
+              "Level context is unchanged: 4.8% was last seen in November 2023, "
+              "Japan's 10y is at its highest since 1996 and the Bund at a 2011 high, "
+              "so this is a global term-premium move, not a US one."),
     # ---- equities -------------------------------------------------------
-    dict(key="SPX", value=7718.60, unit="index", as_of=CLOSE, source="TheStreet", tier=2,
-         url=_TS, label="S&P 500", change=-0.38, change_unit="pct", confidence=0.9),
+    dict(key="SPX", value=7707.0, unit="index", as_of=SPOT8,
+         source="Trading Economics", tier=3,
+         url="https://tradingeconomics.com/united-states/stock-market",
+         label="S&P 500", change=-0.15, change_unit="pct", confidence=0.65,
+         note="RE-SCANNED 8 September: 7,707, off 0.15%, with stocks mixed on rising "
+              "oil, Middle East hostilities and an escalating trade dispute with "
+              "Canada. Carried to the whole point - the source quotes no decimals, "
+              "and inventing them would be fabrication. The 4 September cash close "
+              "of 7,718.60 from TheStreet is the previous print."),
     dict(key="DJIA", value=53414.25, unit="index", as_of=CLOSE, source="TheStreet", tier=2,
          url=_TS, label="Dow Jones", change=-0.51, change_unit="pct", confidence=0.9),
     dict(key="NDX", value=26506.99, unit="index", as_of=CLOSE, source="TheStreet", tier=2,
@@ -74,11 +91,16 @@ _Q = [
          note="Reported as 99.157. An earlier aggregated summary gave 99.13; the two "
               "agree to within noise and the more precise figure is carried."),
     # ---- commodities ----------------------------------------------------
-    dict(key="BRENT", value=97.62, unit="usd_bbl", as_of=SESSION, source="Investing.com",
-         tier=2, url=_INV, label="Brent crude", change=7.0, change_unit="pct",
-         confidence=0.85,
-         note="~1.5-month high, roughly +7% on the week after a new wave of US "
-              "strikes on Iran."),
+    dict(key="BRENT", value=98.0, unit="usd_bbl", as_of=SPOT8,
+         source="Yahoo Finance markets wrap", tier=3,
+         url="https://finance.yahoo.com/markets/stocks/articles/stock-market-today-sept-8-133744027.html",
+         label="Brent crude", confidence=0.55,
+         note="8 September: reported only as \"above $98 a barrel\" on climbing oil "
+              "and rising Middle East tensions. A THRESHOLD, NOT A PRINT - the level "
+              "is a floor the source states, the change is unknown and is therefore "
+              "left empty rather than guessed. The 4 September session print was "
+              "97.62 (Investing.com, Tier 2), ~+7% on the week after a new wave of "
+              "US strikes on Iran."),
     dict(key="WTI", value=91.67, unit="usd_bbl", as_of=SESSION, source="FXDailyReport",
          tier=3, url="https://fxdailyreport.com/wti-crude-oil-price-analysis-for-september-4-2026/",
          label="WTI crude", confidence=0.7,
@@ -90,16 +112,18 @@ _Q = [
               "-1.14% session. Real yields up on the payrolls beat is consistent "
               "with gold down."),
     # ---- crypto ---------------------------------------------------------
-    dict(key="BTC", value=79170.0, unit="usd", as_of="2026-09-07T18:05:00Z",
-         source="Operator live ticker", tier=2,
-         url="https://www.binance.com/en/price/bitcoin", label="Bitcoin",
-         change=-2.55, change_unit="pct", confidence=0.8,
-         note="Read off a live ticker by the operator. This is the most current "
-              "figure available here and it OUTRANKS search: the same query returned "
-              "79,824.65, 79,571.82, 79,735.00 and 79,917.67 from four carriers, all "
-              "cached page summaries and none of them the live price. That is why "
-              "`python -m macro live 30` against Binance is the only real fix - see "
-              "the LIVE panel."),
+    dict(key="BTC", value=78564.71, unit="usd", as_of=SPOT8,
+         source="Coinpedia", tier=3,
+         url="https://coinpedia.org/crypto-live-news/bitcoin-price-today-september-8th/", label="Bitcoin",
+         change=-1.55, change_unit="pct", confidence=0.6,
+         note="RE-SCANNED 8 September. Carriers disagreed by more than a "
+              "thousand dollars: 78,345.81, 78,564.71, 79,109 and 79,115, with one "
+              "summary putting the cross-feed spread at 79,055-80,055. The figure "
+              "carried is the only one that arrived with its own 24h change and a "
+              "stated cause, so it is the one that can be checked - but it is Tier 3 "
+              "and the confidence says so. THIS NUMBER IS NOT LIVE. Open this file "
+              "in a browser and the live client replaces it with a Binance stream "
+              "tick within a second."),
     dict(key="ETH", value=2507.70, unit="usd", as_of=CRYPTO, source="Yahoo Finance",
          tier=2, url=_YF, label="Ethereum", change=4.90, change_unit="pct",
          confidence=0.85,
@@ -262,6 +286,28 @@ _H = [
 ]
 
 CONFLICTS = [
+    "THE REASON THIS PAGE WAS BEHIND, stated plainly. Every number below came "
+    "through WebSearch, which returns cached page summaries, and a snapshot cannot "
+    "be anything but behind. The fix is not a better search: this file now carries "
+    "a live client that opens a Binance btcusdt@ticker websocket in your own "
+    "browser. Opened from disk it is real time to the second. Viewed as a published "
+    "artifact the sandbox blocks the connection and you get exactly what you see "
+    "here, honestly aged. The badge at the top of the LIVE panel says which.",
+    "BTC 8 September: the carriers were further apart than on any previous scan - "
+    "78,345.81, 78,564.71, 79,109 and 79,115, and one summary described the "
+    "cross-feed range as 79,055-80,055, which does not even contain two of those "
+    "quotes. No number in that set can be called the price. 78,564.71 is carried "
+    "because it is the only one that arrived with its own 24h change (-1.55%) and a "
+    "stated cause, so it can be checked; it is Tier 3 at confidence 0.6 and the "
+    "spread is recorded here rather than resolved.",
+    "The 7 September operator ticker read of 79,170.00 was superseded, not "
+    "corrected. It was accurate when reported and outranked search at the time. It "
+    "is a day old now, which is precisely the failure mode the live client exists "
+    "to end.",
+    "Brent 8 September is a THRESHOLD, not a print: the source states only \"above "
+    "$98 a barrel\". It is carried at 98.0 with no change figure, because the "
+    "session move was not reported and inventing one would be fabrication. "
+    "Confidence 0.55 is the lowest on the board and says so.",
     "The hourly scheduled run IS working. It cloned the repo, searched, found a "
     "BTC print of 79,349.91 at 13:41Z from Yahoo Finance that this session did not "
     "have, stored it and republished the page at 17:49Z. What it could not do is "

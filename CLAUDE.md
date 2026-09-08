@@ -6,7 +6,8 @@
 user, in this order:
 
 1. **Test** — run the full unit suite (`python3 -m unittest discover -s tests -t .`)
-   AND both browser harnesses (`tools/verify_terminal.py`, `tools/verify_board.py`).
+   AND all three browser harnesses (`tools/verify_terminal.py`,
+   `tools/verify_board.py`, `tools/verify_live.py`).
 2. **Sample** — actually look at the rendered result. Screenshot the panel that
    changed and inspect it. A passing assertion is not a substitute for seeing it.
 3. **Scan** — re-read the diff adversarially and hunt for bugs that no test covers:
@@ -61,7 +62,40 @@ convention:
 
 ## Live data: what is and is not possible (verified)
 
-- **A published artifact can never be live.** The viewer sandbox blocks fetch,
+- **The page carries a live client and it works from `file://`.** Confirmed in
+  Chromium by `tools/verify_live.py`, which stands up venue-shaped local servers
+  and drives the real page against them. Two transports, each blocked in a
+  different place:
+  - **Binance `wss://stream.binance.com:9443/ws/btcusdt@ticker`.** WebSockets are
+    exempt from CORS, so a browser may open one to any host. Binance's REST API
+    sends **no** `Access-Control-Allow-Origin` at all — that is why the stream is
+    used and `/api/v3` is not.
+  - **`https://api.coinbase.com/v2/prices/BTC-USD/spot`, polled**, as the fallback
+    where websockets are blocked. Coinbase supports CORS on unauthenticated price
+    endpoints; Kraken does not.
+  The stream **outranks** the poll for 30s after any tick (`STREAM_OWNS`), checked
+  both before the fetch and after it — otherwise a request in flight when a tick
+  lands still wins and the venue label flickers every 20s.
+- The JS gate `ok()` **mirrors `parse_binance_ticker` field for field**. A tick
+  that fails it changes *nothing*: no price, no timestamp, no LIVE. Ten bad
+  payloads are driven through a real browser every gate run and the page must be
+  unchanged after each — mutation-tested, because a probe that passes for the
+  wrong reason is worse than no probe. One of them did: the negative-price case
+  was being caught by the `hi<lo` range check rather than by the gate it guarded.
+- A silent half-open socket never fires `close`. A 60s watchdog re-renders the
+  badge every 5s so it cannot keep claiming LIVE off an hour-old tick.
+- `D.newest` **only ever advances** — it drives the age counter and a transport
+  reporting an older event time must not wind it back. `LIVE.at` is a different
+  quantity, the last tick's own stamp, and is written unconditionally so the
+  badge's clock always belongs to the price beside it. A shared monotonic guard
+  desynchronised the two; a per-source guard is worse, because the transports
+  read different clocks (Binance server time vs the local one) and one local read
+  running ahead would silently reject every later stream tick.
+- `ok()` parses its own copy of the stamp, so `apply()` re-parses before
+  `new Date()`. A venue that JSON-encodes the event time as a **string** would
+  otherwise produce an Invalid Date that throws *after* the price is written.
+
+- **A published artifact can never be live** — but the file can. The viewer sandbox blocks fetch,
   XHR and WebSocket — this is in the Artifact tool contract, not a guess. The
   page is a snapshot with an age counter measured from the newest observation.
 - **WebSearch is not a live feed either.** One query for the BTC price returned

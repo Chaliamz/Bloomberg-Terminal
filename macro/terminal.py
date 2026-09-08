@@ -394,12 +394,28 @@ noscript .ns{display:block;margin:14px 18px;padding:12px;border:1px solid var(--
 
 /* ---------- live feed panel ---------- */
 .lv{display:flex;flex-direction:column;gap:11px}
+.lv-badge{display:flex;align-items:center;gap:10px;padding:10px 13px;
+  border:1px solid var(--line);background:var(--panel);font-family:var(--mono)}
+.lv-badge b{font-size:12px;letter-spacing:.1em;color:var(--dim);font-weight:700}
+.lv-badge b[data-on="1"]{color:var(--up)}
+.lv-badge #lv-px{margin-left:auto;font-size:13px;color:var(--ink);
+  font-variant-numeric:tabular-nums;letter-spacing:.04em}
+.lv-dot{width:7px;height:7px;border-radius:50%;background:var(--faint);flex:none}
+.lv-badge[data-on="1"] .lv-dot{
+  background:var(--up);animation:lvpulse 1.6s ease-in-out infinite}
+@keyframes lvpulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(99,184,92,.55)}
+  70%{opacity:.75;box-shadow:0 0 0 6px rgba(99,184,92,0)}}
+.q[data-live="1"]{box-shadow:inset 2px 0 0 var(--up)}
+.q[data-live="1"] .val{color:var(--up)}
 .lv-cmd{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;padding:11px 13px;
   border:1px solid var(--gold-dim);border-radius:3px;
   background:linear-gradient(90deg,rgba(46,197,207,.10),rgba(46,197,207,.02))}
 .lv-cmd code{font-family:var(--mono);font-size:15px;color:var(--gold);font-weight:700;
   letter-spacing:.02em}
 .lv-cmd span{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.06em}
+.lv-lbl{margin:0;font-family:var(--mono);font-size:10.5px;color:var(--faint);
+  letter-spacing:.06em;line-height:1.5}
+.lv-lbl b{color:var(--ink-2)} .lv-lbl code{font-size:10.5px}
 .lv-src{list-style:none;margin:0;padding:0;display:grid;
   grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1px;background:var(--edge)}
 .lv-src li{background:var(--panel);padding:8px 11px;font-family:var(--mono);
@@ -576,6 +592,181 @@ function relTime(){
   }
 }
 relTime(); setInterval(relTime,30000);
+
+/* ---- LIVE FEED, in the viewer's own browser --------------------------
+   The published artifact cannot do this: its sandbox blocks fetch, XHR and
+   WebSocket, so there every attempt below fails and the page stays the honest
+   snapshot it already was. Opened as a local file, there is no such sandbox and
+   this is a real-time feed. Nothing about the page changes between the two
+   cases except whether the ticks arrive.
+
+   Two transports, because each is blocked in a different place:
+     1. Binance WebSocket. WebSockets are NOT subject to CORS, so a browser can
+        open one to any host. Binance's REST API sends no Access-Control-Allow-
+        Origin header at all, which is why the stream is used and not /api/v3.
+     2. Coinbase REST, polled. Coinbase documents CORS support on unauthenticated
+        price endpoints, so this one survives where websockets are blocked. It is
+        the FALLBACK: it only writes when the stream has gone quiet, or the two
+        would fight every 20s and the venue label would flicker.
+
+   Validation mirrors macro.live.parse_binance_ticker field for field. Anything
+   that fails it changes NOTHING - no price, no timestamp, no state. A feed that
+   cannot be trusted must leave the snapshot exactly as it was, because a wrong
+   live number is worse than an honestly old one. */
+(function(){
+  var STREAM_OWNS=30000,      /* REST stands down this long after a stream tick */
+      WATCHDOG=60000,         /* no tick for this long and the badge stops saying LIVE */
+      LIVE={src:"", at:0, price:0, rx:0, bad:0};
+
+  /* the one place a live number is allowed to enter the page */
+  function ok(price, ms){
+    price=parseFloat(price);
+    if(!isFinite(price)||price<=0) return 0;
+    ms=parseFloat(ms);
+    if(!isFinite(ms)||ms<=0) return 0;
+    var now=Date.now();
+    if(ms>now+300000) return 0;          /* clock skew or a wrong unit */
+    if(ms<now-604800000) return 0;       /* seconds-epoch sent as milliseconds */
+    return price;
+  }
+  /* floor(x+0.5) is the house rounding on BOTH sides of the language line;
+     toLocaleString alone would not be, and Math.round mishandles 0.49999999999999994 */
+  function money(v){
+    return v>=1000 ? Math.floor(v+0.5).toLocaleString("en-US")
+                   : v.toFixed(2);
+  }
+  function badge(){
+    var b=q("lv-state"), lp=q("lv-px"), on=LIVE.at>0&&(Date.now()-LIVE.rx)<WATCHDOG;
+    if(b){
+      b.textContent = on ? ("LIVE · "+LIVE.src)
+                    : (LIVE.bad ? ("FEED REJECTED · "+LIVE.bad+" tick"+(LIVE.bad>1?"s":"")+" failed validation")
+                    : (LIVE.at ? "FEED LOST · showing last good tick"
+                               : "NO FEED · snapshot only"));
+      b.setAttribute("data-on", on?"1":"0");
+      if(b.parentNode&&b.parentNode.setAttribute) b.parentNode.setAttribute("data-on", on?"1":"0");
+    }
+    if(lp){
+      lp.textContent = LIVE.at
+        ? (money(LIVE.price)+"  ·  "+new Date(LIVE.at).toISOString().slice(11,19)+"Z")
+        : "—";
+    }
+  }
+  function apply(key, price, pct, src, ms){
+    price=ok(price, ms);
+    if(!price){ if(key==="BTC"){ LIVE.bad++; badge(); } return false; }
+    /* ok() parsed its own copy. Without this the raw argument reaches
+       new Date(ms), and a venue sending the event time as a JSON STRING gives
+       an Invalid Date whose toISOString() throws - after the price has already
+       been written to the cell, leaving a half-applied tick. */
+    ms=parseFloat(ms);
+    var txt=money(price);
+    var cell=document.querySelector('.q[data-k="'+key+'"]');
+    if(cell){
+      var v=cell.querySelector(".val"); if(v) v.textContent=txt;
+      var d=cell.querySelector(".dlt");
+      if(d){
+        if(pct!=null && isFinite(pct)){
+          d.textContent=(pct>=0?"▲ ":"▼ ")+Math.abs(pct).toFixed(2)+"%";
+          d.className="dlt "+(pct>=0?"up":"down");
+        }else{
+          /* the venue quoted no 24h change; the snapshot's is not this tick's */
+          d.textContent="—"; d.className="dlt flat";
+        }
+      }
+      var sr=cell.querySelector(".src");
+      /* the trailing " · LIVE" overflowed the cell, and the badge, the green
+         value and the rail already say it three times over */
+      if(sr) sr.textContent=src+" · "+new Date(ms).toISOString().slice(11,16)+"Z";
+      var tb=cell.querySelector(".lab .t");
+      if(tb){ tb.textContent="T1"; tb.className="t t1"; }  /* a venue tick is T1 */
+      cell.setAttribute("data-live","1");
+    }
+    var tks=document.querySelectorAll('.tk[data-tk="'+key+'"]');
+    for(var i=0;i<tks.length;i++){
+      var tv=tks[i].querySelector(".v"); if(tv) tv.textContent=txt;
+      var td=tks[i].querySelector(".d");
+      if(td){
+        if(pct!=null && isFinite(pct)){
+          td.textContent=(pct>=0?"▲ ":"▼ ")+Math.abs(pct).toFixed(2)+"%";
+          td.className="d "+(pct>=0?"up":"down");
+        }else{ td.textContent="—"; td.className="d flat"; }
+      }
+    }
+    if(key==="BTC"){
+      LIVE.src=src; LIVE.price=price; LIVE.rx=Date.now();
+      LIVE.at=ms;                       /* this tick's own stamp, always */
+      /* Age is measured from the newest observation and a live tick IS one -
+         but only forward. A transport reporting an older event time than one
+         already seen must never wind the age counter back. */
+      if(typeof D!=="undefined"){
+        var prev=Date.parse(D.newest||D.captured);
+        if(isNaN(prev)||ms>prev) D.newest=new Date(ms).toISOString().replace(/\.\d+Z$/,"Z");
+      }
+      badge();
+    }
+    return true;
+  }
+
+  /* ---- 1. Binance stream: <symbol>@ticker, fields e/E/s/c/P/h/l ---- */
+  var sock=null, retry=0, reconnecting=false;
+  function stream(){
+    reconnecting=false;
+    if(typeof WebSocket==="undefined") return;
+    try{
+      sock=new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@ticker");
+    }catch(err){ return; }        /* artifact CSP throws right here */
+    sock.onopen=function(){ retry=0; };
+    sock.onmessage=function(ev){
+      var m;
+      try{ m=JSON.parse(ev.data); }catch(err){ return; }
+      if(!m||m.s!=="BTCUSDT") return;
+      var hi=parseFloat(m.h), lo=parseFloat(m.l);
+      if(isFinite(hi)&&isFinite(lo)&&hi<lo) return;   /* corrupt payload */
+      apply("BTC", m.c, parseFloat(m.P), "Binance stream", m.E);
+    };
+    sock.onclose=function(){ again(); };
+    sock.onerror=function(){ try{ sock.close(); }catch(err){} again(); };
+  }
+  /* One pending reconnect at a time, backing off to 60s. error-then-close fires
+     both handlers for the same socket; without the latch that doubles every drop. */
+  function again(){
+    if(reconnecting) return;
+    reconnecting=true;
+    retry=Math.min(retry+1, 6);
+    setTimeout(stream, Math.min(60000, 2000*retry));
+  }
+
+  /* ---- 2. Coinbase REST, polled: CORS-enabled, no websocket needed ---- */
+  function rest(){
+    if(typeof fetch==="undefined") return;
+    if(Date.now()-LIVE.rx < STREAM_OWNS) return;   /* the stream has it */
+    fetch("https://api.coinbase.com/v2/prices/BTC-USD/spot")
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        var amt=j&&j.data&&j.data.amount;
+        if(amt==null) return;
+        if(Date.now()-LIVE.rx < STREAM_OWNS) return; /* stream woke mid-flight */
+        /* the endpoint states no time, so the tick time is the moment it
+           arrived - which is true, and is why it is labelled as a spot read */
+        apply("BTC", amt, null, "Coinbase spot", Date.now());
+      })
+      .catch(function(){ /* blocked or offline: change nothing */ });
+  }
+
+  /* Under an artifact's CSP the WebSocket constructor throws a SecurityError.
+     stream() catches its own, but this whole block sits in the same <script> as
+     the ambient field below it, and one uncaught throw here would abort the tag
+     and take the animations with it. The CSP path cannot be exercised locally,
+     so it is guarded rather than assumed. */
+  try{
+    stream();
+    rest(); setInterval(rest, 20000);
+    /* A half-open socket goes silent without ever firing close. Without this the
+       badge would claim LIVE for ever off one tick from an hour ago. */
+    setInterval(badge, 5000);
+  }catch(err){}
+  badge();
+})();
 
 /* ---- ambient field: tape, motes, sweep, ping ---- */
 (function(){
@@ -878,14 +1069,28 @@ def render_live(snap) -> str:
         f'{x.interval}s<i>{e(x.url)}</i></li>' for x in CRYPTO_SOURCES)
     return (
         '<div class="lv">'
+        '<div class="lv-badge" data-on="0"><span class="lv-dot"></span>'
+        '<b id="lv-state" data-on="0">NO FEED &middot; snapshot only</b>'
+        '<span id="lv-px">&mdash;</span></div>'
         '<div class="lv-cmd"><code>python -m macro live 30</code>'
         '<span>runs the scanner every 30s and rewrites this page in place</span></div>'
+        '<p class="lv-lbl">What <code>macro live</code> polls &mdash; these are the '
+        '<b>scanner\'s</b> sources, not the browser client\'s. The scanner runs where '
+        'there is egress and may use REST; the browser cannot, and uses the websocket '
+        'above.</p>'
         f'<ul class="lv-src">{venues}</ul>'
-        '<p class="note warn"><b>This published page cannot fetch.</b> The viewer '
-        'sandbox blocks fetch, XHR and WebSocket, so an artifact is a snapshot by '
-        'construction &mdash; which is why the age counter in the masthead is there '
-        'and why it climbs. It reports the age of the <b>newest observation</b>, not '
-        'of the last scan, so a scan that reaches nothing cannot make it look fresh.</p>'
+        '<p class="note warn"><b>The badge above says which one you have.</b> This file '
+        'carries a live client: a Binance <code>btcusdt@ticker</code> websocket, with '
+        'Coinbase spot polled as a fallback where websockets are blocked. Websockets '
+        'are exempt from CORS and Coinbase sends the CORS header, so both work from a '
+        'file on disk. <b>Save this page and open it in your own browser and Bitcoin '
+        'is real time.</b> Viewed as a published artifact it cannot be: that sandbox '
+        'blocks fetch, XHR and WebSocket outright, every connection above fails, and '
+        'the page stays exactly the snapshot it was &mdash; which is the point. A tick '
+        'that fails validation, or a feed that cannot be reached, changes nothing at '
+        'all: no price, no timestamp, no LIVE. The age counter reports the age of the '
+        '<b>newest observation</b>, so it falls to zero on a real tick and on nothing '
+        'else.</p>'
         '<p class="note"><b>The scanner is not.</b> Run the command above anywhere '
         'with outbound network and Bitcoin comes from Binance\'s own '
         '<code>/api/v3/ticker/24hr</code> &mdash; the venue is Tier 1 for its own '
@@ -1145,7 +1350,8 @@ def render(snap: Snapshot, standalone: bool = True) -> str:
     # --- ticker (doubled so the marquee loops seamlessly at -50%) ---------
     def tk(q) -> str:
         txt, cls = _delta(q)
-        return (f'<div class="tk"><span class="s">{e(q.label or q.key)}</span>'
+        return (f'<div class="tk" data-tk="{e(q.key)}">'
+                f'<span class="s">{e(q.label or q.key)}</span>'
                 f'<span class="v">{e(_fmt(q.value, q.unit))}</span>'
                 f'<span class="d {cls}">{txt}</span></div>')
     tape = "".join(tk(q) for q in quotes)
@@ -1157,7 +1363,7 @@ def render(snap: Snapshot, standalone: bool = True) -> str:
         bar = "var(--up)" if q.confidence >= 0.85 else (
             "var(--gold)" if q.confidence >= 0.7 else "var(--down)")
         cells.append(
-            f'<div class="q" title="{e(q.note or q.label)}">'
+            f'<div class="q" data-k="{e(q.key)}" title="{e(q.note or q.label)}">'
             f'<span class="conf" style="background:{bar}"></span>'
             f'<span class="lab">{e(q.label or q.key)}<span class="t t{q.tier}">T{q.tier}</span></span>'
             f'<span class="val">{e(_fmt(q.value, q.unit))}</span>'

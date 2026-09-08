@@ -62,5 +62,13 @@
   "tier": 2,
   "url": "https://www.binance.com/en/price/bitcoin",
   "note": "Read off a live ticker by the operator and reported directly. More current than any page WebSearch can reach: the same search returned 79,824.65 / 79,571.82 / 79,735.00 / 79,917.67 from four carriers, all cached and none matching."
+ },
+ {
+  "date": "2026-09-08T18:40:00Z",
+  "price": 78564.71,
+  "source": "Coinpedia",
+  "tier": 3,
+  "url": "https://coinpedia.org/crypto-live-news/bitcoin-price-today-september-8th/",
+  "note": "Reported -1.55% over 24h, below $79,000, on strong US jobs data and higher Treasury yields. No quote time stated; stamped at retrieval. Carriers disagreed hard on 8 Sep: 78,345.81 / 78,564.71 / 79,109 / 79,115, and one summary put the feed spread at 79,055-80,055."
  }
 ]
