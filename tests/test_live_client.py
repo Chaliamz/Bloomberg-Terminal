@@ -119,6 +119,23 @@ class TestLiveClient(unittest.TestCase):
         self.assertIn("api.coinbase.com/v2/prices/{pair}/spot",
                       payload(self.doc)["spotUrl"])
 
+    def test_spot_url_is_per_asset(self):
+        # Without the placeholder every REST-capable asset would poll the same
+        # URL and take the same price - ETH would silently show BTC's.
+        self.assertIn("{pair}", payload(self.doc)["spotUrl"])
+        self.assertIn('D.spotUrl.replace("{pair}", F.rest)', self.doc)
+        rests = [f["rest"] for f in BROWSER_FEEDS if f.get("rest")]
+        self.assertEqual(len(set(rests)), len(rests), "duplicate REST pairs")
+
+    def test_badge_calls_a_poll_a_poll(self):
+        # The Coinbase fallback is polled, not streamed; counting it as a
+        # "stream" overstates what the page is doing.
+        self.assertIn('" feeds · "', self.doc)
+        self.assertNotIn('" streams · "', self.doc)
+
+    def test_badge_names_every_venue_in_play(self):
+        self.assertIn('srcs.join(" + ")', self.doc)
+
     def test_fx_transport(self):
         self.assertIn("frankfurter.dev", payload(self.doc)["fxUrl"])
 

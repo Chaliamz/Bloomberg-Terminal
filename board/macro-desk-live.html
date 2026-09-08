@@ -865,17 +865,25 @@ relTime(); setInterval(relTime,30000);
   function fresh(key){ var L=LIVE[key]; return !!(L&&L.at>0&&(Date.now()-L.rx)<WATCHDOG); }
 
   function badge(){
-    var on=[], newest=0, src="", primary=null;
+    var on=[], srcs=[], primary=null;
     for(var k in FEEDS){
       if(FEEDS[k].mode!=="realtime") continue;
-      if(fresh(k)){ on.push(k); if(LIVE[k].rx>newest){newest=LIVE[k].rx; src=LIVE[k].src;} }
+      if(fresh(k)){
+        on.push(k);
+        /* Name EVERY venue in play, not just the newest tick's. Two assets can
+           arrive from different transports - one streaming, one polled - and
+           crediting them both to one venue misattributes half the board. */
+        if(srcs.indexOf(LIVE[k].src)<0) srcs.push(LIVE[k].src);
+      }
       if(k==="BTC") primary=LIVE[k];
     }
     var b=q("lv-state");
     if(b){
       var n=0; for(var j in FEEDS){ if(FEEDS[j].mode==="realtime") n++; }
+      /* "feeds", not "streams": the Coinbase fallback is a poll, and calling it
+         a stream would overstate what the page is actually doing. */
       b.textContent = on.length
-        ? ("LIVE · "+src+" · "+on.length+" of "+n+" streams · "+on.join(" "))
+        ? ("LIVE · "+srcs.join(" + ")+" · "+on.length+" of "+n+" feeds · "+on.join(" "))
         : (BAD ? ("FEED REJECTED · "+BAD+" tick"+(BAD>1?"s":"")+" failed validation")
         : (anyStamped() ? "FEED LOST · showing last good tick"
                         : "NO FEED · snapshot only"));

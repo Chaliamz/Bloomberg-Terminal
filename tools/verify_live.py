@@ -120,7 +120,12 @@ class TickerWS(threading.Thread):
 
 
 class SpotHTTP(threading.Thread):
-    """Coinbase-shaped, CORS-open, and it counts what was asked of it."""
+    """Coinbase-shaped, CORS-open, and it counts what was asked of it.
+
+    Counts per PATH as well as in total: the stream stand-down is per asset, so
+    a global tally cannot distinguish "BTC correctly went quiet under its
+    stream" from "nothing polled at all".
+    """
 
     def __init__(self, body: str | None, status: int = 200):
         super().__init__(daemon=True)
@@ -129,6 +134,7 @@ class SpotHTTP(threading.Thread):
         class H(BaseHTTPRequestHandler):
             def do_GET(self):
                 outer.hits += 1
+                outer.paths[self.path] = outer.paths.get(self.path, 0) + 1
                 if body is None:
                     self.send_response(500)
                     self.send_header("Access-Control-Allow-Origin", "*")
@@ -146,6 +152,7 @@ class SpotHTTP(threading.Thread):
                 pass
 
         self.hits = 0
+        self.paths: dict[str, int] = {}
         self.srv = HTTPServer(("127.0.0.1", 0), H)
         self.port = self.srv.server_port
 
@@ -173,12 +180,16 @@ def stage(html: str, tmp: str, ws_port=None, spot_port=None, fx_port=None) -> st
     p = endpoints(html)
     # port 1 is refused instantly, which is the "nothing reachable" case
     ws = (f"ws://127.0.0.1:{ws_port}/stream" if ws_port else "ws://127.0.0.1:1/dead")
-    spot = (f"http://127.0.0.1:{spot_port}/spot" if spot_port
-            else "http://127.0.0.1:1/dead")
+    # KEEP the {pair} placeholder: the client substitutes it per asset, and a
+    # staged URL without it makes every asset poll one path - which is how this
+    # harness was silently not testing per-pair URL construction at all.
+    spot = (f"http://127.0.0.1:{spot_port}/spot/{{pair}}" if spot_port
+            else "http://127.0.0.1:1/dead/{pair}")
     fx = (f"http://127.0.0.1:{fx_port}/fx" if fx_port else "http://127.0.0.1:1/dead")
     assert p["wsUrl"].startswith(WSS), p["wsUrl"]
     assert p["spotUrl"] == SPOT, p["spotUrl"]
     assert p["fxUrl"].startswith(FX), p["fxUrl"]
+    assert "{pair}" in spot, "the staged spot URL must keep its placeholder"
     out = (html.replace(p["wsUrl"], ws)
                .replace(p["spotUrl"], spot)
                .replace(p["fxUrl"], fx))
@@ -320,13 +331,13 @@ async def run(path: str) -> int:
             bad.append(f"string stamp broke the tick: val={sv['val']!r}")
         if sv["on"] != "1":
             bad.append(f"string stamp left the badge dark: {sv['state']!r}")
-        if not re.match(r"^81,111\s+·\s+\d{2}:\d{2}:\d{2}Z$", sv["px"] or ""):
+        if not re.match(r"^BTC 81,111\s+·\s+\d{2}:\d{2}:\d{2}Z$", sv["px"] or ""):
             bad.append(f"string stamp produced a bad clock: {sv['px']!r}")
         notes.append(f"string stamp -> {sv['val']} · {sv['px']}")
 
         # -- 3. every rejection case must leave the snapshot alone ------------
         cases = [
-            ("wrong symbol", [ticker(90000, sym="ETHUSDT")]),
+            ("unsubscribed symbol", [ticker(90000, sym="XRPUSDT")]),
             ("high below low", [ticker(90000, hi=1.0, lo=99999.0)]),
             # hi/lo are pinned sane on purpose: ticker() derives them from the
             # price, so a negative price would produce hi<lo and be caught by the
@@ -361,7 +372,7 @@ async def run(path: str) -> int:
             {"data": {"base": "BTC", "currency": "USD", "amount": "80777.19"}}))
         spot.start()
         fb = await load(stage(html, tmp, None, spot.port), 2600)
-        hits = spot.hits
+        hits, fb_paths = spot.hits, dict(spot.paths)
         spot.shutdown()
         if fb["val"] != "80,777":
             bad.append(f"coinbase fallback not applied: {fb['val']!r}")
@@ -369,6 +380,11 @@ async def run(path: str) -> int:
             bad.append(f"fallback badge reads {fb['state']!r}")
         if hits < 1:
             bad.append("fallback never polled")
+        for pair in ("BTC-USD", "ETH-USD"):
+            if not any(pair in path for path in fb_paths):
+                bad.append(f"fallback never requested {pair}; asked for "
+                           f"{sorted(fb_paths)} - the {{pair}} placeholder is "
+                           "not being substituted per asset")
         notes.append(f"rest fallback-> {fb['val']} · {fb['state']!r} · {hits} poll(s)")
 
         # -- 5. the stream owns the price: REST must stand down ---------------
@@ -377,18 +393,23 @@ async def run(path: str) -> int:
         spot = SpotHTTP(json.dumps({"data": {"amount": "70000.00"}}))
         spot.start()
         both = await load(stage(html, tmp, ws.port, spot.port), 23000)
-        hits = spot.hits
+        hits, paths = spot.hits, dict(spot.paths)
+        btc_polls = sum(n for p, n in paths.items() if "BTC" in p)
         ws.shutdown()
         spot.shutdown()
         if both["val"] != "81,999":
             bad.append(f"REST overwrote the stream: {both['val']!r} (expected 81,999)")
         if "Binance stream" not in (both["state"] or ""):
             bad.append(f"venue flicker: badge reads {both['state']!r}")
-        if hits != 1:
-            bad.append(f"REST polled {hits}x while the stream was live; expected the "
-                       "one call at load, then silence for STREAM_OWNS")
+        # BTC gets exactly one poll: the eager call at load, before the socket
+        # has said anything. After the tick lands it must go quiet for
+        # STREAM_OWNS, and 23s outlasts one 20s poll interval. ETH has no stream
+        # tick in this case, so ETH polling on is correct and not counted here.
+        if btc_polls != 1:
+            bad.append(f"REST polled BTC {btc_polls}x while its stream was live; "
+                       "expected the one call at load, then silence for STREAM_OWNS")
         notes.append(f"both feeds   -> {both['val']} · {both['state']!r} "
-                     f"(stream wins, REST polled {hits}x in 23s)")
+                     f"(stream wins, BTC polled {btc_polls}x of {hits} in 23s)")
 
         # -- 5b. every streamed asset must land on its OWN cell ---------------
         ws = TickerWS([ticker(81250.0, sym="BTCUSDT"),
