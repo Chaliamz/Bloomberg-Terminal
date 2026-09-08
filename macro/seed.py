@@ -26,6 +26,7 @@ SESSION = "2026-09-04T21:00:00Z"    # end of the US session
 CAPTURE = "2026-09-08T18:51:00Z"    # when this scan was performed
 SPOT8  = "2026-09-08T18:40:00Z"     # 8 Sep re-scan; carriers state no quote time,
                                     # so this is retrieval, not a print time
+BTC8   = "2026-09-08T11:20:00Z"     # newest BTC observation, found by the loop
 
 _CNBC = "https://www.cnbc.com/2026/09/04/treasurys-bonds-nonfarm-payrolls-unemployment-data.html"
 _TS = "https://www.thestreet.com/stock-market-today/stock-market-today-dow-jones-sp-500-nasdaq-updates-sept-04-2026"
@@ -112,18 +113,18 @@ _Q = [
               "-1.14% session. Real yields up on the payrolls beat is consistent "
               "with gold down."),
     # ---- crypto ---------------------------------------------------------
-    dict(key="BTC", value=78564.71, unit="usd", as_of=SPOT8,
-         source="Coinpedia", tier=3,
-         url="https://coinpedia.org/crypto-live-news/bitcoin-price-today-september-8th/", label="Bitcoin",
-         change=-1.55, change_unit="pct", confidence=0.6,
-         note="RE-SCANNED 8 September. Carriers disagreed by more than a "
-              "thousand dollars: 78,345.81, 78,564.71, 79,109 and 79,115, with one "
-              "summary putting the cross-feed spread at 79,055-80,055. The figure "
-              "carried is the only one that arrived with its own 24h change and a "
-              "stated cause, so it is the one that can be checked - but it is Tier 3 "
-              "and the confidence says so. THIS NUMBER IS NOT LIVE. Open this file "
-              "in a browser and the live client replaces it with a Binance stream "
-              "tick within a second."),
+    dict(key="BTC", value=78370.62, unit="usd", as_of=BTC8,
+         source="Yahoo Finance", tier=2,
+         url="https://finance.yahoo.com/quote/BTC-USD/", label="Bitcoin",
+         confidence=0.75,
+         note="MERGED FROM THE SCHEDULED LOOP, which found six BTC prints "
+              "overnight that this session did not have and could not push to git. "
+              "This is the newest of them and the highest tier, so it outranks the "
+              "Coinpedia print of 78,564.71 the board briefly carried. NO 24h CHANGE "
+              "IS SHOWN because Yahoo quoted none and borrowing another carrier\'s "
+              "would attribute one venue\'s move to another\'s price. THIS NUMBER IS "
+              "NOT LIVE: open this file in a browser and the client replaces it with "
+              "a Binance stream tick within a second."),
     dict(key="ETH", value=2507.70, unit="usd", as_of=CRYPTO, source="Yahoo Finance",
          tier=2, url=_YF, label="Ethereum", change=4.90, change_unit="pct",
          confidence=0.85,
@@ -293,6 +294,20 @@ CONFLICTS = [
     "browser. Opened from disk it is real time to the second. Viewed as a published "
     "artifact the sandbox blocks the connection and you get exactly what you see "
     "here, honestly aged. The badge at the top of the LIVE panel says which.",
+    "THE SCHEDULED LOOP DELIVERED. It found six BTC prints this session did not "
+    "have - CoinDesk 79,175.68 at 22:27Z on the 7th, CoinGecko 79,384.83 at "
+    "01:30Z, CoinDesk 78,800.00 at 05:39Z, Coinpedia 78,564.71 at 06:37Z, "
+    "FinanceFeeds 78,393.00 at 06:43Z and Yahoo Finance 78,370.62 at 11:20Z - "
+    "and every one of them was recovered by READING THE ARTIFACT IT PUBLISHED, "
+    "because the trigger carries allowed_push_branches: [] and cannot write to "
+    "git. The loop is doing its job; only its write-back is broken, and "
+    "state/refresh-log.jsonl staying empty is the proof.",
+    "CORRECTION, mine. This session read the same Coinpedia page at 18:40Z and "
+    "stamped it with its own retrieval time, not knowing the loop had already "
+    "read it at 06:37Z. Same page, same price, one observation. The later stamp "
+    "was removed rather than kept, because two anchors would double-count it and "
+    "put a liquidity level at 18:40Z that nothing was observed at. The earlier "
+    "read is the evidence and is what the board carries.",
     "BTC 8 September: the carriers were further apart than on any previous scan - "
     "78,345.81, 78,564.71, 79,109 and 79,115, and one summary described the "
     "cross-feed range as 79,055-80,055, which does not even contain two of those "
