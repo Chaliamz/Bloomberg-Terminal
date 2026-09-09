@@ -23,10 +23,12 @@ SPOT   = "2026-09-07T10:50:00Z"     # live re-scan, 7 September
 SENT   = "2026-09-07T10:50:00Z"     # sentiment re-read, 7 September
 LIQ = "2026-09-04T03:52:00Z"        # liquidation window close
 SESSION = "2026-09-04T21:00:00Z"    # end of the US session
-CAPTURE = "2026-09-08T18:51:00Z"    # when this scan was performed
+CAPTURE = "2026-09-09T16:18:00Z"    # when this scan was performed
 SPOT8  = "2026-09-08T18:40:00Z"     # 8 Sep re-scan; carriers state no quote time,
                                     # so this is retrieval, not a print time
-BTC8   = "2026-09-08T20:00:00Z"     # newest BTC observation, found by the loop
+BTC8   = "2026-09-09T16:15:00Z"     # newest BTC observation, this session's read
+SPOT9  = "2026-09-09T16:18:00Z"     # 9 Sep re-scan; carriers state no quote time
+SENT9  = "2026-09-09T16:18:00Z"     # sentiment re-read, 9 September
 
 _CNBC = "https://www.cnbc.com/2026/09/04/treasurys-bonds-nonfarm-payrolls-unemployment-data.html"
 _TS = "https://www.thestreet.com/stock-market-today/stock-market-today-dow-jones-sp-500-nasdaq-updates-sept-04-2026"
@@ -48,11 +50,11 @@ _Q = [
          url=_CNBC, label="UST 2Y", change=8.0, change_unit="bp", confidence=0.75,
          note="Reported as an 8bp climb breaching 4.416%, highest since Jan 2025. "
               "A second, lower-tier report said +12bp to 4.35% - see conflicts."),
-    dict(key="US10Y", value=4.80, unit="pct", as_of=SPOT8,
-         source="Search aggregate (8 September market wraps)", tier=3,
+    dict(key="US10Y", value=4.82, unit="pct", as_of=SPOT9,
+         source="Search aggregate (9 September market wraps)", tier=3,
          url="https://finance.yahoo.com/markets/stocks/articles/stock-market-today-sept-8-133744027.html",
-         label="UST 10Y", change=-1.8, change_unit="bp", confidence=0.65,
-         note="RE-SCANNED 8 September: 4.80%, with the 30y at 5.27%. The carrier "
+         label="UST 10Y", change=2.0, change_unit="bp", confidence=0.65,
+         note="RE-SCANNED 9 September: 4.82%, reported as the highest CLOSING level since 2023, with oil the driver. The carrier "
               "could NOT be narrowed to one page - the figure came back inside a "
               "summary of several 8 September wraps - so it is tiered as an "
               "aggregate and the URL is the one dated 8 September article in that "
@@ -64,15 +66,17 @@ _Q = [
               "Japan's 10y is at its highest since 1996 and the Bund at a 2011 high, "
               "so this is a global term-premium move, not a US one."),
     # ---- equities -------------------------------------------------------
-    dict(key="SPX", value=7707.0, unit="index", as_of=SPOT8,
+    dict(key="SPX", value=7681.0, unit="index", as_of=SPOT9,
          source="Trading Economics", tier=3,
          url="https://tradingeconomics.com/united-states/stock-market",
-         label="S&P 500", change=-0.15, change_unit="pct", confidence=0.65,
-         note="RE-SCANNED 8 September: 7,707, off 0.15%, with stocks mixed on rising "
-              "oil, Middle East hostilities and an escalating trade dispute with "
-              "Canada. Carried to the whole point - the source quotes no decimals, "
-              "and inventing them would be fabrication. The 4 September cash close "
-              "of 7,718.60 from TheStreet is the previous print."),
+         label="S&P 500", change=0.10, change_unit="pct", confidence=0.65,
+         note="RE-SCANNED 9 September: 7,681, up 0.10% on the session, on rising "
+              "oil and ongoing Middle East escalation. Carried to the whole point - "
+              "the source quotes no decimals, and inventing them would be "
+              "fabrication. Note the index is LOWER than the 7,707 the board carried "
+              "for 8 September while the session change is POSITIVE: the two readings "
+              "are on different bases a day apart, which is why the change is carried "
+              "as the source states it rather than derived from the board."),
     dict(key="DJIA", value=53414.25, unit="index", as_of=CLOSE, source="TheStreet", tier=2,
          url=_TS, label="Dow Jones", change=-0.51, change_unit="pct", confidence=0.9),
     dict(key="NDX", value=26506.99, unit="index", as_of=CLOSE, source="TheStreet", tier=2,
@@ -92,16 +96,17 @@ _Q = [
          note="Reported as 99.157. An earlier aggregated summary gave 99.13; the two "
               "agree to within noise and the more precise figure is carried."),
     # ---- commodities ----------------------------------------------------
-    dict(key="BRENT", value=98.0, unit="usd_bbl", as_of=SPOT8,
+    dict(key="BRENT", value=100.0, unit="usd_bbl", as_of=SPOT9,
          source="Yahoo Finance markets wrap", tier=3,
          url="https://finance.yahoo.com/markets/stocks/articles/stock-market-today-sept-8-133744027.html",
-         label="Brent crude", confidence=0.55,
-         note="8 September: reported only as \"above $98 a barrel\" on climbing oil "
-              "and rising Middle East tensions. A THRESHOLD, NOT A PRINT - the level "
-              "is a floor the source states, the change is unknown and is therefore "
-              "left empty rather than guessed. The 4 September session print was "
-              "97.62 (Investing.com, Tier 2), ~+7% on the week after a new wave of "
-              "US strikes on Iran."),
+         label="Brent crude", confidence=0.5,
+         note="9 September: BRENT TOPPED $100. Another THRESHOLD, not a print - "
+              "the carrier states the level was crossed, not where it settled, so no "
+              "change is shown. The precise nearby prints are a settle of 97.92 "
+              "(up ~1%) on 8 September and roughly 99 after that close; 100 is where "
+              "9 September took it. Confidence 0.5 is the lowest on the board and "
+              "says exactly that. The 4 September session print was 97.62 "
+              "(Investing.com, Tier 2)."),
     dict(key="WTI", value=91.67, unit="usd_bbl", as_of=SESSION, source="FXDailyReport",
          tier=3, url="https://fxdailyreport.com/wti-crude-oil-price-analysis-for-september-4-2026/",
          label="WTI crude", confidence=0.7,
@@ -113,18 +118,19 @@ _Q = [
               "-1.14% session. Real yields up on the payrolls beat is consistent "
               "with gold down."),
     # ---- crypto ---------------------------------------------------------
-    dict(key="BTC", value=78450.0, unit="usd", as_of=BTC8,
-         source="CoinDesk", tier=2,
+    dict(key="BTC", value=79263.0, unit="usd", as_of=BTC8,
+         source="Search aggregate (CoinDesk-style live ticker)", tier=3,
          url="https://www.coindesk.com/price/bitcoin", label="Bitcoin",
-         confidence=0.75,
-         note="MERGED FROM THE SCHEDULED LOOP, which has now delivered seven BTC "
-              "prints this session did not have. This is the newest and it "
-              "outranks the Yahoo Finance print of 78,370.62 at 11:20Z the board "
-              "briefly carried. NO 24h CHANGE IS SHOWN because CoinDesk quoted "
-              "none here and borrowing another carrier\'s would attribute one "
-              "venue\'s move to another\'s price. THIS NUMBER IS NOT LIVE: open "
-              "this file in a browser and the Binance stream replaces it within "
-              "a second."),
+         change=1.67, change_unit="pct", confidence=0.6,
+         note="9 SEPTEMBER. The scheduled loop tracked the session hour by hour "
+              "overnight - 78,698.99 at 00:42Z, 78,741.21 at 00:46Z, 78,893.77 at "
+              "04:30Z, 78,851.00 at 06:30Z and 78,824.54 at 11:11Z - and every one "
+              "was recovered by reading the artifact it published, because it still "
+              "cannot push to git. This 16:15Z read is the newest and the only one "
+              "carrying its own 24h change (+1.67%), volume and market cap, so it is "
+              "the one carried; it is Tier 3 and the confidence says so. THIS NUMBER "
+              "IS NOT LIVE: open this file in a browser and the Binance stream "
+              "replaces it within a second."),
     dict(key="ETH", value=2507.70, unit="usd", as_of=CRYPTO, source="Yahoo Finance",
          tier=2, url=_YF, label="Ethereum", change=4.90, change_unit="pct",
          confidence=0.85,
@@ -159,6 +165,40 @@ _H = [
          published="2026-09-07T08:00:00Z", impact=88,
          url="https://www.troweprice.com/personal-investing/resources/insights/global-markets-weekly-update.html",
          assets=("Brent", "WTI", "Breakevens")),
+    dict(title="Brent tops $100 a barrel as US-Iran escalation continues",
+         summary="The level was crossed, not settled at: the last precise mark was a "
+                 "97.92 settle on 8 September, up about 1%, and roughly 99 after that "
+                 "close. Energy is now the binding input to the inflation leg.",
+         source="Search aggregate (9 September market wraps)", tier=3,
+         published="2026-09-09T16:18:00Z", impact=91,
+         url="https://www.thestreet.com/stock-market-today/stock-market-today-dow-jones-sp-500-nasdaq-updates-sept-08-2026",
+         assets=("Brent", "WTI", "Breakevens", "UST 10Y")),
+    dict(title="UST 10-year at 4.82%, its highest closing level since 2023, with oil the driver",
+         summary="The term-premium move now has an energy engine behind it rather than "
+                 "a growth one. That is the combination the September meeting has to "
+                 "price.",
+         source="Search aggregate (9 September market wraps)", tier=3,
+         published="2026-09-09T16:18:00Z", impact=88,
+         url="https://tradingeconomics.com/united-states/government-bond-yield",
+         assets=("UST 10Y", "2s10s", "Breakevens")),
+    dict(title="Ongoing Middle East escalation keeps a lid on crypto; bitcoin holds the high-78s",
+         summary="Yahoo puts bitcoin at 78,824.54 at 7:11 a.m. ET, having opened "
+                 "0.8% below Tuesday's open - the open itself carries no stated time, "
+                 "so it is not held as an observation and is not printed here. A later "
+                 "ticker read has it at 79,263, up 1.67% over 24h: the session ground "
+                 "higher, it did not break out.",
+         source="Yahoo Finance", tier=3,
+         published="2026-09-09T11:11:00Z", impact=66,
+         url="https://finance.yahoo.com/personal-finance/investing/article/bitcoin-and-ethereum-prices-today-wednesday-september-9-2026-ongoing-escalations-in-the-middle-east-are-keeping-a-lid-on-crypto-112541573.html",
+         assets=("BTC", "ETH")),
+    dict(title="Crypto sentiment eases to Greed at 66 from 69 on the day",
+         summary="The board carried 71 from 7 September. The band has not turned - this "
+                 "is drift within GREED, and the source states its own 69-to-66 path "
+                 "rather than the move being inferred from the board.",
+         source="Crypto Fear & Greed Index", tier=3,
+         published="2026-09-09T16:18:00Z", impact=54,
+         url="https://cfgi.io/",
+         assets=("BTC", "ETH")),
     dict(title="Bitcoin trades near $79.5K, roughly 2% below the 4 September print",
          summary="Carriers spread 79,458-79,899 with a 24h range of 79,081-80,494. The "
                  "post-payrolls squeeze has given back most of its gain.",
@@ -294,6 +334,23 @@ CONFLICTS = [
     "browser. Opened from disk it is real time to the second. Viewed as a published "
     "artifact the sandbox blocks the connection and you get exactly what you see "
     "here, honestly aged. The badge at the top of the LIVE panel says which.",
+    "WHY THE LOOP\'S WORK KEEPS NEEDING TO BE RESCUED BY HAND, stated exactly. "
+    "It fires hourly and succeeds - the 9 September 15:41Z run took 4m34s and "
+    "returned SUCCEEDED - and it publishes. What it cannot do is push to git, "
+    "because the trigger carries allowed_push_branches: []. Every run therefore "
+    "starts from the last committed state, adds its own finds, publishes them, "
+    "and loses them when the container goes. Its finds accumulate INSIDE one run "
+    "and never across runs. That is why five 9 September prints - 78,698.99, "
+    "78,741.21, 78,893.77, 78,851.00 and 78,824.54 - existed only in the "
+    "published page until this session read them back and committed them. The "
+    "loop is not broken and the schedule is not the problem; the write-back is, "
+    "and it is a permission on the trigger rather than anything in this code.",
+    "CORROBORATION, for once rather than conflict. The loop and this session "
+    "searched independently and both returned bitcoin at 78,824.54 for 7:11 a.m. "
+    "ET on 9 September, and both returned 78,893.77 at 04:30Z. Two independent "
+    "retrievals agreeing on price AND time is the strongest evidence this "
+    "environment can produce, and it is worth recording as such - the file is "
+    "otherwise a catalogue of carriers disagreeing.",
     "THE SCHEDULED LOOP NOW PUBLISHES THE LIVE PAGE ITSELF. Its 21:41 run pulled "
     "this session\'s commits, regenerated the multi-asset terminal and republished "
     "it - the first end-to-end proof that the loop ships the real page rather than "
@@ -438,12 +495,14 @@ GAUGES = [
          url="https://edition.cnn.com/markets/fear-and-greed", confidence=0.7,
          note="RE-READ 7 September: 54, NEUTRAL, for the 4 September session. It was "
               "42 (FEAR) when last carried - the band changed, not just the digit."),
-    dict(key="CRYPTO_FG", label="Crypto Fear & Greed", value=71.0, band="GREED",
-         as_of=SENT, source="Crypto Fear & Greed Index", tier=3,
+    dict(key="CRYPTO_FG", label="Crypto Fear & Greed", value=66.0, band="GREED",
+         as_of=SENT9, source="Crypto Fear & Greed Index", tier=3,
          url="https://cfgi.io/", confidence=0.7,
-         note="RE-READ 7 September: 71, deeper into GREED from 61. Trackers spread "
-              "60-74 on the day; the band is robust, the digit is not, and the spread "
-              "is recorded rather than resolved to the most convenient number."),
+         note="RE-READ 9 September: 66, easing within GREED. The reading came with "
+              "its own path - 69 to 66 on the day - against the 71 the board carried "
+              "from 7 September, so the direction is corroborated by the source "
+              "itself and not inferred from the board. Still GREED: the band has not "
+              "turned, the digit has drifted."),
 ]
 
 LIQUIDATIONS = dict(

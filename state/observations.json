@@ -118,5 +118,53 @@
   "tier": 2,
   "url": "https://www.coindesk.com/price/bitcoin",
   "note": "Found by the 21:41 scheduled run; recovered from the artifact it published, which is also the first time the loop republished the multi-asset page end to end."
+ },
+ {
+  "date": "2026-09-09T00:42:00Z",
+  "price": 78698.99,
+  "source": "CaptainAltcoin",
+  "tier": 3,
+  "url": "https://captainaltcoin.com/",
+  "note": "Found by the scheduled loop overnight; recovered from the artifact it published."
+ },
+ {
+  "date": "2026-09-09T00:46:00Z",
+  "price": 78741.21,
+  "source": "CoinDesk",
+  "tier": 2,
+  "url": "https://www.coindesk.com/price/bitcoin",
+  "note": "Found by the scheduled loop overnight; recovered from the artifact it published."
+ },
+ {
+  "date": "2026-09-09T04:30:00Z",
+  "price": 78893.77,
+  "source": "CoinGabbar (CoinGecko data)",
+  "tier": 3,
+  "url": "https://www.coingabbar.com/en/crypto-currency-news/latest-crypto-news-today-bitcoin-eth-bun-token-gains",
+  "note": "Found by the scheduled loop; independently corroborated by this session's own search, which returned the same 78,893.77 with +0.1% over 24h."
+ },
+ {
+  "date": "2026-09-09T06:30:00Z",
+  "price": 78851.0,
+  "source": "CryptoTimes",
+  "tier": 3,
+  "url": "https://www.cryptotimes.io/",
+  "note": "Found by the scheduled loop; recovered from the artifact it published."
+ },
+ {
+  "date": "2026-09-09T11:11:00Z",
+  "price": 78824.54,
+  "source": "Yahoo Finance",
+  "tier": 3,
+  "url": "https://finance.yahoo.com/personal-finance/investing/article/bitcoin-and-ethereum-prices-today-wednesday-september-9-2026-ongoing-escalations-in-the-middle-east-are-keeping-a-lid-on-crypto-112541573.html",
+  "note": "Found by the scheduled loop AND independently by this session: Yahoo's 9 Sep article states 7:11 a.m. ET, which is 11:11Z in EDT. Two independent retrievals of the same print agreeing on price and time."
+ },
+ {
+  "date": "2026-09-09T16:15:00Z",
+  "price": 79263.0,
+  "source": "Search aggregate (CoinDesk-style live ticker)",
+  "tier": 3,
+  "url": "https://www.coindesk.com/price/bitcoin",
+  "note": "Retrieved 16:15Z with its own 24h change (+1.67%), 24h volume 33.12bn and market cap 1.59tn. No quote time stated by the carrier, so the stamp is retrieval."
  }
 ]
