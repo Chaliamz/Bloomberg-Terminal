@@ -97,8 +97,8 @@ _Q = [
               "agree to within noise and the more precise figure is carried."),
     # ---- commodities ----------------------------------------------------
     dict(key="BRENT", value=100.0, unit="usd_bbl", as_of=SPOT9,
-         source="Yahoo Finance markets wrap", tier=3,
-         url="https://finance.yahoo.com/markets/stocks/articles/stock-market-today-sept-8-133744027.html",
+         source="Search aggregate (9 September market wraps)", tier=3,
+         url="https://www.thestreet.com/stock-market-today/stock-market-today-dow-jones-sp-500-nasdaq-updates-sept-08-2026",
          label="Brent crude", confidence=0.5,
          note="9 September: BRENT TOPPED $100. Another THRESHOLD, not a print - "
               "the carrier states the level was crossed, not where it settled, so no "
