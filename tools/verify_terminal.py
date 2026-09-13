@@ -314,6 +314,79 @@ async def run(path: str) -> int:
                   f"distance on every row")
         await page.close()
 
+        # ---- release prints: actual, expected and the verdict --------------
+        # The unit tests check the engine. This checks that the numbers survive
+        # the round trip into the DOM, that a verdict class actually paints, and
+        # that the countdown beside a RELEASED row agrees with the verdict block
+        # sitting under it - the two are computed by different clocks (the
+        # browser's and the snapshot's) and a disagreement between them is the
+        # bug a reader would notice first.
+        page = await browser.new_page()
+        await page.set_viewport_size({"width": 1600, "height": 1100})
+        await page.goto(url, wait_until="load")
+        await page.wait_for_timeout(1500)
+        rel_bad = []
+        rel = await page.evaluate("""() => {
+          return [...document.querySelectorAll(".rl")].map(rl => {
+            const pv = rl.querySelector(".pv");
+            const cd = rl.querySelector(".cd");
+            return {
+              name: (rl.querySelector(".nm")||{}).textContent.trim(),
+              cd: cd ? cd.textContent.trim() : "",
+              has: !!pv,
+              verdict: pv ? (pv.querySelector(".pvh b")||{}).textContent.trim() : "",
+              vcolour: pv && pv.querySelector(".pvh b")
+                ? getComputedStyle(pv.querySelector(".pvh b")).color : "",
+              rows: pv ? [...pv.querySelectorAll(".pvt tbody tr")].map(
+                r => [...r.children].map(c => c.textContent.trim())) : []
+            };
+          });
+        }""")
+        if len(rel) < 6:
+            rel_bad.append(f"only {len(rel)} release rows")
+        released = [r for r in rel if r["cd"] == "RELEASED"]
+        pending = [r for r in rel if r["cd"] != "RELEASED"]
+        if not released:
+            rel_bad.append("no release has passed its instant")
+        for r in released:
+            if not r["has"]:
+                rel_bad.append(f"{r['name'][:24]!r} says RELEASED with no verdict block")
+        for r in pending:
+            if r["has"]:
+                rel_bad.append(f"{r['name'][:24]!r} is still counting down but shows figures")
+        cpi = next((r for r in rel if r["name"].startswith("US CPI")), None)
+        if cpi is None:
+            rel_bad.append("the CPI row is gone")
+        else:
+            if cpi["verdict"] != "VERDICT BEARISH":
+                rel_bad.append(f"CPI verdict is {cpi['verdict']!r}")
+            # a red verdict that paints grey is a verdict nobody reads
+            if not re.match(r"rgb\(2[0-9]{2}, \d+, \d+\)", cpi["vcolour"] or ""):
+                rel_bad.append(f"bearish verdict is not painted red: {cpi['vcolour']!r}")
+            head = next((row for row in cpi["rows"] if row[0] == "Headline YoY"), None)
+            if head is None:
+                rel_bad.append("CPI headline row missing")
+            elif head[1:3] != ["3.4%", "3.4%"] or head[4] != "IN LINE" or head[5] != "NEUTRAL":
+                rel_bad.append(f"CPI headline row reads {head!r}")
+            core = next((row for row in cpi["rows"] if row[0] == "Core MoM"), None)
+            if core is None:
+                rel_bad.append("CPI core row missing")
+            elif core[1:3] != ["0.3%", "0.2%"] or core[4] != "ABOVE" or core[5] != "BEARISH":
+                rel_bad.append(f"CPI core row reads {core!r}")
+        ppi = next((r for r in rel if r["name"].startswith("US PPI")), None)
+        if ppi is None or ppi["verdict"] != "VERDICT MIXED":
+            rel_bad.append(f"PPI verdict is {(ppi or {}).get('verdict')!r}, expected MIXED")
+        if rel_bad:
+            failures += 1
+            print("FAIL release prints")
+            for x in rel_bad:
+                print(f"       - {x}")
+        else:
+            print(f"PASS release prints  {len(released)} released with verdicts, "
+                  f"{len(pending)} still counting down and showing none | "
+                  f"CPI {cpi['verdict'].split()[-1]} | PPI MIXED")
+        await page.close()
+
         # ---- live behaviour: the parts that only exist at runtime ----------
         page = await browser.new_page()
         await page.set_viewport_size({"width": 1600, "height": 1000})

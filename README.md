@@ -247,7 +247,8 @@ macro/            engines (see table above)
 macro/data/       FRED, US Treasury, snapshot store
 macro/render/     single-file HTML terminal
 macro/board.py    module registry -> board + architecture doc
-macro/live.py     snapshot schema + 24/7 primary-source scanner
+macro/live.py     snapshot schema, browser-feed registry, release clock
+macro/release.py  a release's actual vs consensus + the regime-conditional verdict
 macro/terminal.py the live cross-asset terminal
 macro/seed.py     captured market snapshot, fully attributed
 board/            generated pages (standalone + embeddable fragments)
@@ -255,7 +256,7 @@ state/            snapshot.json, the terminal's data source
 prompts/          operating system prompt for LLM-driven use
 docs/             spec coverage map, architecture document
 tools/            headless-browser verification for the board
-tests/            295 tests, stdlib unittest
+tests/            421 tests, stdlib unittest
 state.example.json
 ```
 

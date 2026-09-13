@@ -23,7 +23,27 @@ SPOT   = "2026-09-07T10:50:00Z"     # live re-scan, 7 September
 SENT   = "2026-09-07T10:50:00Z"     # sentiment re-read, 7 September
 LIQ = "2026-09-04T03:52:00Z"        # liquidation window close
 SESSION = "2026-09-04T21:00:00Z"    # end of the US session
-CAPTURE = "2026-09-09T16:18:00Z"    # when this scan was performed
+CAPTURE = "2026-09-13T16:04:00Z"    # when this scan CONCLUDED. Deliberately later
+                                    # than the read stamps below: those belong to
+                                    # the moment each figure was retrieved and must
+                                    # not be dragged forward to match this one.
+BTC13  = "2026-09-13T05:22:00Z"     # CoinDesk states 1:22 a.m. EDT - the only
+                                    # 13 September crypto read carrying its own time
+CLOSE11 = "2026-09-11T20:00:00Z"    # US cash close, Friday 11 September
+SPOT13  = "2026-09-13T08:10:00Z"    # 13 Sep re-scan; carriers state no quote time
+BRIEF12 = "2026-09-12T12:00:00Z"    # the 12 September Rio Times briefing publishes
+                                    # a DATE and no time. 12:00Z is the midday
+                                    # convention this board uses for a dated
+                                    # briefing and is the one assumption in the
+                                    # two quotes that carry it. It is deliberately
+                                    # NOT the scan stamp: stamping a 12 September
+                                    # figure with a 13 September read time would
+                                    # zero the age counter on a day-old number.
+SENT13  = "2026-09-13T08:10:00Z"    # sentiment re-read, 13 September
+CRYPTO12 = "2026-09-12T01:30:00Z"   # 12 Sep crypto read; 01:30Z is the stamp the
+                                    # carrier puts on the market-cap line in the
+                                    # same article, the price quote states only
+                                    # the date
 SPOT8  = "2026-09-08T18:40:00Z"     # 8 Sep re-scan; carriers state no quote time,
                                     # so this is retrieval, not a print time
 BTC8   = "2026-09-09T16:15:00Z"     # newest BTC observation, this session's read
@@ -46,98 +66,214 @@ _CNBC_MKT = "https://www.cnbc.com/2026/09/03/stock-market-today-live-updates.htm
 
 _Q = [
     # ---- rates ----------------------------------------------------------
-    dict(key="US2Y", value=4.42, unit="pct", as_of=CLOSE, source="CNBC", tier=2,
-         url=_CNBC, label="UST 2Y", change=8.0, change_unit="bp", confidence=0.75,
-         note="Reported as an 8bp climb breaching 4.416%, highest since Jan 2025. "
-              "A second, lower-tier report said +12bp to 4.35% - see conflicts."),
-    dict(key="US10Y", value=4.82, unit="pct", as_of=SPOT9,
-         source="Search aggregate (9 September market wraps)", tier=3,
-         url="https://finance.yahoo.com/markets/stocks/articles/stock-market-today-sept-8-133744027.html",
-         label="UST 10Y", change=2.0, change_unit="bp", confidence=0.65,
-         note="RE-SCANNED 9 September: 4.82%, reported as the highest CLOSING level since 2023, with oil the driver. The carrier "
-              "could NOT be narrowed to one page - the figure came back inside a "
-              "summary of several 8 September wraps - so it is tiered as an "
-              "aggregate and the URL is the one dated 8 September article in that "
-              "set, not a page quoted as the source of the number. The board "
-              "carried 4.818% from the 7 September re-scan, so this is 1.8bp lower - "
-              "but both are aggregate reads to two decimals and the difference is "
-              "inside their own precision, which is what the Tier 3 and the 0.65 say. "
-              "Level context is unchanged: 4.8% was last seen in November 2023, "
-              "Japan's 10y is at its highest since 1996 and the Bund at a 2011 high, "
-              "so this is a global term-premium move, not a US one."),
+    dict(key="US2Y", value=4.63, unit="pct", as_of=CLOSE11,
+         source="Search aggregate (11 September Treasury snapshots)", tier=3,
+         url="https://streetstats.finance/rates/treasuries", label="UST 2Y",
+         confidence=0.6,
+         note="RE-SCANNED 13 September for the 11 September close. The board carried "
+              "4.42% from the 4 September close, so the front end has repriced 21bp "
+              "in a week - the market pricing the hike, not the Fed delivering it. "
+              "No session change is shown because the carrier states none, and "
+              "deriving one from a board value seven sessions older would be a "
+              "number about this file rather than about the market."),
+    dict(key="US10Y", value=4.974, unit="pct", as_of=BRIEF12,
+         source="Rio Times briefing (12 September)", tier=3,
+         url="https://www.riotimesonline.com/global-economy-briefing-september-12-2026/",
+         label="UST 10Y", confidence=0.7,
+         note="RE-SCANNED 13 September: 4.974%, described as the highest since it "
+              "briefly topped 5% in October 2023. The carrier states no quote time, "
+              "so this read carries the briefing DATE at the board's midday "
+              "convention, not the scan stamp - stamping it 13 September would zero "
+              "the age counter on a day-old number. The path "
+              "is corroborated rather than assumed: the board held 4.82% on 9 "
+              "September, a separate carrier prints a 4.96% CLOSE on 11 September, "
+              "and this is the 12 September intraday. Three carriers, one direction, "
+              "15bp in three sessions. Five percent is now the level the whole board "
+              "trades around."),
     # ---- equities -------------------------------------------------------
-    dict(key="SPX", value=7681.0, unit="index", as_of=SPOT9,
-         source="Trading Economics", tier=3,
-         url="https://tradingeconomics.com/united-states/stock-market",
-         label="S&P 500", change=0.10, change_unit="pct", confidence=0.65,
-         note="RE-SCANNED 9 September: 7,681, up 0.10% on the session, on rising "
-              "oil and ongoing Middle East escalation. Carried to the whole point - "
-              "the source quotes no decimals, and inventing them would be "
-              "fabrication. Note the index is LOWER than the 7,707 the board carried "
-              "for 8 September while the session change is POSITIVE: the two readings "
-              "are on different bases a day apart, which is why the change is carried "
-              "as the source states it rather than derived from the board."),
-    dict(key="DJIA", value=53414.25, unit="index", as_of=CLOSE, source="TheStreet", tier=2,
-         url=_TS, label="Dow Jones", change=-0.51, change_unit="pct", confidence=0.9),
-    dict(key="NDX", value=26506.99, unit="index", as_of=CLOSE, source="TheStreet", tier=2,
-         url=_TS, label="Nasdaq Comp", change=-0.29, change_unit="pct", confidence=0.9),
-    dict(key="VIX", value=14.32, unit="index", as_of=CLOSE,
-         source="Search aggregate (Investing.com / Yahoo Finance)", tier=3,
-         url="https://www.investing.com/indices/volatility-s-p-500", label="VIX",
-         confidence=0.65,
-         note="Retrieved from an aggregated summary rather than a single primary "
-              "quote page: the level is reliable, the last decimal is not. Notably "
-              "low given the front-end repricing - the vol market is not pricing the "
-              "hike risk the rates market is."),
+    dict(key="SPX", value=7656.98, unit="index", as_of=CLOSE11,
+         source="Washington Post / Rio Times briefing", tier=2,
+         url="https://www.washingtonpost.com/business/2026/09/11/wall-street-stocks-dow-nasdaq/",
+         label="S&P 500", change=0.86, change_unit="pct", confidence=0.9,
+         note="11 SEPTEMBER CLOSE. Two independent carriers print 7,656.98 and "
+              "+0.86%, agreeing to the cent, which is why this is Tier 2 at 0.9 "
+              "rather than the Tier 3 aggregate the board has been carrying for the "
+              "index. Wall Street snapped a four-session losing streak on a CPI that "
+              "landed broadly in line and oil that fell 2.4%."),
+    dict(key="DJIA", value=52573.29, unit="index", as_of=CLOSE11,
+         source="Washington Post / Rio Times briefing", tier=2,
+         url="https://www.washingtonpost.com/business/2026/09/11/wall-street-stocks-dow-nasdaq/", label="Dow Jones", change=0.98, change_unit="pct", confidence=0.9,
+         note="11 September close, +509.19 points. Down from the 53,414.25 the board "
+              "carried for 4 September: the week was negative even with Friday's "
+              "rebound in it."),
+    dict(key="NDX", value=26333.04, unit="index", as_of=CLOSE11,
+         source="Washington Post / Rio Times briefing", tier=2,
+         url="https://www.washingtonpost.com/business/2026/09/11/wall-street-stocks-dow-nasdaq/", label="Nasdaq Comp", change=0.96, change_unit="pct", confidence=0.9),
+    dict(key="VIX", value=15.84, unit="index", as_of=CLOSE11,
+         source="Rio Times briefing (12 September)", tier=3,
+         url="https://www.riotimesonline.com/global-economy-briefing-september-12-2026/", label="VIX", change=-11.21, change_unit="pct",
+         confidence=0.5,
+         note="CARRIERS DISAGREE ON THIS ONE AND THE BOARD SAYS SO. Rio Times prints "
+              "15.84, down 11.21%; a separate aggregate prints 14.53, UP 1.47%. Not "
+              "a rounding gap - opposite signs. The tape decides it: three indices "
+              "closed up about 1% and crude fell 2.4%, and a vol index does not rise "
+              "into that. The 15.84 read also implies a 17.84 prior, which is what a "
+              "four-session losing streak into a CPI looks like. Confidence 0.5 is "
+              "the lowest on the board and it is the honest number here."),
     # ---- fx -------------------------------------------------------------
-    dict(key="DXY", value=99.16, unit="index", as_of=CLOSE, source="Rio Times briefing",
-         tier=3, url=_RIO, label="Dollar index", change=0.25, change_unit="pct",
-         confidence=0.75,
-         note="Reported as 99.157. An earlier aggregated summary gave 99.13; the two "
-              "agree to within noise and the more precise figure is carried."),
+    dict(key="DXY", value=99.095, unit="index", as_of=BRIEF12,
+         source="Rio Times briefing (12 September)", tier=3, url="https://www.riotimesonline.com/global-economy-briefing-september-12-2026/",
+         label="Dollar index", confidence=0.75,
+         note="Described as broadly flat to slightly higher with the 10-year just "
+              "below 5%. No session change is shown because the carrier gives none. "
+              "The board held 99.16 on 4 September: the dollar has not moved while "
+              "the front end repriced 21bp, which is the anomaly on this board - "
+              "either the rates market or the currency market is wrong about the "
+              "hike. Open this page in a browser and the violet DXY cell is "
+              "recomputed from the ECB's own published fixings instead."),
     # ---- commodities ----------------------------------------------------
-    dict(key="BRENT", value=100.0, unit="usd_bbl", as_of=SPOT9,
-         source="Search aggregate (9 September market wraps)", tier=3,
-         url="https://www.thestreet.com/stock-market-today/stock-market-today-dow-jones-sp-500-nasdaq-updates-sept-08-2026",
-         label="Brent crude", confidence=0.5,
-         note="9 September: BRENT TOPPED $100. Another THRESHOLD, not a print - "
-              "the carrier states the level was crossed, not where it settled, so no "
-              "change is shown. The precise nearby prints are a settle of 97.92 "
-              "(up ~1%) on 8 September and roughly 99 after that close; 100 is where "
-              "9 September took it. Confidence 0.5 is the lowest on the board and "
-              "says exactly that. The 4 September session print was 97.62 "
-              "(Investing.com, Tier 2)."),
-    dict(key="WTI", value=91.67, unit="usd_bbl", as_of=SESSION, source="FXDailyReport",
-         tier=3, url="https://fxdailyreport.com/wti-crude-oil-price-analysis-for-september-4-2026/",
-         label="WTI crude", confidence=0.7,
-         note="Opened 91.69; ranged from lows near 80.18 to a high of 93.05."),
-    dict(key="GOLD", value=4429.0, unit="usd_oz", as_of=CLOSE, source="Rio Times briefing",
-         tier=3, url=_RIO, label="Gold", change=-1.14, change_unit="pct", confidence=0.8,
-         note="CORRECTED. An earlier read carried gold at 'near $4,500' from a "
-              "descriptive summary; the 5 September briefing prints 4,429 and a "
-              "-1.14% session. Real yields up on the payrolls beat is consistent "
-              "with gold down."),
+    dict(key="BRENT", value=104.42, unit="usd_bbl", as_of=CLOSE11,
+         source="Trading Economics", tier=3,
+         url="https://tradingeconomics.com/commodity/brent-crude-oil",
+         label="Brent crude", change=-2.98, change_unit="pct", confidence=0.7,
+         note="A PRINT, NOT A THRESHOLD - the board has been carrying '100, crossed' "
+              "since 9 September and can now carry a level. 11 September opened at "
+              "108.92 and closed 104.42: a four-percent intraday reversal on the "
+              "announcement that GCC foreign ministers would meet Iran's in Oman on "
+              "a temporary Hormuz shipping arrangement. The -2.98% implies a 107.63 "
+              "prior close. Brent is $4 above WTI, roughly half the usual spread, "
+              "because the disruption premium sits on the waterborne barrel."),
+    dict(key="WTI", value=100.05, unit="usd_bbl", as_of=CLOSE11,
+         source="Washington Post (October 2026 contract)", tier=2, url="https://www.washingtonpost.com/business/2026/09/11/wall-street-stocks-dow-nasdaq/",
+         label="WTI crude", change=-2.37, change_unit="pct", confidence=0.7,
+         note="October contract, -2.43 on the session. Trading Economics prints "
+              "99.99 for the same session - six cents apart, recorded in conflicts "
+              "rather than averaged away. Against the 91.67 the board carried for 4 "
+              "September this is a 9% move in a week, and it is the single largest "
+              "input to the inflation leg on this board."),
+    dict(key="GOLD", value=4408.90, unit="usd_oz", as_of=CLOSE11,
+         source="Search aggregate (11 September commodity snapshots)", tier=3,
+         url="https://tradingeconomics.com/commodity/gold",
+         label="Gold", change=0.04, change_unit="pct", confidence=0.7,
+         note="Up 1.60 on the session - flat in all but sign, with real yields at the "
+              "highs and the dollar unmoved. Gold is not confirming the inflation "
+              "trade the oil price is making. Open this page in a browser and the "
+              "amber GOLD cell is replaced by a live PAXGUSDT print, which is a "
+              "proxy for spot and labelled as one."),
     # ---- crypto ---------------------------------------------------------
-    dict(key="BTC", value=79263.0, unit="usd", as_of=BTC8,
-         source="Search aggregate (CoinDesk-style live ticker)", tier=3,
-         url="https://www.coindesk.com/price/bitcoin", label="Bitcoin",
-         change=1.67, change_unit="pct", confidence=0.6,
-         note="9 SEPTEMBER. The scheduled loop tracked the session hour by hour "
-              "overnight - 78,698.99 at 00:42Z, 78,741.21 at 00:46Z, 78,893.77 at "
-              "04:30Z, 78,851.00 at 06:30Z and 78,824.54 at 11:11Z - and every one "
-              "was recovered by reading the artifact it published, because it still "
-              "cannot push to git. This 16:15Z read is the newest and the only one "
-              "carrying its own 24h change (+1.67%), volume and market cap, so it is "
-              "the one carried; it is Tier 3 and the confidence says so. THIS NUMBER "
-              "IS NOT LIVE: open this file in a browser and the Binance stream "
-              "replaces it within a second."),
-    dict(key="ETH", value=2507.70, unit="usd", as_of=CRYPTO, source="Yahoo Finance",
-         tier=2, url=_YF, label="Ethereum", change=4.90, change_unit="pct",
-         confidence=0.85,
-         note="Friday open, +4.9% on Thursday's open."),
+    dict(key="BTC", value=77242.79, unit="usd", as_of=BTC13,
+         source="CoinDesk", tier=3, url="https://www.coindesk.com/price/bitcoin",
+         label="Bitcoin", confidence=0.6,
+         note="13 SEPTEMBER, 05:22Z, and it is the only crypto read in this scan "
+              "that states its own quote time - which is why it is carried over "
+              "three fresher-looking but timeless ones in the same retrieval "
+              "(77,207.9, 77,155.41, 77,115.78, a 127-dollar cluster). 24h volume "
+              "$6.01bn. No 24h change is shown because CoinDesk stated none and "
+              "deriving one from the board's own 12 September value would be a "
+              "number about this file rather than about the market. The path since "
+              "9 September is 79,263 -> below 77,000 into the CPI -> 77,268.70 on "
+              "the 12th -> here: the CPI sold it and it has not recovered. THIS "
+              "NUMBER IS NOT LIVE: open this file in a browser and the Binance "
+              "stream replaces it within a second."),
+    dict(key="ETH", value=2538.99, unit="usd", as_of=CRYPTO12,
+         source="CoinGabbar", tier=3, url="https://www.coingabbar.com/en/crypto-news-today-bitcoin-ethereum-gains-crypto-regulation", label="Ethereum",
+         change=2.8, change_unit="pct", confidence=0.6,
+         note="12 September. The same article's headline says +2.6% where its body "
+              "says +2.8%; the body figure is carried and the disagreement is "
+              "recorded rather than smoothed. Ether outperformed Bitcoin on the day "
+              "by more than two to one.")
 ]
 
 _H = [
+    # ---- 10-13 September: the week the inflation data landed ------------
+    dict(title="US CPI holds at 3.4% but core runs hot at 0.3% m/m; hike odds jump",
+         summary="Headline y/y 3.4% against 3.4% expected and headline m/m 0.4% "
+                 "against 0.4%, both exactly on consensus. Core m/m 0.3% against "
+                 "0.2% is the leg that moved the curve: core strips the energy the "
+                 "headline is absorbing, so the overshoot is pass-through rather "
+                 "than oil. Last inflation print before the FOMC.",
+         source="BLS via CNBC", tier=1, published="2026-09-11T12:30:00Z", impact=96,
+         url="https://www.cnbc.com/2026/09/11/cpi-inflation-report-august-2026.html", primary_confirmed=True,
+         assets=("UST 2Y", "UST 10Y", "USD", "S&P 500", "BTC", "Gold")),
+    dict(title="August PPI 5.4% y/y against 5.3% expected; core undershoots at 0.2%",
+         summary="Final demand m/m 0.4% exactly on consensus, with goods +1.1% and "
+                 "services +0.1% - the whole monthly move is the energy shock "
+                 "arriving at the factory gate. Core m/m 0.2% against 0.3% expected "
+                 "is the one cool leg of the week. Producer inflation is running "
+                 "2pp above consumer inflation: unabsorbed margin pressure that "
+                 "resolves into either CPI or earnings.",
+         source="BLS via CNBC", tier=1, published="2026-09-10T12:30:00Z", impact=88,
+         url="https://www.cnbc.com/2026/09/10/ppi-inflation-report-august-2026.html", primary_confirmed=True,
+         assets=("Breakevens", "S&P 500", "UST 10Y")),
+    dict(title="ECB raises the deposit rate 25bp to 2.50%, its second hike since the war began",
+         summary="Main refinancing rate to 2.65%. All 65 economists in the Reuters "
+                 "poll had +25bp, so the decision itself carried no information - "
+                 "euro-area HICP at 3.3% in August, a three-year high, is what "
+                 "forced it. Two central banks now tightening into the same oil "
+                 "shock.",
+         source="ECB via Trading Economics", tier=1, published="2026-09-10T12:15:00Z",
+         impact=87, url="https://tradingeconomics.com/euro-area/interest-rate",
+         primary_confirmed=True, assets=("EUR", "Bunds", "DXY")),
+    dict(title="Initial jobless claims 206k against 205k expected; no crack in the labour market",
+         summary="Down 1k from a revised 207k. A 1k miss is inside survey noise and "
+                 "the board treats it as in line. A labour market with no crack in "
+                 "it is precisely what lets a central bank hike into an oil shock.",
+         source="DOL via FXStreet", tier=1, published="2026-09-10T12:30:00Z", impact=70,
+         url="https://www.dol.gov/ui/data.pdf", primary_confirmed=True,
+         assets=("UST 2Y", "USD")),
+    dict(title="CME FedWatch puts a 25bp September hike at 85.5%; Kalshi 48% and Polymarket 49% do not",
+         summary="THE LARGEST UNRESOLVED DISAGREEMENT ON THIS BOARD. Futures pricing "
+                 "and the two prediction venues are nearly forty points apart on the "
+                 "same binary event four days out. The board carries the "
+                 "disagreement rather than the convenient number; one of these "
+                 "venues is about to be very wrong.",
+         source="Search aggregate (CME FedWatch / Kalshi / Polymarket)", tier=3,
+         published="2026-09-12T12:00:00Z", impact=93, url="https://www.forbes.com/sites/digital-assets/2026/08/31/cme-fedwatch-provides-a-66-chance-fed-will-hike-rates-in-september/",
+         assets=("UST 2Y", "USD", "S&P 500", "BTC")),
+    dict(title="10-year Treasury yield at 4.974%, the highest since it briefly topped 5% in October 2023",
+         summary="Futures curves have shifted to embed a higher terminal rate and a "
+                 "longer plateau, tightening global financial conditions before any "
+                 "formal move. The front end has repriced 21bp in a week while the "
+                 "dollar has not moved at all.",
+         source="Rio Times briefing", tier=3, published="2026-09-12T12:00:00Z",
+         impact=90, url="https://www.riotimesonline.com/global-economy-briefing-september-12-2026/", assets=("UST 10Y", "UST 2Y", "Gold", "S&P 500")),
+    dict(title="Wall Street snaps a four-session losing streak: Dow +0.98%, S&P +0.86%, Nasdaq +0.96%",
+         summary="7,656.98 on the S&P, 52,573.29 on the Dow, 26,333.04 on the "
+                 "Nasdaq. The rally was oil falling, not inflation cooling - and the "
+                 "week was still negative with Friday's rebound in it.",
+         source="Washington Post / Rio Times briefing", tier=2,
+         published="2026-09-11T20:00:00Z", impact=80, url="https://www.washingtonpost.com/business/2026/09/11/wall-street-stocks-dow-nasdaq/",
+         assets=("S&P 500", "Dow Jones", "Nasdaq Comp")),
+    dict(title="Brent reverses from a 108.92 open to a 104.42 close as Hormuz talks are announced",
+         summary="A four-percent intraday reversal on the announcement that GCC "
+                 "foreign ministers would meet Iran's in Oman on a temporary "
+                 "shipping arrangement. WTI settled 100.05. The oil market is now "
+                 "trading the diplomacy, not the barrels.",
+         source="Trading Economics / Fortune", tier=3,
+         published="2026-09-11T20:00:00Z", impact=89, url="https://fortune.com/article/price-of-oil-09-11-2026/",
+         assets=("Brent", "WTI", "Breakevens", "UST 10Y")),
+    dict(title="Pezeshkian: the Strait of Hormuz reopens if the US ends its naval blockade",
+         summary="The first stated price for reopening the chokepoint. It converts "
+                 "an open-ended supply risk into a bounded, tradeable condition - "
+                 "which is exactly why crude sold off into it.",
+         source="Iran International / CBS News", tier=3,
+         published="2026-09-12T12:00:00Z", impact=91, url="https://www.iranintl.com/en/liveblog/202609050975",
+         assets=("Brent", "WTI", "Gold", "Breakevens")),
+    dict(title="US Fifth Fleet base in Bahrain heavily damaged; the Abraham Lincoln has no port to pull into",
+         summary="Acting Navy Secretary Hung Cao's own words. Loss of forward basing "
+                 "degrades escort capacity in the strait, which is the mechanism "
+                 "that turns a risk premium into an actual supply disruption.",
+         source="US Navy via CBS News", tier=2, published="2026-09-12T12:00:00Z",
+         impact=90, url="https://www.cbsnews.com/live-updates/iran-war-us-strait-of-hormuz-oil-gas-price-strikes/", primary_confirmed=True,
+         assets=("Brent", "Defence", "Gold", "CHF")),
+    dict(title="CARRIERS DISAGREE: Friday's VIX close is either 15.84 (-11.21%) or 14.53 (+1.47%)",
+         summary="Opposite signs on the same session, not a rounding gap. The board "
+                 "carries 15.84 at confidence 0.5 because three indices closed up "
+                 "about 1% and crude fell 2.4%, and a volatility index does not rise "
+                 "into that. Both readings are recorded in the conflicts panel.",
+         source="Rio Times briefing vs search aggregate", tier=3,
+         published="2026-09-12T12:00:00Z", impact=62, url="https://www.riotimesonline.com/global-economy-briefing-september-12-2026/",
+         assets=("VIX", "S&P 500")),
     dict(title="UST 10-year reaches 4.818%, a level not seen since November 2023",
          summary="Japan's 10y is at its highest since 1996 and the Bund at a 2011 high. "
                  "A global term-premium repricing, not a US-only story.",
@@ -327,43 +463,94 @@ _H = [
 ]
 
 CONFLICTS = [
-    "THE REASON THIS PAGE WAS BEHIND, stated plainly. Every number below came "
+    "THE SCHEDULED HOURLY ROUTINE HAS BEEN DELETED, and this is the record of why. "
+    "It fired every hour, it succeeded, and it republished the page - but it could "
+    "never push to git, because the trigger carried allowed_push_branches: []. "
+    "Every run therefore started from the last commit, re-derived the same "
+    "environment limits, spent a full model context doing it, published its finds "
+    "and lost them when the container went. Its work accumulated INSIDE one run "
+    "and never across runs, so each run's cost bought nothing the next run could "
+    "use. Scanning is now on demand: one session, one scan, one commit, and the "
+    "finds persist because a session with a checkout can push. What the loop was "
+    "genuinely for - a price that keeps moving between scans - is served by the "
+    "live client in this page instead, which costs nothing and is real time to "
+    "the second.",
+    "THE REASON A SNAPSHOT IS BEHIND, stated plainly. Every number below came "
     "through WebSearch, which returns cached page summaries, and a snapshot cannot "
-    "be anything but behind. The fix is not a better search: this file now carries "
-    "a live client that opens a Binance btcusdt@ticker websocket in your own "
-    "browser. Opened from disk it is real time to the second. Viewed as a published "
-    "artifact the sandbox blocks the connection and you get exactly what you see "
-    "here, honestly aged. The badge at the top of the LIVE panel says which.",
-    "WHY THE LOOP\'S WORK KEEPS NEEDING TO BE RESCUED BY HAND, stated exactly. "
-    "It fires hourly and succeeds - the 9 September 15:41Z run took 4m34s and "
-    "returned SUCCEEDED - and it publishes. What it cannot do is push to git, "
-    "because the trigger carries allowed_push_branches: []. Every run therefore "
-    "starts from the last committed state, adds its own finds, publishes them, "
-    "and loses them when the container goes. Its finds accumulate INSIDE one run "
-    "and never across runs. That is why five 9 September prints - 78,698.99, "
-    "78,741.21, 78,893.77, 78,851.00 and 78,824.54 - existed only in the "
-    "published page until this session read them back and committed them. The "
-    "loop is not broken and the schedule is not the problem; the write-back is, "
-    "and it is a permission on the trigger rather than anything in this code.",
+    "be anything but behind. The fix is not a better search: this file carries a "
+    "live client that opens a Binance combined stream in your own browser. Opened "
+    "from disk it is real time to the second for BTC, ETH and a gold proxy. Viewed "
+    "as a published artifact the sandbox blocks the connection and you get exactly "
+    "what you see here, honestly aged. The badge at the top of the LIVE panel says "
+    "which.",
+    "VIX, 11 SEPTEMBER, AND THE CARRIERS DO NOT AGREE ON THE SIGN. Rio Times "
+    "prints 15.84, down 11.21%; a separate aggregate prints 14.53, up 1.47%. Not a "
+    "rounding gap - opposite directions on the same session. The board carries "
+    "15.84 at confidence 0.5, the lowest on the board, on the tape: three indices "
+    "closed up about 1% and crude fell 2.4%, and a volatility index does not rise "
+    "into that. The 14.53 reading is also arithmetically consistent with a 14.32 "
+    "prior, which is the value THIS BOARD held for 4 September - a coincidence "
+    "worth naming, because a carrier agreeing with our own stale number is not "
+    "corroboration.",
+    "FOMC HIKE ODDS, AND THIS IS THE LARGEST UNRESOLVED DISAGREEMENT ON THE PAGE. "
+    "CME FedWatch is quoted at 85.5% for a 25bp hike on 12 September. Kalshi is "
+    "quoted at 48% and Polymarket at 49%. Nearly forty points apart on the same "
+    "binary event four days out. A futures-implied probability and a prediction "
+    "market are not the same statistic and the gap may partly be that, but not "
+    "forty points of it. No number is picked; all three are carried.",
+    "WTI, 11 September: 100.05 on the October contract (Washington Post) against "
+    "99.99 (Trading Economics). Six cents, recorded rather than averaged away, "
+    "because the discipline that keeps a six-cent gap visible is the same one that "
+    "keeps a forty-point gap visible.",
+    "BRENT, 11 September: the close is 104.42 and the open is 108.92, and the "
+    "stated -2.98% implies a 107.63 prior close. All three are consistent with a "
+    "four-percent intraday reversal on the Hormuz talks announcement, but the "
+    "board holds only the close as a number and the open as prose, because an "
+    "intraday path built from two carriers is a chart, not an observation.",
+    "US RETAIL SALES DATE CORRECTED. The board carried 15 September. Two carriers "
+    "independently state the Census advance report for August lands 16 September "
+    "at 08:30 ET, the same day as the FOMC and five and a half hours before it. A "
+    "wrong date on a countdown is worse than no countdown, and this one was ticking "
+    "confidently toward the wrong day.",
+    "CRYPTO FEAR & GREED, 13 September: 66 (feargreedmeter), 69 (a daily view of "
+    "the same index) and 48 NEUTRAL (cfgi.io's Bitcoin-specific gauge) on the same "
+    "day. The BAND is what three of the four agree on; the digit is not. 66 is "
+    "carried at confidence 0.55 and the spread is recorded.",
+    "ETHEREUM, 12 September: the same article's headline says +2.6% where its body "
+    "says +2.8%. The body figure is carried. A publication disagreeing with itself "
+    "inside one page is the cheapest possible reminder of what a Tier 3 source is.",
+    "BITCOIN, 13 September: four carriers in one retrieval gave 77,242.79, "
+    "77,207.90, 77,155.41 and 77,115.78 - a 127-dollar cluster, which is a normal "
+    "cross-venue spread rather than a disagreement about fact. The CoinDesk quote "
+    "is carried ONLY because it is the one that states its own time (05:22Z); the "
+    "other three are timeless and a timeless price cannot be aged. That is the "
+    "whole reason this page carries a live client: in a browser none of this "
+    "matters, because the Binance stream replaces the cell within a second.",
+    "CRYPTO LIQUIDATIONS: a later read reverses the side but cannot be carried. "
+    "COINOTAG gives $444.82m over 24 hours with longs at 79% and Bitcoin longs at "
+    "$111.34m against $9.37m of shorts - the mirror of the 4 September window the "
+    "board holds, where shorts were 87%. No carrier states when that newer window "
+    "ends, and a liquidation total with no window end cannot be aged or placed "
+    "against a price, so the precisely-dated older window stays and the newer "
+    "direction is recorded in the panel note instead of replacing it.",
+    "MEGACAP EQUITIES were re-scanned to the WEEK of 7-11 September, which is the "
+    "only basis any carrier stated. NVIDIA -4.45%, Microsoft -2.84%, Apple +1.24%. "
+    "The board had been carrying NVIDIA at +7.0% for the previous week: two "
+    "consecutive weekly reads pointing opposite ways, which is a fact about the "
+    "tape rather than an error in either read. Market caps are from a separate "
+    "early-September carrier and are NOT on the same basis as the weekly moves - "
+    "stated here because a cap and a change sitting in one row invite the "
+    "assumption that they share a timestamp.",
+    "EQUITY AND CRYPTO SENTIMENT NOW POINT OPPOSITE WAYS. The CNN gauge reads 35, "
+    "FEAR, for the 10 September session; the crypto gauge reads 66, GREED, on the "
+    "13th. Both are sourced, neither is wrong, and the divergence is the "
+    "observation - it is not reconciled into a single mood.",
     "CORROBORATION, for once rather than conflict. The loop and this session "
     "searched independently and both returned bitcoin at 78,824.54 for 7:11 a.m. "
     "ET on 9 September, and both returned 78,893.77 at 04:30Z. Two independent "
     "retrievals agreeing on price AND time is the strongest evidence this "
     "environment can produce, and it is worth recording as such - the file is "
     "otherwise a catalogue of carriers disagreeing.",
-    "THE SCHEDULED LOOP NOW PUBLISHES THE LIVE PAGE ITSELF. Its 21:41 run pulled "
-    "this session\'s commits, regenerated the multi-asset terminal and republished "
-    "it - the first end-to-end proof that the loop ships the real page rather than "
-    "an old one. It also found a seventh BTC print, CoinDesk 78,450.00 at 20:00Z, "
-    "which is what the board now carries. It still cannot push to git.",
-    "THE SCHEDULED LOOP DELIVERED. It found six BTC prints this session did not "
-    "have - CoinDesk 79,175.68 at 22:27Z on the 7th, CoinGecko 79,384.83 at "
-    "01:30Z, CoinDesk 78,800.00 at 05:39Z, Coinpedia 78,564.71 at 06:37Z, "
-    "FinanceFeeds 78,393.00 at 06:43Z and Yahoo Finance 78,370.62 at 11:20Z - "
-    "and every one of them was recovered by READING THE ARTIFACT IT PUBLISHED, "
-    "because the trigger carries allowed_push_branches: [] and cannot write to "
-    "git. The loop is doing its job; only its write-back is broken, and "
-    "state/refresh-log.jsonl staying empty is the proof.",
     "CORRECTION, mine. This session read the same Coinpedia page at 18:40Z and "
     "stamped it with its own retrieval time, not knowing the loop had already "
     "read it at 06:37Z. Same page, same price, one observation. The later stamp "
@@ -385,12 +572,6 @@ CONFLICTS = [
     "$98 a barrel\". It is carried at 98.0 with no change figure, because the "
     "session move was not reported and inventing one would be fabrication. "
     "Confidence 0.55 is the lowest on the board and says so.",
-    "The hourly scheduled run IS working. It cloned the repo, searched, found a "
-    "BTC print of 79,349.91 at 13:41Z from Yahoo Finance that this session did not "
-    "have, stored it and republished the page at 17:49Z. What it could not do is "
-    "push to git - the trigger carries allowed_push_branches: [] - so its find was "
-    "recovered by reading the artifact it published and merged back here. The loop "
-    "is alive; only its write-back to the repository is broken.",
     "BTC 7 September: carriers quoted 79,458.00, 79,571.82 and 79,899.09 within the "
     "same retrieval, with a reported 24h range of 79,081-80,494. That is a normal "
     "cross-venue spread rather than a disagreement about fact. The middle quote is "
@@ -451,59 +632,83 @@ POLICY = {
         "target": "3.50 - 3.75%", "last_action": "held, 9-3, 29 July 2026",
         "dissents": "3 dissents favouring a 25bp HIKE",
         "chair": "Warsh", "next": "2026-09-16T18:00:00Z",
-        "market_priced": "hike odds mid-60s for 15-16 September (from ~36% pre-Jackson Hole)",
+        "market_priced": "VENUES DISAGREE on a 25bp hike for 16 September: CME "
+                         "FedWatch 85.5% on 12 September, Kalshi 48%, Polymarket "
+                         "49%. Nearly forty points apart four days out. The August "
+                         "CPI core monthly at 0.3% against 0.2% expected is what "
+                         "moved the futures leg.",
         "source": _FRB_MIN, "tier": 1,
     },
     "ecb": {
-        "target": "2.25% (deposit)", "last_action": "held, 23 July 2026",
+        "target": "2.50% (deposit), 2.65% (main refi)",
+        "last_action": "HIKED 25bp, 10 September 2026",
         "dissents": "n/a",
-        "chair": "Lagarde", "next": "2026-09-10T12:15:00Z",
-        "market_priced": "25bp hike to 2.50% expected; euro-area HICP 3.3% y/y in August",
-        "source": "https://www.ecb.europa.eu/press/pr/date/2026/html/index.en.html",
+        "chair": "Lagarde", "next": "",
+        "market_priced": "Fully anticipated - all 65 economists in the Reuters poll "
+                         "had +25bp, so the decision itself carried no information. "
+                         "Second hike since the war began. The next meeting date has "
+                         "not been sourced and is therefore not shown.",
+        "source": "https://tradingeconomics.com/euro-area/interest-rate",
         "tier": 1,
     },
     "inflation": {
-        "us_cpi_yoy": "3.4% (July, released 12 Aug)",
-        "us_core_cpi_yoy": "2.5% (July)",
-        "us_cpi_mom": "+0.1% (July, after -0.4% in June)",
-        "us_core_cpi_mom": "+0.2% (July)",
+        "us_cpi_yoy": "3.4% (August, released 11 Sep) - unchanged, in line",
+        "us_core_cpi_yoy": "2.4% (August) - in line, a full point BELOW headline",
+        "us_cpi_mom": "+0.4% (August, after +0.1% in July) - in line",
+        "us_core_cpi_mom": "+0.3% (August) vs +0.2% expected - the hot leg",
         "peak": "3.8% y/y in April 2026",
-        "ez_hicp_yoy": "3.3% (August, from 2.9% in July)",
+        "ez_hicp_yoy": "3.3% (August, from 2.9% in July) - a three-year high",
         "source": _BLS_CPI, "tier": 1,
     },
     "labor": {
         "nfp": "+162k (August) vs +53k expected",
         "unemployment": "4.1%, unchanged and as expected",
+        "claims": "206k for the week to 5 Sep vs 205k expected, from a revised 207k",
         "source": "https://www.bls.gov/news.release/empsit.nr0.htm", "tier": 1,
     },
 }
 
 REGIME = "INFLATION-DOMINANT"
 REGIME_BASIS = (
-    "Established from the tape, not assumed: a 3x upside payrolls surprise was SOLD "
-    "in equities (S&P -0.38%, Dow -0.51%) while the front end sold off 8bp and "
-    "September hike odds roughly doubled. Good news is bad news, so the policy path "
-    "is the binding constraint. An energy shock (Brent +7% on the week on US strikes "
-    "on Iran) is feeding the inflation leg directly, and both the Fed's July dissents "
-    "and the ECB's expected hike point the same way."
+    "Established from the tape, and RE-ESTABLISHED on 11 September against newer "
+    "evidence than the payrolls print it originally rested on. The August CPI "
+    "landed with the headline exactly on consensus and core monthly 10bp hot, and "
+    "the market traded the CORE leg: hike odds rose within the hour and the 10-year "
+    "reached 4.974%, the highest since it briefly topped 5% in October 2023. A "
+    "3x upside payrolls surprise had already been SOLD in equities a week earlier "
+    "while the front end sold off. Good news is bad news, so the policy path is the "
+    "binding constraint. The energy shock is feeding the inflation leg directly - "
+    "Brent traded 108.92 before closing 104.42 on 11 September and WTI settled at "
+    "100.05 - and the ECB delivered its second hike of the war on 10 September, "
+    "which points the same way from the other side of the Atlantic. The one piece "
+    "of evidence pointing elsewhere is the dollar: 99.10 and unmoved while the "
+    "front end repriced 21bp, which is carried on the board rather than argued away."
 )
 
 
 GAUGES = [
-    dict(key="CNN_FG", label="Equity Fear & Greed", value=54.0, band="NEUTRAL",
-         as_of=SENT, source="CNN Business", tier=2,
-         url="https://edition.cnn.com/markets/fear-and-greed", confidence=0.7,
-         note="RE-READ 7 September: 54, NEUTRAL, for the 4 September session. It was "
-              "42 (FEAR) when last carried - the band changed, not just the digit."),
+    dict(key="CNN_FG", label="Equity Fear & Greed", value=35.0, band="FEAR",
+         as_of=SENT13, source="CNN Business, via finhacker historical series", tier=3,
+         url="https://edition.cnn.com/markets/fear-and-greed", confidence=0.6,
+         note="RE-READ 13 September: 35, FEAR, for the 10 September session - the "
+              "freshest DATED value any carrier states, which is why the stamp is "
+              "the read and the session is named here rather than invented into it. "
+              "The board carried 54 NEUTRAL for 4 September: nineteen points in six "
+              "sessions and the band has turned. Note what it did NOT do - it did "
+              "not recover on Friday's 1% rally, because the index is built on "
+              "breadth, momentum and spreads and those did not repair."),
     dict(key="CRYPTO_FG", label="Crypto Fear & Greed", value=66.0, band="GREED",
-         as_of=SENT9, source="Crypto Fear & Greed Index", tier=3,
-         url="https://cfgi.io/", confidence=0.7,
-         note="RE-READ 9 September: 66, easing within GREED. The reading came with "
-              "its own path - 69 to 66 on the day - against the 71 the board carried "
-              "from 7 September, so the direction is corroborated by the source "
-              "itself and not inferred from the board. Still GREED: the band has not "
-              "turned, the digit has drifted."),
+         as_of=SENT13, source="Crypto Fear & Greed Index (feargreedmeter)", tier=3,
+         url="https://feargreedmeter.com/crypto-fear-and-greed-index", confidence=0.55,
+         note="RE-READ 13 September: 66, GREED, unchanged from the 9 September read. "
+              "PROVIDERS DISAGREE AND THE DIGIT IS THE WEAK PART: a daily view of "
+              "the same index reads 69 and cfgi.io's Bitcoin-specific gauge reads 48 "
+              "NEUTRAL on the same day. The band - greed, not fear - is what three "
+              "of the four agree on, and it is the only part carried with "
+              "confidence. Worth holding beside the equity gauge at 35 FEAR: crypto "
+              "and equity sentiment are pointing in opposite directions."),
 ]
+
 
 LIQUIDATIONS = dict(
     window="24h to 03:52 UTC, 4 September 2026",
@@ -512,7 +717,16 @@ LIQUIDATIONS = dict(
     asset_usd=272_600_000.0, asset_label="Bitcoin", asset_short_pct=92.0,
     note="Two other windows were reported the same day - $544.85m and a $415m "
          "shorts-only figure - covering different periods and scopes. The window is "
-         "stated here rather than the largest number being chosen.",
+         "stated here rather than the largest number being chosen. "
+         "STALE, AND DELIBERATELY NOT REPLACED. A later COINOTAG read gives $444.82m "
+         "over 24 hours with LONGS at $350.87m, 79% of the total, and Bitcoin longs "
+         "at $111.34m against just $9.37m of shorts - the mirror image of the window "
+         "below. It is not carried because no carrier states when that window ENDS, "
+         "and a liquidation figure without a window end cannot be aged or placed "
+         "against a price. The 4 September window is kept because it has one "
+         "(03:52 UTC). The direction of the newer read is the thing to take from "
+         "this: the squeeze that cleared shorts in early September has reversed, and "
+         "it is longs being carried out into the CPI.",
 )
 
 GEO = [
@@ -546,13 +760,50 @@ GEO = [
          channel="Rerouting round the Cape adds voyage days: a supply-chain cost shock "
                  "that reaches CPI months after it reaches freight rates",
          assets=("Freight", "Breakevens")),
-    dict(headline="OPEC+ meets Saturday 5 September",
-         region="OPEC+", severity=84, as_of="2026-09-05T08:00:00Z",
-         source="Rio Times briefing", tier=3, url=_RIO, status="TODAY - TIME NOT PUBLISHED",
-         channel="An output surprise lands on top of an already-tight geopolitical bid. "
-                 "No publication time is scheduled, so it can be watched but not counted "
-                 "down",
+    dict(headline="OPEC+ met Saturday 5 September",
+         region="OPEC+", severity=60, as_of="2026-09-05T08:00:00Z",
+         source="Rio Times briefing", tier=3, url=_RIO,
+         status="HELD 5 SEPTEMBER - OUTCOME NOT SOURCED",
+         channel="An output surprise would have landed on top of an already-tight "
+                 "geopolitical bid. The meeting has since happened and no carrier read "
+                 "since has stated its outcome, so the severity is cut and the status "
+                 "says what is actually known rather than leaving a stale 'today' on "
+                 "the board",
          assets=("Brent", "WTI", "CAD", "NOK")),
+    # ---- 12 September ---------------------------------------------------
+    dict(headline="US Fifth Fleet base in Bahrain heavily damaged; the Abraham Lincoln "
+                  "has no port to pull into",
+         region="Persian Gulf", severity=92, as_of="2026-09-12T12:00:00Z",
+         source="Acting US Navy Secretary Hung Cao, via CBS News", tier=2,
+         url="https://www.cbsnews.com/live-updates/iran-war-us-strait-of-hormuz-oil-gas-price-strikes/",
+         status="ESCALATING",
+         channel="Loss of forward basing degrades escort capacity inside the strait -> "
+                 "convoy frequency falls -> war-risk insurance and freight rise -> "
+                 "delivered energy cost -> goods CPI with a lag. This is the mechanism "
+                 "that turns a risk premium into an actual supply disruption, and it is "
+                 "the most severe item on this board",
+         assets=("Brent", "WTI", "Gold", "CHF", "Defence")),
+    dict(headline="Pezeshkian: the Strait of Hormuz reopens if the US ends its naval blockade",
+         region="Strait of Hormuz", severity=90, as_of="2026-09-12T12:00:00Z",
+         source="Iran International / CBS News", tier=3,
+         url="https://www.iranintl.com/en/liveblog/202609050975",
+         status="CONDITION STATED",
+         channel="The first stated PRICE for reopening the chokepoint. It converts an "
+                 "open-ended supply risk into a bounded, tradeable condition, which is "
+                 "why crude sold off four percent into it rather than rallying on the "
+                 "reminder that the strait is shut",
+         assets=("Brent", "WTI", "Gold", "Breakevens")),
+    dict(headline="GCC foreign ministers to meet Iran's in Salalah, Oman on a temporary "
+                  "Hormuz shipping arrangement",
+         region="Strait of Hormuz", severity=86, as_of="2026-09-12T12:00:00Z",
+         source="Reported via Trading Economics commodity desk", tier=3,
+         url="https://tradingeconomics.com/commodity/brent-crude-oil",
+         status="SCHEDULED MONDAY 14 SEPTEMBER - TIME NOT PUBLISHED",
+         channel="Brent fell from a 108.92 open to a 104.42 close on the ANNOUNCEMENT "
+                 "alone. The meeting itself is therefore the largest single event risk "
+                 "into Monday's open, ahead of the FOMC, and it publishes no time - so "
+                 "it can be watched but not counted down",
+         assets=("Brent", "WTI", "Breakevens", "UST 10Y")),
 ]
 
 # Observed BTC closes. The liquidation heatmap is built from these and nothing
@@ -640,22 +891,31 @@ BTC_WINDOW = {"lo": round(min(_PX) * 0.985, 2), "hi": round(max(_PX) * 1.015, 2)
 
 # Largest listings by market value, September 2026.
 EQUITIES = [
-    dict(ticker="NVDA", name="NVIDIA", mktcap_usd=5.58e12, change_pct=7.00,
-         as_of=CLOSE, source="Motley Fool / CNBC", tier=3, url=_FOOL,
-         note="RE-SCANNED 7 September: +7.0% on the week at $224.41 a share. The "
-              "board previously carried the +1.8% single session on the $12.9bn "
-              "Hugging Face acquisition; the weekly move is the larger fact. Largest "
-              "listed company in the world. A second carrier put the cap at $5.42tn "
-              "the same week - the spread is recorded, not resolved."),
-    dict(ticker="AAPL", name="Apple", mktcap_usd=4.70e12,
-         as_of=CLOSE, source="Motley Fool", tier=3, url=_FOOL,
-         note="Session move not sourced; the market cap is."),
+    dict(ticker="NVDA", name="NVIDIA", mktcap_usd=5.58e12, change_pct=-4.45,
+         as_of=CLOSE11, source="Trading Strategy Guides weekly recap", tier=3,
+         url="https://tradingstrategyguides.com/weekly-market-recap-september-7-september-11-2026-indices-slide-as-tech-leaders-diverge/",
+         note="RE-SCANNED 13 September, and the sign has FLIPPED. The change shown "
+              "is the WEEK of 7-11 September: -4.45% to $218.29, the biggest "
+              "laggard of the megacaps. The board was carrying +7.0% for the week "
+              "to 4 September at $224.41 - two consecutive weekly reads, opposite "
+              "directions, and the six-dollar round trip in the share price is what "
+              "that costs. Still the largest listed company in the world at $5.58tn; "
+              "a second carrier put the cap at $5.42tn and the spread is recorded, "
+              "not resolved."),
+    dict(ticker="AAPL", name="Apple", mktcap_usd=4.70e12, change_pct=1.24,
+         as_of=CLOSE11, source="Trading Strategy Guides weekly recap", tier=3,
+         url="https://tradingstrategyguides.com/weekly-market-recap-september-7-september-11-2026-indices-slide-as-tech-leaders-diverge/",
+         note="Week of 7-11 September: +1.24% to $332.27, the only megacap up on a "
+              "week the S&P fell 1.15%. Tech leadership is diverging rather than "
+              "moving as a block, which is what a rate shock does to a complex "
+              "priced on duration."),
     dict(ticker="GOOGL", name="Alphabet", mktcap_usd=4.10e12,
          as_of=CLOSE, source="Motley Fool", tier=3, url=_FOOL,
          note="Session move not sourced; the market cap is."),
-    dict(ticker="MSFT", name="Microsoft", mktcap_usd=3.71e12,
-         as_of=CLOSE, source="Motley Fool", tier=3, url=_FOOL,
-         note="Session move not sourced; the market cap is."),
+    dict(ticker="MSFT", name="Microsoft", mktcap_usd=3.71e12, change_pct=-2.84,
+         as_of=CLOSE11, source="Trading Strategy Guides weekly recap", tier=3,
+         url="https://tradingstrategyguides.com/weekly-market-recap-september-7-september-11-2026-indices-slide-as-tech-leaders-diverge/",
+         note="Week of 7-11 September: -2.84% to $495.63."),
     dict(ticker="TSLA", name="Tesla", change_pct=-6.00,
          as_of=CLOSE, source="CNBC", tier=2, url=_CNBC_MKT,
          note="Fell more than 6% after the Cybercab launch, its worst session since "

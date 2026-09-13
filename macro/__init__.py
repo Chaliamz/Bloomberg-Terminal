@@ -8,6 +8,8 @@ market reaction, and it never claims non-public access to anything.
 Engines
 -------
 surprise      expectation vs actual, standardised only against supplied history
+release       one release's actual vs consensus and the regime-conditional
+              verdict that follows, refused when the regime is unknown
 scoring       urgency / information latency / credibility / priority
 calendar_spec global release metadata (semantics and clocks, never values)
 centralbank   policy-language tone and statement diffing
@@ -27,12 +29,13 @@ __version__ = "1.0.0"
 
 from . import (
     brief, calendar_spec, centralbank, curve, events, liquidity, noise,
-    preevent, radar, reaction, regime, scoring, setups, sources, state,
+    preevent, radar, reaction, regime, release, scoring, setups, sources, state,
     structure, surprise, types,
 )
 
 __all__ = [
     "__version__", "brief", "calendar_spec", "centralbank", "curve", "events",
-    "liquidity", "noise", "preevent", "radar", "reaction", "regime", "scoring",
+    "liquidity", "noise", "preevent", "radar", "reaction", "regime", "release",
+    "scoring",
     "setups", "sources", "state", "structure", "surprise", "types",
 ]

@@ -245,6 +245,9 @@ main{max-width:1720px;margin:0 auto;padding:14px 18px 64px;
   border-radius:2px;border:1px solid var(--edge-hi);color:var(--ink-2)}
 
 /* ---------- countdown ---------- */
+.gn{font-family:var(--mono);font-size:10px;line-height:1.5;color:var(--faint);
+  letter-spacing:.03em;text-align:left;margin-top:7px;padding-top:7px;
+  border-top:1px solid var(--edge);overflow-wrap:anywhere;max-width:34ch}
 .rel{display:flex;flex-direction:column}
 .rl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 12px;padding:9px 0;
   border-bottom:1px dashed rgba(26,32,48,.9);align-items:baseline}
@@ -259,6 +262,35 @@ main{max-width:1720px;margin:0 auto;padding:14px 18px 64px;
   letter-spacing:.05em;overflow-wrap:anywhere}
 .rl .sub a{color:var(--live-dim);text-decoration:none}
 .rl .sub a:hover{color:var(--live)}
+
+/* released prints: actual vs expected, and the verdict that follows */
+.pv{grid-column:1/-1;margin-top:7px;border:1px solid var(--edge-hi);border-radius:3px;
+  background:rgba(8,12,22,.55);overflow:hidden}
+.pvh{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap;padding:7px 10px;
+  border-bottom:1px solid var(--edge-hi);background:rgba(14,20,34,.7)}
+.pvh b{font-family:var(--mono);font-size:11px;letter-spacing:.14em;font-weight:700;
+  padding:2px 7px;border-radius:2px;white-space:nowrap}
+.pvh span{font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.04em;
+  overflow-wrap:anywhere}
+.pvt{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px}
+.pvt th{text-align:left;font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--faint);font-weight:500;padding:5px 10px;border-bottom:1px solid var(--edge-hi)}
+.pvt td{padding:5px 10px;border-bottom:1px solid rgba(26,32,48,.6);
+  color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pvt tr:last-child td{border-bottom:0}
+.pvt .m{color:var(--ink);font-weight:600;white-space:normal}
+.pvt .num{color:var(--ink)}
+.v-bear{color:var(--down);background:rgba(255,77,90,.11)}
+.v-bull{color:var(--up);background:rgba(46,229,160,.11)}
+.v-neut{color:var(--dim);background:rgba(120,132,160,.1)}
+.v-mix{color:var(--amber);background:rgba(240,176,64,.12)}
+.d-above{color:var(--down)} .d-below{color:var(--up)} .d-line{color:var(--dim)}
+.pvn{margin:0;padding:7px 10px;border-top:1px solid var(--edge-hi);
+  font-family:var(--mono);font-size:10px;line-height:1.5;color:var(--faint);
+  letter-spacing:.03em;overflow-wrap:anywhere}
+.pvn b{color:var(--ink-2)}
+.pvn+.pvn{border-top:1px dashed rgba(26,32,48,.9)}
+@media(max-width:560px){.pvt th:nth-child(4),.pvt td:nth-child(4){display:none}}
 
 /* ---------- misc ---------- */
 .kv{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:6px 16px;
@@ -1092,7 +1124,12 @@ def render_gauge(g) -> str:
         f'<span class="gl">{e(g.label)}</span>'
         f'<span class="gs">{e(g.source)} &middot; T{g.tier} &middot; '
         f'{e(g.as_of[:16].replace("T", " "))}Z &middot; conf {g.confidence:.2f}</span>'
-        f'</div>'
+        # The stamp is the READ time. When the reading belongs to an earlier
+        # session - which it does whenever the carrier publishes a date and no
+        # time - the stamp alone overstates freshness, and the note is the only
+        # place that says so. It was being dropped.
+        + (f'<span class="gn">{e(g.note)}</span>' if getattr(g, "note", "") else "")
+        + f'</div>'
     )
 
 
@@ -1243,6 +1280,114 @@ def render_live(snap) -> str:
         'map current without turning the series into a log.</p>'
         '</div>'
     )
+
+
+def _article(word: str) -> str:
+    """"an INFLATION-DOMINANT", "a GROWTH-DOMINANT". The regime label is data, so
+    the article cannot be baked into the sentence around it."""
+    # "" in "AEIOU" is True in Python, so an empty label would have produced
+    # "an". Cheap bug, and it only ever shows up in the one case nobody renders.
+    first = (word or "").lstrip()[:1].upper()
+    return "an" if first and first in "AEIOU" else "a"
+
+
+VERDICT_CLASS = {"BULLISH": "v-bull", "BEARISH": "v-bear",
+                 "NEUTRAL": "v-neut", "MIXED": "v-mix"}
+DIR_CLASS = {"ABOVE": "d-above", "BELOW": "d-below", "IN LINE": "d-line"}
+
+
+def render_prints(r: dict, snap) -> str:
+    """Actual vs expected for a release that has printed, and what it meant.
+
+    Three states, and the difference between them is the whole point:
+
+    * figures sourced -> the table, with a verdict derived by
+      :func:`macro.release.assess` under the board's established regime;
+    * past its instant with nothing sourced -> says so, in those words,
+      because a silent gap reads as "nothing happened";
+    * still ahead -> nothing at all; the countdown is the content.
+
+    The released/pending split is decided against the snapshot's own capture
+    stamp, never against the renderer's wall clock, so the same snapshot
+    renders identically whenever it is regenerated.
+    """
+    from .release import Expectation, assess, roll_up, fmt_value
+
+    specs = r.get("prints") or ()
+    when = r.get("when", "")
+    released = bool(when) and when <= snap.captured
+
+    if not released:
+        # Figures attached to a release the snapshot has not reached yet are not
+        # shown at all. Caught by a probe: the released check used to sit inside
+        # the no-figures branch, so a print loaded early - a consensus entered
+        # before the number lands, which is exactly when one would be - rendered
+        # as though it had already happened.
+        return ""
+
+    if not specs:
+        return ('<div class="pv"><div class="pvh"><b class="v-neut">RELEASED</b>'
+                '<span>Figures for this release have not been sourced yet &mdash; '
+                'the countdown has passed but no carrier has been read, and an '
+                'unsourced actual is not shown as one.</span></div></div>')
+
+    # Verdict and spec travel as a PAIR. They were zipped back together later
+    # from two lists of different lengths, so the first refused print silently
+    # shifted every note after it onto the wrong metric - a provenance line
+    # under the wrong number, which is the worst failure this file can produce.
+    priced, refused = [], []
+    for spec in specs:
+        v = assess(Expectation(**{k: x for k, x in spec.items() if k != "note"}),
+                   snap.regime)
+        (priced if getattr(v, "ok", False) else refused).append((v, spec))
+    verdicts = [v for v, _ in priced]
+
+    if not priced:
+        # Figures exist and every one of them was refused a verdict. Reporting
+        # that as "nothing sourced" would be a lie in the opposite direction,
+        # so the refusals are shown and no verdict is claimed.
+        return ('<div class="pv"><div class="pvh"><b class="v-neut">NO VERDICT</b>'
+                '<span>Figures were sourced for this release but none could be '
+                'assessed &mdash; the refusals are below, each naming what is '
+                'missing.</span></div>'
+                + "".join(f'<p class="pvn"><b>{e(spec.get("metric", "?"))}</b> '
+                          f'&middot; {e(v.render())}</p>' for v, spec in refused)
+                + '</div>')
+
+    label, why = roll_up(verdicts)
+    rows = []
+    for v in verdicts:
+        x = v.expectation
+        prev = "&mdash;" if x.previous is None else e(fmt_value(x.previous, x.unit))
+        rows.append(
+            f'<tr><td class="m">{e(x.metric)}</td>'
+            f'<td class="num">{e(fmt_value(x.actual, x.unit))}</td>'
+            f'<td class="num">{e(fmt_value(x.consensus, x.unit))}</td>'
+            f'<td>{prev}</td>'
+            f'<td class="{DIR_CLASS.get(v.direction, "d-line")}">{e(v.direction)}</td>'
+            f'<td class="{VERDICT_CLASS.get(v.risk, "v-neut")}">{e(v.risk)}</td></tr>')
+
+    notes = []
+    for v, spec in priced:
+        x = v.expectation
+        body = spec.get("note", "")
+        notes.append(
+            f'<p class="pvn"><b>{e(x.metric)}</b> &middot; actual: {e(x.source)} '
+            f'(T{x.tier}) &middot; expected: {e(x.consensus_source)}'
+            + (f' &middot; {e(body)}' if body else "")
+            + f' &middot; {e(v.why)}</p>')
+    for v, spec in refused:
+        notes.append(f'<p class="pvn"><b>{e(spec.get("metric", "?"))}</b> &middot; '
+                     f'{e(v.render())}</p>')
+
+    return ('<div class="pv"><div class="pvh">'
+            f'<b class="{VERDICT_CLASS.get(label, "v-neut")}">VERDICT {e(label)}</b>'
+            f'<span>{e(why)} &middot; read under {_article(snap.regime)} '
+            f'{e(snap.regime)} reaction function</span></div>'
+            '<table class="pvt"><thead><tr><th>metric</th><th>actual</th>'
+            '<th>expected</th><th>prior</th><th>vs cons</th><th>risk read</th>'
+            '</tr></thead><tbody>' + "".join(rows) + '</tbody></table>'
+            + "".join(notes) + '</div>')
 
 
 def render_liquidity(snap) -> str:
@@ -1598,7 +1743,7 @@ def render(snap: Snapshot, standalone: bool = True) -> str:
             f'<a href="{e(r.get("url", ""))}" target="_blank" rel="noopener noreferrer">'
             f'{e(r.get("url", "")[:64])}</a>'
             + (f' &middot; {e(r.get("note", ""))}' if r.get("note") else "")
-            + '</span></div>'
+            + '</span>' + render_prints(r, snap) + '</div>'
         )
     releases = "".join(rel)
 
@@ -1640,9 +1785,14 @@ def render(snap: Snapshot, standalone: bool = True) -> str:
     ecb_fields = (("Deposit", "target"), ("Last", "last_action"),
                   ("Chair", "chair"), ("Priced", "market_priced"))
     infl_fields = (("US CPI y/y", "us_cpi_yoy"), ("US core y/y", "us_core_cpi_yoy"),
-                   ("US CPI m/m", "us_cpi_mom"), ("Peak", "peak"),
+                   ("US CPI m/m", "us_cpi_mom"),
+                   ("US core m/m", "us_core_cpi_mom"), ("Peak", "peak"),
                    ("EZ HICP", "ez_hicp_yoy"))
-    lab_fields = (("Payrolls", "nfp"), ("Unemployment", "unemployment"))
+    # Core MONTHLY was held in the snapshot and never rendered. It is the leg the
+    # curve actually traded on the August print, so leaving it out put the one
+    # number that moved hike odds behind the one that did not.
+    lab_fields = (("Payrolls", "nfp"), ("Unemployment", "unemployment"),
+                  ("Claims", "claims"))
 
     policy = f'<dl class="kv">{kv(fed, fed_fields)}</dl>'
     ecb_html = f'<dl class="kv">{kv(ecb, ecb_fields)}</dl>'
@@ -1756,11 +1906,17 @@ timing field stays blank.</span></noscript>
     <h2>Sentiment <em>fear &amp; greed</em></h2>
     <div class="bd">
       <div class="gauges">{gauges_html}</div>
-      <p class="note"><b>The divergence is the signal.</b> Equities and crypto are
-      reading different clocks: crypto priced the pre-payrolls dovish story and the
-      ETF bid, equities closed on the post-payrolls hawkish one. Two sentiment gauges
-      pointing opposite ways inside one session is a positioning fact, not a
-      contradiction.</p>
+            <p class="note"><b>The divergence is the signal, and it has widened.</b>
+      The equity gauge reads 35, FEAR, for the 10 September session &mdash; nineteen
+      points below where this board carried it on 4 September, and it did <b>not</b>
+      recover on Friday&rsquo;s one-percent rally, because it is built on breadth,
+      momentum and spreads and those did not repair. The crypto gauge reads 66,
+      GREED, unchanged. Two caveats stated rather than buried: these are different
+      instruments, and they are reads of different days &mdash; the equity figure is
+      the freshest <b>dated</b> value any carrier states, the crypto figure is from
+      this morning. What survives both caveats is the direction: one is in fear
+      while the other is in greed, and that is a positioning fact rather than a
+      contradiction to be reconciled.</p>
     </div>
   </section>
 
@@ -1803,6 +1959,15 @@ timing field stays blank.</span></noscript>
     <h2>Next primary releases <em>countdown to the public instant</em></h2>
     <div class="bd">
       <div class="rel">{releases}</div>
+      <p class="note"><b>Released figures carry the actual against the number the
+      market was carrying, and the verdict that follows.</b> The direction is
+      arithmetic. The <b>risk read</b> is not: it is derived under this board&rsquo;s
+      established regime, because the same print reads differently under a
+      different reaction function &mdash; and where the regime is unknown the engine
+      returns a refusal instead of a verdict. Every row names two carriers, one for
+      the actual and one for the consensus, because a consensus with no source is
+      somebody&rsquo;s memory of a consensus. Where legs disagree the release reads
+      MIXED and the split is named rather than averaged away.</p>
       <p class="note"><b>This is the latency edge, and it is legal and public.</b>
       A statistical release is public at the agency URL the moment the embargo lifts,
       typically before wire coverage clears. The countdown targets that instant and
@@ -1822,9 +1987,7 @@ timing field stays blank.</span></noscript>
   <section class="card c4">
     <h2>Flows <em>where capital actually moved</em></h2>
     <div class="bd">{flows_html}
-      <p class="note">Flow beats narrative. A price that rises on outflows is a
-      warning; a price that falls on inflows is accumulation. Neither is assumed
-      here &mdash; both legs are shown.</p>
+      <p class="note"><b>These flows are 3-4 September and they are the newest that could be attributed to a carrier.</b> A 13 September re-scan for the 7-11 September week returned only a restatement of the $731m day already below, mis-dated by the summariser. An ETF flow figure with the wrong week on it is worse than a gap, so the gap is what is shown.</p><p class="note">Flow beats narrative. A price that rises on outflows is a warning; a price that falls on inflows is accumulation. Neither is assumed here &mdash; both legs are shown.</p>
     </div>
   </section>
 

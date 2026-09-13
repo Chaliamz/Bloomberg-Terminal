@@ -821,31 +821,111 @@ def dxy_from_usd_rates(rates: Any) -> float | None:
 # Scheduled primary releases: the exact moment a number becomes public, and the
 # URL that carries it first. Polling this at T+0 is how the terminal sees a
 # print before wire coverage clears - the whole point of section 16.
+# Consensus carriers, named once. A consensus quoted without a carrier is
+# somebody's memory of a consensus, and macro.release refuses to hold one.
+_DJ = "Dow Jones consensus, via CNBC"
+_FXS = "Market consensus, via FXStreet"
+_RTR = "Reuters poll of 65 economists, 31 Aug - 3 Sep"
+_IL = "Preview consensus, via investinglive"
+_TE = "Preview consensus, via Trading Economics"
+
 RELEASE_CLOCK: tuple[dict[str, Any], ...] = (
     {"code": "US_CPI", "label": "US CPI (Aug)", "when": "2026-09-11T12:30:00Z",
      "agency": "BLS", "tier": 1,
      "url": "https://www.bls.gov/news.release/cpi.nr0.htm",
      "note": "Locked-file embargo lifts at 08:30 ET; the agency page is the first "
-             "public carrier."},
+             "public carrier.",
+     "prints": (
+        {"metric": "Headline YoY", "actual": 3.4, "consensus": 3.4, "previous": 3.4,
+         "unit": "pct", "hawkish_sign": 1, "source": "BLS via FXStreet", "tier": 1,
+         "as_of": "2026-09-11T12:30:00Z", "consensus_source": _FXS,
+         "note": "Held at 3.4% for a third month. The headline is where the energy "
+                 "shock lands, so a flat print with Brent through $100 is the "
+                 "surprise inside the non-surprise."},
+        {"metric": "Headline MoM", "actual": 0.4, "consensus": 0.4, "previous": 0.1,
+         "unit": "pct", "hawkish_sign": 1, "source": "BLS via FXStreet", "tier": 1,
+         "as_of": "2026-09-11T12:30:00Z", "consensus_source": _FXS,
+         "note": "Four times July's 0.1%, and still exactly on consensus: the "
+                 "acceleration was fully anticipated."},
+        {"metric": "Core MoM", "actual": 0.3, "consensus": 0.2,
+         "unit": "pct", "hawkish_sign": 1, "source": "BLS via CNBC", "tier": 1,
+         "as_of": "2026-09-11T12:30:00Z", "consensus_source": _FXS,
+         "note": "THE LEG THAT MOVED THE CURVE. Core strips the energy the headline "
+                 "is absorbing, so a 10bp overshoot here is pass-through, not oil - "
+                 "and traders raised hike odds on it within the hour."},
+        {"metric": "Core YoY", "actual": 2.4, "consensus": 2.4,
+         "unit": "pct", "hawkish_sign": 1, "source": "BLS via FXStreet", "tier": 1,
+         "as_of": "2026-09-11T12:30:00Z", "consensus_source": _FXS,
+         "note": "Core annual a full point BELOW headline: the gap is the energy "
+                 "shock, and it is the reason the Fed can call this supply-driven "
+                 "right up until the core monthlies stop cooperating."},
+     )},
     {"code": "US_PPI", "label": "US PPI (Aug)", "when": "2026-09-10T12:30:00Z",
      "agency": "BLS", "tier": 1,
-     "url": "https://www.bls.gov/news.release/ppi.nr0.htm", "note": ""},
+     "url": "https://www.bls.gov/news.release/ppi.nr0.htm",
+     "note": "Final demand. The pipeline read on the CPI that follows it by a day.",
+     "prints": (
+        {"metric": "Final demand MoM", "actual": 0.4, "consensus": 0.4,
+         "unit": "pct", "hawkish_sign": 1, "source": "BLS via CNBC", "tier": 1,
+         "as_of": "2026-09-10T12:30:00Z", "consensus_source": _DJ,
+         "note": "Goods +1.1%, services +0.1%. The entire monthly move is goods, "
+                 "which is the energy shock arriving at the factory gate."},
+        {"metric": "Final demand YoY", "actual": 5.4, "consensus": 5.3,
+         "unit": "pct", "hawkish_sign": 1, "source": "BLS via investinglive", "tier": 2,
+         "as_of": "2026-09-10T12:30:00Z", "consensus_source": _IL,
+         "note": "Producer inflation running 2pp above consumer inflation. That gap "
+                 "is unabsorbed margin pressure and it resolves into either CPI or "
+                 "earnings - there is no third door."},
+        {"metric": "Core MoM", "actual": 0.2, "consensus": 0.3,
+         "unit": "pct", "hawkish_sign": 1, "source": "BLS via Trading Economics", "tier": 2,
+         "as_of": "2026-09-10T12:30:00Z", "consensus_source": _TE,
+         "note": "The one cool leg in the week. Core producer prices undershot, "
+                 "which is why the day's verdict is MIXED and not simply hot."},
+     )},
     {"code": "US_CLAIMS", "label": "US Initial Jobless Claims", "when": "2026-09-10T12:30:00Z",
      "agency": "DOL/ETA", "tier": 1,
-     "url": "https://www.dol.gov/ui/data.pdf", "note": "Weekly, every Thursday."},
+     "url": "https://www.dol.gov/ui/data.pdf", "note": "Weekly, every Thursday.",
+     "prints": (
+        {"metric": "Initial claims, wk to 5 Sep", "actual": 206.0, "consensus": 205.0,
+         "previous": 207.0, "unit": "k", "growth_sign": -1, "tolerance": 5.0,
+         "source": "DOL via FXStreet", "tier": 1, "as_of": "2026-09-10T12:30:00Z",
+         "consensus_source": "Economist forecast, via Bloomingbit",
+         "note": "TOLERANCE 5k, AND IT IS A STATED CHOICE. Claims are published to "
+                 "1k but the consensus dispersion around them is an order of "
+                 "magnitude wider; treating a 1k miss as a surprise would put a "
+                 "verdict on survey noise. Down 1k from a revised 207k - a labour "
+                 "market with no crack in it, which is exactly what lets the Fed "
+                 "hike into an oil shock."},
+     )},
     {"code": "ECB_DECISION", "label": "ECB monetary policy decision", "when": "2026-09-10T12:15:00Z",
      "agency": "ECB", "tier": 1,
      "url": "https://www.ecb.europa.eu/press/pr/date/2026/html/index.en.html",
-     "note": "Press conference 45 minutes later. Verify the date against the ECB "
-             "calendar before trading it."},
+     "note": "Press conference 45 minutes later.",
+     "prints": (
+        {"metric": "Deposit facility rate", "actual": 2.50, "consensus": 2.50,
+         "previous": 2.25, "unit": "pct", "hawkish_sign": 1,
+         "source": "ECB via Trading Economics", "tier": 1,
+         "as_of": "2026-09-10T12:15:00Z", "consensus_source": _RTR,
+         "note": "Second hike since the war began; MRO to 2.65%. Unanimously "
+                 "forecast - all 65 economists in the Reuters poll had +25bp - so "
+                 "the decision itself carried no information. Euro-area HICP at "
+                 "3.3% in August, a three-year high, is what forced it."},
+     )},
+    {"code": "US_RETAIL", "label": "US Retail Sales (Aug)", "when": "2026-09-16T12:30:00Z",
+     "agency": "Census", "tier": 1,
+     "url": "https://www.census.gov/retail/index.html",
+     "note": "DATE CORRECTED. The board carried 15 September; the Census advance "
+             "report for August lands 16 September at 08:30 ET, confirmed by two "
+             "carriers. No consensus has been sourced, so none is shown."},
     {"code": "FOMC", "label": "FOMC decision + SEP", "when": "2026-09-16T18:00:00Z",
      "agency": "Federal Reserve", "tier": 1,
      "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20260916a.htm",
-     "note": "Statement 14:00 ET, press conference 14:30 ET. Quarterly SEP lands "
-             "with the statement."},
-    {"code": "US_RETAIL", "label": "US Retail Sales (Aug)", "when": "2026-09-15T12:30:00Z",
-     "agency": "Census", "tier": 1,
-     "url": "https://www.census.gov/retail/index.html", "note": ""},
+     "note": "Statement 14:00 ET, press conference 14:30 ET, quarterly SEP with the "
+             "statement. Market-implied odds of +25bp are in open disagreement "
+             "across venues - CME FedWatch 85.5% on 12 September against Kalshi 48% "
+             "and Polymarket 49% - and the board carries the disagreement rather "
+             "than picking the convenient number. Retail sales print five and a "
+             "half hours earlier the same day."},
 )
 
 

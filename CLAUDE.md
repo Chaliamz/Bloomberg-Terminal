@@ -122,8 +122,8 @@ convention:
 - **WebSearch is not a live feed either.** One query for the BTC price returned
   79,824.65 / 79,571.82 / 79,735.00 / 79,917.67 from four carriers, all cached
   page summaries, none matching the operator's live ticker at 79,170. Any loop
-  built on WebSearch inherits that lag — this is the ceiling on the scheduled
-  Routine and no amount of scheduling fixes it.
+  built on WebSearch inherits that lag. That is why the hourly Routine was
+  deleted rather than tuned: no schedule fixes a stale input.
 - **`python -m macro live 30` IS live**, run anywhere with egress. Binance
   `/api/v3/ticker/24hr` is Tier 1 for its own last trade. The adapter is
   `parse_binance_ticker`; it returns None rather than guess on a malformed body,
@@ -134,34 +134,61 @@ convention:
   recomputes over all of them; a test polls 40 times and asserts the series does
   not grow.
 
-## Unattended refresh (standing, set by the user)
+## Refresh policy (standing, set by the user — revised 13 September)
 
 The user asked for continuous refresh: "Data should refresh 24/7. Anything new
-happens, you update them immediately."
+happens, you update them immediately." The first implementation of that was an
+hourly Routine. **It has been deleted at the user's instruction** — it burned a
+full model context every hour and left the session unable to do other work.
 
-- The runbook is `REFRESH.md`. A scheduled session follows it; it must not
-  re-derive the environment's limits each run.
-- A scheduled run **appends to `state/observations.json` through
-  `python3 -m macro observe`** and never edits `macro/seed.py`. The store
-  validates through `PriceAnchor` and refuses a missing source or tier, a
-  malformed or future stamp, a duplicate, and a non-finite or non-positive price.
-- **A scan that finds nothing must change nothing** — no republish, no commit.
-  An unchanged page is the correct output of a quiet hour, and it is the only
+What replaced it, and why this is not a downgrade:
+
+- **The live client IS the 24/7 refresh, and it always was the only real one.**
+  BTC, ETH and the PAXG gold proxy stream from Binance in the viewer's own
+  browser; DXY recomputes from the ECB fixing. That path costs nothing, needs no
+  schedule, and is real time to the second. An hourly WebSearch loop could never
+  beat it — WebSearch returns cached page summaries and inherits their lag.
+- **Everything WebSearch is actually good for changes slowly**: a CPI print, a
+  central-bank decision, a geopolitical development, a sentiment gauge. Those
+  move on a daily cadence at most, so they are refreshed **on demand, in a
+  session with a checkout**, which is the only kind of run that can push.
+- **Scan on demand like this**, and do it in one pass:
+  `python3 -m macro observe --date … --price … --source … --tier …` for each
+  new price observation, edit `macro/seed.py` for everything else, then
+  `python3 -m macro terminal`, run the gate, commit, push, republish.
+- A scan that **finds nothing must change nothing** — no republish, no commit.
+  An unchanged page is the correct output of a quiet day, and it is the only
   thing that keeps the age counter honest.
-- **The loop is not yet verified end to end.** Three manual runs each finished in
-  ~40s having pushed nothing, which is the signature of a session with no
-  checkout (the Routine has no `sources`). The prompt now clones if the repo is
-  absent. Confirm by checking whether `state/refresh-log.jsonl` gains lines.
-- The hourly Routine is `trig_011kkfqqtmtakBbQ7SxPB8oU`. It republishes to the
-  existing artifact URL so the user's link keeps working.
-- A scheduled run has **nobody to answer a permission prompt**. Any command
-  outside the runbook can block it for ever - the first verification run stalled
-  on `env | sort`. The Routine prompt therefore forbids environment probing and
-  exploration, and REFRESH.md repeats it.
-- Every run appends to `state/refresh-log.jsonl` via `python3 -m macro
-  heartbeat`, including quiet ones, and pushes it. A quiet run leaves the
-  page alone but must still leave a trace: a dead loop and a quiet loop are
-  otherwise indistinguishable.
 - `state/observations.json` **must stay tracked in git**. It was caught by
   `state/*.json` and un-ignoring it is what makes accumulation survive a fresh
   clone; two tests guard that and the derived `snapshot.json` staying ignored.
+- `state/refresh-log.jsonl` and `python3 -m macro heartbeat` remain. They now
+  record manual scans rather than scheduled ones — same purpose, which is that a
+  quiet scan and a scan that never happened must not look alike.
+- **Do not recreate a scheduled Routine** without the user asking for it by
+  name. If one is ever wanted again, the blocker to fix first is the trigger's
+  `allowed_push_branches: []`: without a push its finds die with the container.
+
+## Release prints (actual vs expected)
+
+`macro/release.py` holds the expectation engine and it refuses three things on
+purpose: an `Expectation` cannot be built without a carrier for **both** the
+actual and the consensus; a print declares **exactly one** transmission channel
+(`hawkish_sign` or `growth_sign`, never both); and the market verdict is
+**regime-conditional** and returns `Insufficient` when the regime is unknown.
+
+It does **not** own the impulse-to-direction mapping. That lives in
+`macro.reaction`, and `assess()` reads the `S&P 500` cell out of `build_matrix`
+and translates its `Direction`. A second copy here disagreed with the existing
+engine on whether weak growth under an inflation-dominant regime is bought;
+`TestOneReactionFunction` now pins them together. Reusing those cells also
+exposed a real defect in `reaction.py`: several `mechanism` strings described
+the hot/strong case while their `Direction` flipped with the sign, so a bullish
+cell carried bearish prose. Fixed for USD, S&P, HY and VIX in `_inflation` and
+USD and S&P in `_growth`, plus the sign-laden chain sentences.
+
+Figures live in `RELEASE_CLOCK[...]["prints"]` in `macro/live.py`. The
+released/pending split is decided against the snapshot's own `captured` stamp,
+never the renderer's wall clock, so a snapshot renders identically whenever it
+is regenerated. Tolerance is zero by default; a non-zero band (weekly claims,
+5k) is a stated design choice carried in that print's own note.

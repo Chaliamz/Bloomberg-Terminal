@@ -150,15 +150,22 @@ def _inflation(label, impulse, regime, magnitude) -> ReactionMap:
         "Nominal 10y moves less than the 2y, and the real 10y is what transmits: "
         "if breakevens absorb part of the move, real yields move by less than "
         "nominals and the equity/gold response is muted.",
-        "Higher real yields raise the discount rate on long-duration cash flows "
-        "and widen rate differentials in favour of the dollar.",
-        "Tighter financial conditions feed back into credit spreads and into the "
-        "liquidity channel that crypto trades off.",
+        ("Higher real yields raise the discount rate on long-duration cash flows "
+         "and widen rate differentials in favour of the dollar." if hot else
+         "Lower real yields cut the discount rate on long-duration cash flows and "
+         "narrow rate differentials against the dollar."),
+        ("Tighter financial conditions feed back into credit spreads and into the "
+         "liquidity channel that crypto trades off." if hot else
+         "Easier financial conditions feed back into credit spreads and into the "
+         "liquidity channel that crypto trades off."),
     )
 
     cells = (
-        _c("USD (DXY)", d(hot), "rate differential widens in the dollar's favour as "
-           "the front end reprices", 0.72),
+        _c("USD (DXY)", d(hot),
+           ("rate differential widens in the dollar's favour as the front end "
+            "reprices higher" if hot else
+            "rate differential narrows against the dollar as the front end "
+            "reprices lower"), 0.72),
         _c("EURUSD", d(not hot), "the mirror of the dollar leg, unless the shock is "
            "euro-area rather than US in origin", 0.68,
            "invert if the release is European"),
@@ -170,8 +177,11 @@ def _inflation(label, impulse, regime, magnitude) -> ReactionMap:
            "supply also drive it", 0.75),
         _c("2s10s", d(not hot), "bear flattening on a hot print, bull steepening on a "
            "cool one - the front end does more of the work", 0.72),
-        _c("S&P 500", d(not hot), "higher real discount rate compresses multiples; in "
-           "an inflation-dominant regime equities and bonds sell off together", 0.66
+        _c("S&P 500", d(not hot),
+           ("a higher real discount rate compresses multiples; in an "
+            "inflation-dominant regime equities and bonds sell off together" if hot else
+            "a lower real discount rate expands multiples; in an inflation-dominant "
+            "regime equities and bonds rally together"), 0.66
            if regime is MacroRegime.INFLATION_DOMINANT else 0.5,
            "" if regime is MacroRegime.INFLATION_DOMINANT else
            "weaker in a growth-dominant regime, where earnings dominate the discount rate"),
@@ -190,10 +200,15 @@ def _inflation(label, impulse, regime, magnitude) -> ReactionMap:
            "beta to Nasdaq is high but unstable", 0.45,
            "idiosyncratic flow (ETF creations, liquidations, protocol events) "
            "regularly overwhelms the macro signal"),
-        _c("HY credit", d(not hot), "tighter financial conditions widen spreads; the "
-           "response lags equities by hours to days", 0.55),
-        _c("VIX", d(hot), "repricing of the policy path raises realised and implied "
-           "equity vol", 0.6,
+        _c("HY credit", d(not hot),
+           ("tighter financial conditions widen spreads" if hot else
+            "easier financial conditions compress spreads")
+           + "; the response lags equities by hours to days", 0.55),
+        _c("VIX", d(hot),
+           ("repricing the policy path higher raises realised and implied equity vol"
+            if hot else
+            "relief on the policy path lets realised and implied equity vol bleed "
+            "lower"), 0.6,
            "if the print merely confirms what was priced, vol crushes instead"),
     )
     return ReactionMap(scenario=label, impulse=impulse, regime=regime,
@@ -216,8 +231,11 @@ def _growth(label, impulse, regime, magnitude) -> ReactionMap:
     if inflation_dominant:
         chain = (
             f"Growth impulse is {'stronger' if stronger else 'weaker'} than expected.",
-            "In an inflation-dominant regime the policy path is the binding "
-            "constraint, so stronger growth means later/less easing: yields rise.",
+            ("In an inflation-dominant regime the policy path is the binding "
+             "constraint, so stronger growth means later/less easing: yields rise."
+             if stronger else
+             "In an inflation-dominant regime the policy path is the binding "
+             "constraint, so weaker growth means sooner/more easing: yields fall."),
             "Good news is therefore sold in equities and bad news is bought - the "
             "stock/bond correlation is positive.",
             "This holds only while growth is far enough above stall speed. Once "
@@ -238,7 +256,9 @@ def _growth(label, impulse, regime, magnitude) -> ReactionMap:
     cells = (
         _c("USD (DXY)",
            d(stronger) if inflation_dominant else Direction.AMBIGUOUS,
-           "rate differentials favour the dollar on strong data" if inflation_dominant
+           ("rate differentials favour the dollar on strong data" if stronger else
+            "rate differentials turn against the dollar on weak data")
+           if inflation_dominant
            else "rate differential says down on weak data, haven demand says up; "
                 "which wins depends on whether the weakness is US-specific or global",
            0.65 if inflation_dominant else 0.3,
@@ -255,9 +275,12 @@ def _growth(label, impulse, regime, magnitude) -> ReactionMap:
         _c("2s10s", d(not stronger), "front end does more work in both directions", 0.6,
            "a fiscal or supply shock can steepen the curve against this"),
         _c("S&P 500", d(equity_up),
-           "good news is bad news: tighter expected policy compresses multiples"
-           if inflation_dominant else
-           "growth reads straight through to earnings expectations",
+           (("good news is bad news: tighter expected policy compresses multiples"
+             if stronger else
+             "bad news is good news: an easier expected policy path expands "
+             "multiples, and this holds only while growth stays above stall speed")
+            if inflation_dominant else
+            "growth reads straight through to earnings expectations"),
            0.6),
         _c("Nasdaq 100", d(equity_up, True),
            "duration amplifies whichever channel dominates", 0.58),

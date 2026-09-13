@@ -1,3 +1,4 @@
 {"at": "2026-09-08T18:51:16Z", "found": 4, "note": "8 Sep interactive re-scan: BTC, 10Y, SPX, Brent"}
 {"at": "2026-09-08T22:04:06Z", "found": 1, "note": "merged the 21:41 loop find; multi-asset live client shipped"}
 {"at": "2026-09-09T16:19:13Z", "found": 6, "note": "9 Sep interactive re-scan: merged 5 loop prints + own read; BTC/10Y/SPX/Brent/CryptoFG updated"}
+{"at": "2026-09-13T08:22:29Z", "found": 8, "note": "manual 13 September re-scan: CPI/PPI/ECB/claims actuals, board refreshed, hourly Routine deleted"}
