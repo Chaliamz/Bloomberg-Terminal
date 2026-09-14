@@ -382,7 +382,16 @@ async def run(path: str) -> int:
         for r in days:
             if ":" in r["cd"]:
                 rel_bad.append(f"{r['name'][:24]!r} shows a clock it has no time for")
-        cpi = next((r for r in rel if r["name"].startswith("US CPI")), None)
+        # Prefix matching broke the moment the calendar grew: "US CPI" matches
+        # both the released August print and the pending September one, and
+        # next() took whichever sorted first. Anchor on the full label.
+        # And require the match to be UNIQUE, so the next release added to the
+        # calendar cannot quietly re-point this probe at a different row.
+        for label in ("US CPI (Aug)", "US PPI (Aug)"):
+            n = sum(1 for r in rel if r["name"].startswith(label))
+            if n != 1:
+                rel_bad.append(f"{label!r} matches {n} rows, expected exactly 1")
+        cpi = next((r for r in rel if r["name"].startswith("US CPI (Aug)")), None)
         if cpi is None:
             rel_bad.append("the CPI row is gone")
         else:
@@ -401,7 +410,7 @@ async def run(path: str) -> int:
                 rel_bad.append("CPI core row missing")
             elif core[1:3] != ["0.3%", "0.2%"] or core[4] != "ABOVE" or core[5] != "BEARISH":
                 rel_bad.append(f"CPI core row reads {core!r}")
-        ppi = next((r for r in rel if r["name"].startswith("US PPI")), None)
+        ppi = next((r for r in rel if r["name"].startswith("US PPI (Aug)")), None)
         if ppi is None or ppi["verdict"] != "VERDICT MIXED":
             rel_bad.append(f"PPI verdict is {(ppi or {}).get('verdict')!r}, expected MIXED")
         if rel_bad:
@@ -443,8 +452,13 @@ async def run(path: str) -> int:
         if not a["sess"]:
             live_bad.append("session state blank")
 
+        # A row whose carrier published no time renders days only - it does not
+        # tick between two samples three seconds apart and it has no clock to
+        # match. Excluded by shape rather than by name so a second day-row does
+        # not have to be remembered here.
         future = [(x, y) for x, y in zip(a["cds"], b["cds"])
-                  if x not in ("RELEASED", "—", "\u2014")]
+                  if x not in ("RELEASED", "—", "\u2014")
+                  and not re.fullmatch(r"\d+d", x or "")]
         if not future:
             live_bad.append("no future countdowns to verify")
         for x, y in future:

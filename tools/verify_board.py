@@ -165,9 +165,15 @@ async def run(path: str) -> int:
                 await page.wait_for_timeout(1800)
 
                 res = await page.evaluate(PROBE)
-                # a blocked webfont is the sandbox, not the page
-                real = [x for x in errors if "fonts.googleapis" not in x
-                        and "ERR_CONNECTION" not in x and "ERR_NAME" not in x]
+                # A webfont this environment cannot fetch is the sandbox, not
+                # the page: every font var here declares a real fallback stack.
+                # The message text carries the net:: code but NOT the URL, so
+                # matching on the host alone missed ERR_CERT_AUTHORITY_INVALID
+                # when the agent proxy started intercepting TLS - and the run
+                # failed on a font CDN's certificate. verify_terminal already
+                # filtered every net:: failure; this now matches it.
+                real = [x for x in errors
+                        if "fonts.googleapis" not in x and "net::ERR_" not in x]
                 tag = f"{label:<8} {w}x{h} {'reduced' if reduced else 'motion ':>8}"
                 if res["bad"] or real:
                     failures += 1
