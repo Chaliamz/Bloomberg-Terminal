@@ -916,16 +916,134 @@ RELEASE_CLOCK: tuple[dict[str, Any], ...] = (
      "url": "https://www.census.gov/retail/index.html",
      "note": "DATE CORRECTED. The board carried 15 September; the Census advance "
              "report for August lands 16 September at 08:30 ET, confirmed by two "
-             "carriers. No consensus has been sourced, so none is shown."},
+             "carriers. No consensus has been sourced, so none is shown. Note also "
+             "that Census has moved its indicator calendar from October onward to "
+             "TBA after a lapse in federal funding, so the NEXT retail sales date "
+             "is not on this board because it has not been published."},
     {"code": "FOMC", "label": "FOMC decision + SEP", "when": "2026-09-16T18:00:00Z",
      "agency": "Federal Reserve", "tier": 1,
      "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20260916a.htm",
      "note": "Statement 14:00 ET, press conference 14:30 ET, quarterly SEP with the "
-             "statement. Market-implied odds of +25bp are in open disagreement "
-             "across venues - CME FedWatch 85.5% on 12 September against Kalshi 48% "
-             "and Polymarket 49% - and the board carries the disagreement rather "
-             "than picking the convenient number. Retail sales print five and a "
-             "half hours earlier the same day."},
+             "statement. THE EVENT ON THIS BOARD. Market-implied odds of +25bp are "
+             "in open disagreement across venues - CME FedWatch 85.5% on 12 "
+             "September and 86.5% on the 14th against Kalshi 48% and Polymarket "
+             "49% - and the board carries the disagreement rather than picking the "
+             "convenient number. Retail sales print five and a half hours earlier "
+             "the same day.",
+     "forecasts": (
+        {"metric": "Fed funds target", "consensus": 3.875, "previous": 3.625,
+         "unit": "pct", "consensus_source": "CME FedWatch 86.5% for +25bp, via Yahoo Finance",
+         "as_of": "2026-09-14T11:31:00Z",
+         "note": "Midpoint of a 3.75-4.00% band against the current 3.50-3.75%. "
+                 "This is a PROBABILITY-WEIGHTED market expectation rendered as a "
+                 "level, not a forecast anyone published as a number - it is the "
+                 "modal outcome at 86.5%, and the prediction venues at 48-49% "
+                 "disagree hard enough that the modal outcome is not a consensus."},
+     )},
+    {"code": "BOE_SEP", "label": "Bank of England MPC decision", "when": "2026-09-17T11:00:00Z",
+     "agency": "Bank of England", "tier": 1,
+     "url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/monetary-policy-summary-and-minutes",
+     "note": "12:00 London, which is 11:00Z while the UK is on BST. The third major "
+             "central bank in eight days, after the ECB hiked on the 10th and the "
+             "Fed decides on the 16th."},
+    {"code": "US_GDP_Q2", "label": "US GDP Q2, third estimate", "when": "2026-09-30T12:30:00Z",
+     "agency": "BEA", "tier": 1,
+     "url": "https://www.bea.gov/data/gdp/gross-domestic-product",
+     "note": "08:30 ET. The 2026 annual updates of the national, industry and "
+             "regional accounts all begin the same day - the first time the three "
+             "have started together, so revisions run deeper than a normal third "
+             "estimate."},
+    {"code": "ISM_MFG", "label": "ISM Manufacturing PMI (Sep)", "when": "2026-10-01T14:00:00Z",
+     "agency": "ISM", "tier": 2,
+     "url": "https://www.ismworld.org/supply-management-news-and-reports/reports/ism-report-on-business/",
+     "note": "TIME IS A CONVENTION, NOT A CARRIER'S CLAIM. ISM publishes at 10:00 ET "
+             "and has for years, but the source for this date states the day only. "
+             "The date is sourced; the hour is the board's assumption and is "
+             "labelled as one here rather than left to look like a quote."},
+    {"code": "US_NFP", "label": "US Employment Situation (Sep)", "when": "2026-10-02T12:30:00Z",
+     "agency": "BLS", "tier": 1,
+     "url": "https://www.bls.gov/news.release/empsit.nr0.htm",
+     "note": "08:30 ET, first Friday. One carrier said 3 October, which is a "
+             "Saturday and cannot be right; 2 October is carried and the "
+             "disagreement is in the conflicts panel. August printed +162k against "
+             "+53k expected, so the bar for this one is set by a market that has "
+             "stopped believing the weak prints."},
+    {"code": "US_CPI_SEP", "label": "US CPI (Sep)", "when": "2026-10-14T12:30:00Z",
+     "agency": "BLS", "tier": 1,
+     "url": "https://www.bls.gov/news.release/cpi.nr0.htm",
+     "note": "08:30 ET. The first CPI after the September FOMC and the first to "
+             "carry a full month of crude above $100.",
+     "forecasts": (
+        {"metric": "Headline YoY", "consensus": 3.7, "previous": 3.4, "unit": "pct",
+         "consensus_source": "Consensus forecast, via Nowflation", "as_of": "2026-09-14T18:00:00Z",
+         "note": "A 30bp ACCELERATION is already the expectation, which is the "
+                 "energy shock arriving in the print rather than a surprise waiting "
+                 "to happen. Nowflation's own model says 3.47% against that 3.7% "
+                 "consensus - a 23bp gap between the street and one nowcast, "
+                 "carried because the direction of that gap is the trade."},
+     )},
+    {"code": "US_PPI_SEP", "label": "US PPI (Sep)", "when": "2026-10-15T12:30:00Z",
+     "agency": "BLS", "tier": 1,
+     "url": "https://www.bls.gov/news.release/ppi.nr0.htm",
+     "note": "08:30 ET, the day AFTER CPI this month rather than the day before. "
+             "The ordering matters: the pipeline read lands as confirmation instead "
+             "of as a warning."},
+    {"code": "FOMC_OCT", "label": "FOMC decision", "when": "2026-10-28T18:00:00Z",
+     "agency": "Federal Reserve", "tier": 1,
+     "url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+     "note": "27-28 October meeting; statement 14:00 ET on the second day. No SEP "
+             "at this one - the projections come again in December."},
+    {"code": "US_GDP_Q3", "label": "US GDP Q3, advance estimate", "when": "2026-10-29T12:30:00Z",
+     "agency": "BEA", "tier": 1,
+     "url": "https://www.bea.gov/data/gdp/gross-domestic-product",
+     "note": "08:30 ET, the morning after the FOMC."},
+    {"code": "ECB_OCT", "label": "ECB monetary policy decision", "when": "2026-10-29T13:15:00Z",
+     "agency": "ECB", "tier": 1,
+     "url": "https://www.ecb.europa.eu/press/pr/date/2026/html/index.en.html",
+     "note": "14:15 CET, press conference 14:45. Note the shift against the "
+             "September meeting's 12:15Z: European clocks go back on 25 October, so "
+             "the same local time is an hour later in UTC."},
+    {"code": "BOJ_OCT", "label": "Bank of Japan decision + Outlook Report",
+     "when": "2026-10-30T00:00:00Z", "day": True,
+     "agency": "Bank of Japan", "tier": 1,
+     "url": "https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2026/index.htm",
+     "note": "29-30 October meeting, with the quarterly Outlook for Economic "
+             "Activity and Prices published on the 30th. THE BANK PUBLISHES NO "
+             "FIXED TIME for the decision - it lands when the meeting ends - so "
+             "this row gets a DAY countdown and no clock. An invented hour on a BoJ "
+             "decision is exactly the false precision that gets someone positioned "
+             "into the wrong session."},
+    {"code": "BOE_NOV", "label": "Bank of England MPC + Monetary Policy Report",
+     "when": "2026-11-05T12:00:00Z", "agency": "Bank of England", "tier": 1,
+     "url": "https://www.bankofengland.co.uk/monetary-policy/upcoming-mpc-dates",
+     "note": "12:00 London, which is 12:00Z once the UK is back on GMT. The "
+             "November Monetary Policy Report lands with it."},
+    {"code": "US_CPI_OCT", "label": "US CPI (Oct)", "when": "2026-11-10T13:30:00Z",
+     "agency": "BLS", "tier": 1,
+     "url": "https://www.bls.gov/news.release/cpi.nr0.htm",
+     "note": "08:30 ET, which is 13:30Z - US clocks went back on 1 November, so "
+             "every US release from here is an hour later in UTC than the ones "
+             "above it. Getting that wrong is a one-hour error on the most "
+             "market-moving print of the month."},
+    {"code": "FOMC_DEC", "label": "FOMC decision + SEP", "when": "2026-12-09T19:00:00Z",
+     "agency": "Federal Reserve", "tier": 1,
+     "url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+     "note": "8-9 December meeting; statement 14:00 ET on the second day, which is "
+             "19:00Z on EST. Quarterly SEP and the dot plot - the last read on 2027 "
+             "the market gets this year."},
+    {"code": "US_CPI_NOV", "label": "US CPI (Nov)", "when": "2026-12-10T13:30:00Z",
+     "agency": "BLS", "tier": 1,
+     "url": "https://www.bls.gov/news.release/cpi.nr0.htm",
+     "note": "08:30 ET, the morning after the December FOMC."},
+    {"code": "BOE_DEC", "label": "Bank of England MPC decision",
+     "when": "2026-12-17T12:00:00Z", "agency": "Bank of England", "tier": 1,
+     "url": "https://www.bankofengland.co.uk/monetary-policy/upcoming-mpc-dates",
+     "note": "12:00 London. Same day as the ECB, 75 minutes earlier."},
+    {"code": "ECB_DEC", "label": "ECB monetary policy decision",
+     "when": "2026-12-17T13:15:00Z", "agency": "ECB", "tier": 1,
+     "url": "https://www.ecb.europa.eu/press/pr/date/2026/html/index.en.html",
+     "note": "14:15 CET. The last scheduled policy event of 2026 on this board."},
+
 )
 
 

@@ -342,18 +342,46 @@ async def run(path: str) -> int:
             };
           });
         }""")
-        if len(rel) < 6:
-            rel_bad.append(f"only {len(rel)} release rows")
+        if len(rel) < 20:
+            rel_bad.append(f"only {len(rel)} release rows - the calendar has run dry")
         released = [r for r in rel if r["cd"] == "RELEASED"]
         pending = [r for r in rel if r["cd"] != "RELEASED"]
         if not released:
             rel_bad.append("no release has passed its instant")
+        if len(pending) < 15:
+            rel_bad.append(f"only {len(pending)} pending rows")
         for r in released:
             if not r["has"]:
                 rel_bad.append(f"{r['name'][:24]!r} says RELEASED with no verdict block")
+        # A pending row MAY carry the consensus the market is holding. What it
+        # must never carry is a direction or a risk read: there is no actual to
+        # compare against, and a coloured verdict pill beside a consensus is the
+        # one way a reader mistakes an expectation for a result.
+        awaiting = 0
         for r in pending:
-            if r["has"]:
-                rel_bad.append(f"{r['name'][:24]!r} is still counting down but shows figures")
+            if not r["has"]:
+                continue
+            awaiting += 1
+            if r["verdict"] != "AWAITING":
+                rel_bad.append(f"{r['name'][:24]!r} is pending but its block says "
+                               f"{r['verdict']!r}")
+            for row in r["rows"]:
+                if row[4] != "\u2014" or row[5] != "NOT PRINTED":
+                    rel_bad.append(f"{r['name'][:24]!r} pending row reads {row!r}")
+        if not awaiting:
+            rel_bad.append("no pending release shows what the market is carrying")
+        # the countdowns must be in order: pending ascending, then RELEASED
+        first_released = next((i for i, r in enumerate(rel) if r["cd"] == "RELEASED"), None)
+        if first_released is not None and any(
+                r["cd"] != "RELEASED" for r in rel[first_released:]):
+            rel_bad.append("a pending row renders below a released one")
+        # a row whose source published no time must show days, never a clock
+        days = [r for r in rel if re.fullmatch(r"\d+d", r["cd"] or "")]
+        if not days:
+            rel_bad.append("no day-granularity countdown rendered")
+        for r in days:
+            if ":" in r["cd"]:
+                rel_bad.append(f"{r['name'][:24]!r} shows a clock it has no time for")
         cpi = next((r for r in rel if r["name"].startswith("US CPI")), None)
         if cpi is None:
             rel_bad.append("the CPI row is gone")
@@ -383,8 +411,9 @@ async def run(path: str) -> int:
                 print(f"       - {x}")
         else:
             print(f"PASS release prints  {len(released)} released with verdicts, "
-                  f"{len(pending)} still counting down and showing none | "
-                  f"CPI {cpi['verdict'].split()[-1]} | PPI MIXED")
+                  f"{len(pending)} pending ({awaiting} showing consensus, "
+                  f"{len(days)} day-granularity) | CPI "
+                  f"{cpi['verdict'].split()[-1]} | PPI MIXED")
         await page.close()
 
         # ---- live behaviour: the parts that only exist at runtime ----------

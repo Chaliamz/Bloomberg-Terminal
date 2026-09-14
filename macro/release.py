@@ -47,7 +47,7 @@ from .surprise import Impulse
 from .types import Insufficient, insufficient
 
 __all__ = [
-    "Expectation", "Verdict", "assess", "roll_up", "fmt_value",
+    "Expectation", "Forecast", "Verdict", "assess", "roll_up", "fmt_value",
     "ABOVE", "BELOW", "IN_LINE",
     "BULLISH", "BEARISH", "NEUTRAL", "MIXED",
 ]
@@ -155,6 +155,53 @@ class Expectation:
         if self.growth_sign:
             return GROWTH
         return None
+
+
+@dataclass(frozen=True)
+class Forecast:
+    """What the market is carrying for a release that has NOT printed yet.
+
+    Deliberately a different type from :class:`Expectation` rather than one with
+    a nullable actual. An Expectation is a fact plus a fact; a Forecast is only
+    the second half, and no verdict can be derived from it - the direction does
+    not exist until the number does. Making them one class with `actual=None`
+    would let every downstream caller forget to check, which is the exact shape
+    of the bug this codebase exists to refuse.
+
+    It still carries a named carrier and a stamp, because a consensus with no
+    source is somebody's memory of a consensus whether or not the print has
+    landed.
+    """
+
+    metric: str
+    consensus: float
+    unit: str
+    consensus_source: str
+    as_of: str                  # when the consensus was READ, not the release
+    previous: float | None = None
+    note: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.metric.strip():
+            raise ValueError("a forecast without a metric name is not representable")
+        if not self.consensus_source.strip():
+            raise ValueError(
+                f"{self.metric}: a forecast needs the carrier of its consensus")
+        if not self.unit.strip():
+            raise ValueError(f"{self.metric}: unit is mandatory")
+        try:
+            datetime.strptime(self.as_of, "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError as exc:
+            raise ValueError(f"{self.metric}: as_of must be ISO8601 Z: {exc}") from exc
+        if self.consensus != self.consensus or self.consensus in (
+                float("inf"), float("-inf")):
+            raise ValueError(f"{self.metric}: consensus must be finite")
+
+    def render(self) -> str:
+        prev = "" if self.previous is None else (
+            f", prior {fmt_value(self.previous, self.unit)}")
+        return (f"{self.metric}: {fmt_value(self.consensus, self.unit)} expected"
+                f"{prev} - not yet printed")
 
 
 @dataclass(frozen=True)

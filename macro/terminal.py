@@ -248,7 +248,12 @@ main{max-width:1720px;margin:0 auto;padding:14px 18px 64px;
 .gn{font-family:var(--mono);font-size:10px;line-height:1.5;color:var(--faint);
   letter-spacing:.03em;text-align:left;margin-top:7px;padding-top:7px;
   border-top:1px solid var(--edge);overflow-wrap:anywhere;max-width:34ch}
-.rel{display:flex;flex-direction:column}
+/* Twenty-two releases with their notes ran to eleven thousand pixels and
+   swamped every other card. Capped and scrolled, the same way the squawk and
+   the news feed already are. */
+.rel{display:flex;flex-direction:column;max-height:760px;overflow:auto}
+.rel::-webkit-scrollbar{width:8px}
+.rel::-webkit-scrollbar-thumb{background:var(--edge-hi);border-radius:4px}
 .rl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 12px;padding:9px 0;
   border-bottom:1px dashed rgba(26,32,48,.9);align-items:baseline}
 .rl:last-child{border-bottom:0}
@@ -284,6 +289,8 @@ main{max-width:1720px;margin:0 auto;padding:14px 18px 64px;
 .v-bull{color:var(--up);background:rgba(46,229,160,.11)}
 .v-neut{color:var(--dim);background:rgba(120,132,160,.1)}
 .v-mix{color:var(--amber);background:rgba(240,176,64,.12)}
+.v-pend{color:var(--gold);background:rgba(46,197,207,.12)}
+.pvt .pend{color:var(--faint);font-style:italic;letter-spacing:.06em}
 .d-above{color:var(--down)} .d-below{color:var(--up)} .d-line{color:var(--dim)}
 .pvn{margin:0;padding:7px 10px;border-top:1px solid var(--edge-hi);
   font-family:var(--mono);font-size:10px;line-height:1.5;color:var(--faint);
@@ -618,6 +625,14 @@ function tick(){
     if(diff<=0){el.textContent="RELEASED";el.className="cd past";continue;}
     var D2=Math.floor(diff/86400),H=Math.floor(diff%86400/3600),
         M=Math.floor(diff%3600/60),S=diff%60;
+    /* A row whose source published a DATE and no time gets days only. Showing
+       a live second counter against an assumed midnight would be a clock the
+       carrier never gave us. */
+    if(el.getAttribute("data-day")){
+      el.textContent=(D2+1)+"d";
+      el.className="cd"+(D2<=2?" hot":"");
+      continue;
+    }
     el.textContent=(D2?D2+"d ":"")+pad(H)+":"+pad(M)+":"+pad(S);
     el.className="cd"+(diff<3600?" hot":"");
   }
@@ -1282,6 +1297,15 @@ def render_live(snap) -> str:
     )
 
 
+def _invert_stamp(when: str) -> str:
+    """Sort key that reverses an ISO stamp's order without a second sort pass.
+
+    Digits map to their nine's complement, so a later stamp sorts earlier. Used
+    only for the already-released half of the release list.
+    """
+    return "".join(str(9 - int(c)) if c.isdigit() else c for c in when)
+
+
 def _article(word: str) -> str:
     """"an INFLATION-DOMINANT", "a GROWTH-DOMINANT". The regime label is data, so
     the article cannot be baked into the sentence around it."""
@@ -1289,6 +1313,47 @@ def _article(word: str) -> str:
     # "an". Cheap bug, and it only ever shows up in the one case nobody renders.
     first = (word or "").lstrip()[:1].upper()
     return "an" if first and first in "AEIOU" else "a"
+
+
+def render_forecasts(r: dict) -> str:
+    """What the market is carrying into a release that has not printed.
+
+    A forecast panel is not a small verdict panel. There is no actual, so there
+    is no direction and no risk read, and the header says AWAITING rather than
+    naming a colour - the whole failure mode here is a reader glancing at a
+    coloured pill and taking a consensus for a result.
+    """
+    from .release import Forecast, fmt_value
+
+    specs = r.get("forecasts") or ()
+    if not specs:
+        return ""
+    rows, notes = [], []
+    for spec in specs:
+        f = Forecast(**{k: v for k, v in spec.items() if k != "note"})
+        prev = "&mdash;" if f.previous is None else e(fmt_value(f.previous, f.unit))
+        rows.append(
+            f'<tr><td class="m">{e(f.metric)}</td>'
+            f'<td class="pend">awaiting</td>'
+            f'<td class="num">{e(fmt_value(f.consensus, f.unit))}</td>'
+            f'<td>{prev}</td>'
+            f'<td class="d-line">&mdash;</td>'
+            f'<td class="v-neut">NOT PRINTED</td></tr>')
+        body = spec.get("note", "")
+        notes.append(
+            f'<p class="pvn"><b>{e(f.metric)}</b> &middot; expected: '
+            f'{e(f.consensus_source)} &middot; read '
+            f'{e(f.as_of[:16].replace("T", " "))}Z'
+            + (f' &middot; {e(body)}' if body else "") + '</p>')
+    return ('<div class="pv"><div class="pvh">'
+            '<b class="v-pend">AWAITING</b>'
+            '<span>What the market is carrying into this release. No actual, so no '
+            'direction and no risk read &mdash; the verdict appears here when the '
+            'number does.</span></div>'
+            '<table class="pvt"><thead><tr><th>metric</th><th>actual</th>'
+            '<th>expected</th><th>prior</th><th>vs cons</th><th>risk read</th>'
+            '</tr></thead><tbody>' + "".join(rows) + '</tbody></table>'
+            + "".join(notes) + '</div>')
 
 
 VERDICT_CLASS = {"BULLISH": "v-bull", "BEARISH": "v-bear",
@@ -1311,7 +1376,7 @@ def render_prints(r: dict, snap) -> str:
     stamp, never against the renderer's wall clock, so the same snapshot
     renders identically whenever it is regenerated.
     """
-    from .release import Expectation, assess, roll_up, fmt_value
+    from .release import Expectation, Forecast, assess, roll_up, fmt_value
 
     specs = r.get("prints") or ()
     when = r.get("when", "")
@@ -1323,7 +1388,10 @@ def render_prints(r: dict, snap) -> str:
         # the no-figures branch, so a print loaded early - a consensus entered
         # before the number lands, which is exactly when one would be - rendered
         # as though it had already happened.
-        return ""
+        #
+        # What CAN be shown before the print is the consensus, and that is a
+        # different type carrying no actual and no verdict.
+        return render_forecasts(r)
 
     if not specs:
         return ('<div class="pv"><div class="pvh"><b class="v-neut">RELEASED</b>'
@@ -1732,20 +1800,37 @@ def render(snap: Snapshot, standalone: bool = True) -> str:
     flows_html = render_flows(snap)
 
     # --- releases ---------------------------------------------------------
+    # Pending first, soonest at the top, then what has already printed, newest
+    # first. With four entries the source order was fine; with twenty-two it
+    # buried Wednesday's FOMC under last week's CPI.
+    def _order(r):
+        when = r.get("when", "")
+        past = when <= snap.captured
+        # Negate by comparing on a fixed-width key so one sort does both halves.
+        return (1 if past else 0, when if not past else _invert_stamp(when))
+
     rel = []
-    for r in snap.releases:
+    for r in sorted(snap.releases, key=_order):
+        day = "1" if r.get("day") else ""
         rel.append(
             f'<div class="rl"><span class="nm">{e(r.get("label", ""))} '
             f'<span class="t t{r.get("tier", 1)}">T{r.get("tier", 1)}</span></span>'
-            f'<span class="cd" data-when="{e(r.get("when", ""))}">&mdash;</span>'
+            f'<span class="cd" data-when="{e(r.get("when", ""))}"'
+            + (f' data-day="{day}"' if day else "") + '>&mdash;</span>'
             f'<span class="sub">{e(r.get("agency", ""))} &middot; '
-            f'{e(r.get("when", "")[:16].replace("T", " "))}Z &middot; first public carrier: '
+            + (f'{e(r.get("when", "")[:10])} &middot; time not published' if r.get("day")
+               else f'{e(r.get("when", "")[:16].replace("T", " "))}Z')
+            + f' &middot; first public carrier: '
             f'<a href="{e(r.get("url", ""))}" target="_blank" rel="noopener noreferrer">'
             f'{e(r.get("url", "")[:64])}</a>'
             + (f' &middot; {e(r.get("note", ""))}' if r.get("note") else "")
             + '</span>' + render_prints(r, snap) + '</div>'
         )
     releases = "".join(rel)
+    _pending = [r for r in snap.releases if r.get("when", "") > snap.captured]
+    n_pending = len(_pending)
+    cal_to = (max(r["when"] for r in _pending)[:10] if _pending
+              else "nothing scheduled")
 
     # --- reaction map for the live catalyst -------------------------------
     regime = MacroRegime.INFLATION_DOMINANT if "INFLATION" in snap.regime else (
@@ -1956,7 +2041,7 @@ timing field stays blank.</span></noscript>
   </section>
 
   <section class="card c4">
-    <h2>Next primary releases <em>countdown to the public instant</em></h2>
+    <h2>Next primary releases <em>{n_pending} scheduled to {cal_to} &middot; countdown to the public instant</em></h2>
     <div class="bd">
       <div class="rel">{releases}</div>
       <p class="note"><b>Released figures carry the actual against the number the

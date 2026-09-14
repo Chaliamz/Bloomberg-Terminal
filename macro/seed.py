@@ -23,7 +23,12 @@ SPOT   = "2026-09-07T10:50:00Z"     # live re-scan, 7 September
 SENT   = "2026-09-07T10:50:00Z"     # sentiment re-read, 7 September
 LIQ = "2026-09-04T03:52:00Z"        # liquidation window close
 SESSION = "2026-09-04T21:00:00Z"    # end of the US session
-CAPTURE = "2026-09-13T16:04:00Z"    # when this scan CONCLUDED. Deliberately later
+CAPTURE = "2026-09-14T18:17:00Z"    # when this scan CONCLUDED. Deliberately later
+CRYPTO14 = "2026-09-14T11:31:00Z"   # 7:31 a.m. ET, a time Yahoo states outright
+SPOT14  = "2026-09-14T18:17:00Z"    # 14 Sep re-scan; the oil carriers give a day
+                                    # and an intraday level but no quote time
+_OLDCAP = "2026-09-13T16:04:00Z"    # the previous scan, kept only as a reference
+                                    # point in the notes below
                                     # than the read stamps below: those belong to
                                     # the moment each figure was retrieved and must
                                     # not be dragged forward to match this one.
@@ -132,25 +137,27 @@ _Q = [
               "hike. Open this page in a browser and the violet DXY cell is "
               "recomputed from the ECB's own published fixings instead."),
     # ---- commodities ----------------------------------------------------
-    dict(key="BRENT", value=104.42, unit="usd_bbl", as_of=CLOSE11,
-         source="Trading Economics", tier=3,
-         url="https://tradingeconomics.com/commodity/brent-crude-oil",
-         label="Brent crude", change=-2.98, change_unit="pct", confidence=0.7,
-         note="A PRINT, NOT A THRESHOLD - the board has been carrying '100, crossed' "
-              "since 9 September and can now carry a level. 11 September opened at "
-              "108.92 and closed 104.42: a four-percent intraday reversal on the "
-              "announcement that GCC foreign ministers would meet Iran's in Oman on "
-              "a temporary Hormuz shipping arrangement. The -2.98% implies a 107.63 "
-              "prior close. Brent is $4 above WTI, roughly half the usual spread, "
-              "because the disruption premium sits on the waterborne barrel."),
-    dict(key="WTI", value=100.05, unit="usd_bbl", as_of=CLOSE11,
-         source="Washington Post (October 2026 contract)", tier=2, url="https://www.washingtonpost.com/business/2026/09/11/wall-street-stocks-dow-nasdaq/",
-         label="WTI crude", change=-2.37, change_unit="pct", confidence=0.7,
-         note="October contract, -2.43 on the session. Trading Economics prints "
-              "99.99 for the same session - six cents apart, recorded in conflicts "
-              "rather than averaged away. Against the 91.67 the board carried for 4 "
-              "September this is a 9% move in a week, and it is the single largest "
-              "input to the inflation leg on this board."),
+    dict(key="BRENT", value=108.15, unit="usd_bbl", as_of=SPOT14,
+         source="OilPrice / Vantage Markets (14 September)", tier=3, url="https://oilprice.com/Latest-Energy-News/World-News/Brent-at-108-Gulf-States-Halt-Hormuz-Talks-as-Houthis-Strike-Saudi-Airbase.html",
+         label="Brent crude", confidence=0.65,
+         note="14 SEPTEMBER, AND THE FRIDAY RALLY IS FULLY REVERSED. The board "
+              "carried 104.42 from the 11 September close, which was itself a "
+              "four-percent selloff on the ANNOUNCEMENT of Iran-GCC talks. Those "
+              "talks were POSTPONED late Sunday and Saudi Arabia shut a major crude "
+              "pipeline after drone attacks, and Brent reopened more than 2% higher "
+              "at 108.15. No session change is shown because the carriers give a "
+              "level and a direction, not a settle. Brent is up about 9% on the "
+              "week. Confidence 0.65: an intraday level from a headline, not a "
+              "close."),
+    dict(key="WTI", value=102.64, unit="usd_bbl", as_of=SPOT14,
+         source="Vantage Markets (14 September)", tier=3, url="https://oilprice.com/Latest-Energy-News/World-News/Brent-at-108-Gulf-States-Halt-Hormuz-Talks-as-Houthis-Strike-Saudi-Airbase.html",
+         label="WTI crude", confidence=0.65,
+         note="14 September, a four-month high, against the 100.05 October-contract "
+              "settle the board carried for 11 September. The pipeline that was shut "
+              "is the East-West line to Yanbu - 7 million barrels a day of capacity "
+              "and the ONLY material route that bypasses Hormuz. Traders quoted by "
+              "Reuters put up to 4% of global supply at risk if it stays down, which "
+              "is why this is no longer a risk-premium story."),
     dict(key="GOLD", value=4408.90, unit="usd_oz", as_of=CLOSE11,
          source="Search aggregate (11 September commodity snapshots)", tier=3,
          url="https://tradingeconomics.com/commodity/gold",
@@ -161,30 +168,85 @@ _Q = [
               "amber GOLD cell is replaced by a live PAXGUSDT print, which is a "
               "proxy for spot and labelled as one."),
     # ---- crypto ---------------------------------------------------------
-    dict(key="BTC", value=77242.79, unit="usd", as_of=BTC13,
-         source="CoinDesk", tier=3, url="https://www.coindesk.com/price/bitcoin",
-         label="Bitcoin", confidence=0.6,
-         note="13 SEPTEMBER, 05:22Z, and it is the only crypto read in this scan "
-              "that states its own quote time - which is why it is carried over "
-              "three fresher-looking but timeless ones in the same retrieval "
-              "(77,207.9, 77,155.41, 77,115.78, a 127-dollar cluster). 24h volume "
-              "$6.01bn. No 24h change is shown because CoinDesk stated none and "
-              "deriving one from the board's own 12 September value would be a "
-              "number about this file rather than about the market. The path since "
-              "9 September is 79,263 -> below 77,000 into the CPI -> 77,268.70 on "
-              "the 12th -> here: the CPI sold it and it has not recovered. THIS "
-              "NUMBER IS NOT LIVE: open this file in a browser and the Binance "
-              "stream replaces it within a second."),
-    dict(key="ETH", value=2538.99, unit="usd", as_of=CRYPTO12,
-         source="CoinGabbar", tier=3, url="https://www.coingabbar.com/en/crypto-news-today-bitcoin-ethereum-gains-crypto-regulation", label="Ethereum",
-         change=2.8, change_unit="pct", confidence=0.6,
-         note="12 September. The same article's headline says +2.6% where its body "
-              "says +2.8%; the body figure is carried and the disagreement is "
-              "recorded rather than smoothed. Ether outperformed Bitcoin on the day "
-              "by more than two to one.")
+    dict(key="BTC", value=77873.33, unit="usd", as_of=CRYPTO14,
+         source="Yahoo Finance", tier=2, url="https://finance.yahoo.com/personal-finance/investing/article/bitcoin-and-ethereum-prices-today-monday-september-14-2026-crypto-prices-trying-to-hold-as-rate-hike-expectations-grow-114245430.html", label="Bitcoin",
+         confidence=0.75,
+         note="14 SEPTEMBER, 7:31 a.m. ET - a time the carrier STATES, which is why "
+              "this is Tier 2 where the last three crypto reads were Tier 3. Monday "
+              "opened 76,806.19, 0.6% below Sunday's open, and recovered through the "
+              "morning. A second carrier has 77,782 the same day with no time; the "
+              "91-dollar gap is recorded rather than resolved. No 24h change is "
+              "shown because none was stated. THIS NUMBER IS NOT LIVE: open this "
+              "file in a browser and the Binance stream replaces it within a "
+              "second."),
+    dict(key="ETH", value=2514.09, unit="usd", as_of=CRYPTO14,
+         source="Yahoo Finance", tier=2, url="https://finance.yahoo.com/personal-finance/investing/article/bitcoin-and-ethereum-prices-today-monday-september-14-2026-crypto-prices-trying-to-hold-as-rate-hike-expectations-grow-114245430.html", label="Ethereum",
+         confidence=0.75,
+         note="14 September, 7:31 a.m. ET. Opened 2,475.82, down 2% on Sunday's "
+              "open, and recovered with Bitcoin. Ether gave back more than Bitcoin "
+              "into the weekend and has recovered less.")
 ]
 
 _H = [
+    # ---- 14 September ----------------------------------------------------
+    dict(title="Iran-GCC Hormuz talks POSTPONED; Brent reopens above $108",
+         summary="Oman's foreign minister deferred Monday's Salalah meeting late "
+                 "Sunday 'in the interest of consensus'. Saudi Arabia had filed "
+                 "amendments objecting that the Iran-Oman wording would establish a "
+                 "new status quo; Bahrain said it would not attend. Friday's "
+                 "four-percent selloff was priced on this meeting happening.",
+         source="Oman FM via CNN / Al Jazeera", tier=2,
+         published="2026-09-13T20:00:00Z", impact=93, url="https://www.aljazeera.com/news-analysis/2026/9/14/temporary-hormuz-solution-deferred-as-iran-arab-summit-falls-through",
+         primary_confirmed=True,
+         assets=("Brent", "WTI", "Gold", "Breakevens", "UST 10Y")),
+    dict(title="Saudi Arabia shuts the East-West pipeline to Yanbu after drone attacks",
+         summary="The 7 million barrel a day line is the only material route that "
+                 "bypasses the Strait of Hormuz. Traders quoted by Reuters put up to "
+                 "4% of global supply at risk if it stays down. This removes barrels "
+                 "rather than pricing the risk of removal - the distinction the "
+                 "whole energy leg of this board turns on.",
+         source="Reuters via OilPrice", tier=3,
+         published="2026-09-14T12:00:00Z", impact=95, url="https://oilprice.com/Latest-Energy-News/World-News/Brent-at-108-Gulf-States-Halt-Hormuz-Talks-as-Houthis-Strike-Saudi-Airbase.html",
+         assets=("Brent", "WTI", "Breakevens", "UST 10Y", "S&P 500")),
+    dict(title="Brent $108.15, WTI $102.64 - a four-month high, up about 9% on the week",
+         summary="Both benchmarks jumped more than 2% at the Monday reopen on the "
+                 "postponed talks and the pipeline closure. The carriers give a "
+                 "level and a direction, not a settle, so no session change is "
+                 "carried on the board.",
+         source="OilPrice / Vantage Markets", tier=3,
+         published="2026-09-14T12:00:00Z", impact=90, url="https://oilprice.com/Latest-Energy-News/World-News/Brent-at-108-Gulf-States-Halt-Hormuz-Talks-as-Houthis-Strike-Saudi-Airbase.html",
+         assets=("Brent", "WTI", "Breakevens")),
+    dict(title="September hike odds 86.5%, up from 69.4% on Friday morning",
+         summary="Two days out from the decision. The board also carries CME "
+                 "FedWatch at 85.5% on 12 September and the prediction venues at "
+                 "48-49%; all four readings are on the page and none is picked. An "
+                 "oil shock arriving 48 hours before an FOMC is the worst possible "
+                 "sequencing for a committee that has three dissents already "
+                 "favouring a hike.",
+         source="Yahoo Finance", tier=2, published="2026-09-14T11:31:00Z", impact=92,
+         url="https://finance.yahoo.com/personal-finance/investing/article/bitcoin-and-ethereum-prices-today-monday-september-14-2026-crypto-prices-trying-to-hold-as-rate-hike-expectations-grow-114245430.html", assets=("UST 2Y", "USD", "S&P 500", "BTC")),
+    dict(title="Bitcoin $77,873 and ether $2,514 as rate-hike expectations grow",
+         summary="Bitcoin opened 76,806.19, down 0.6% on Sunday's open, and "
+                 "recovered through the morning; ether opened 2,475.82, down 2%. "
+                 "Crypto is holding rather than breaking, which is more than the "
+                 "rates market can say.",
+         source="Yahoo Finance", tier=2, published="2026-09-14T11:31:00Z", impact=68,
+         url="https://finance.yahoo.com/personal-finance/investing/article/bitcoin-and-ethereum-prices-today-monday-september-14-2026-crypto-prices-trying-to-hold-as-rate-hike-expectations-grow-114245430.html", assets=("BTC", "ETH")),
+    dict(title="SEPTEMBER CPI CONSENSUS ALREADY SET AT 3.7% FOR THE 14 OCTOBER PRINT",
+         summary="A 30bp acceleration from August's 3.4% is what the street already "
+                 "expects - the energy shock arriving in the print rather than a "
+                 "surprise waiting to happen. Nowflation's own nowcast is 3.47%, a "
+                 "23bp gap to the street. The release panel carries both, marked "
+                 "AWAITING with no verdict, because a consensus is not a result.",
+         source="Nowflation", tier=3, published="2026-09-14T18:00:00Z", impact=76,
+         url="https://nowflation.com/cpi-release-dates", assets=("UST 2Y", "UST 10Y", "USD", "S&P 500")),
+    dict(title="UN General Assembly 81 High-Level Week runs 22-28 September",
+         summary="The General Debate opens Tuesday 22 September. The one scheduled "
+                 "venue where the parties to the Hormuz crisis are in the same "
+                 "building; it is the diary entry to watch rather than the event to "
+                 "trade.",
+         source="United Nations", tier=1, published="2026-09-14T18:00:00Z", impact=58,
+         url="https://www.un.org/en/high-level-week-2026", primary_confirmed=True, assets=("Brent", "WTI", "Gold")),
     # ---- 10-13 September: the week the inflation data landed ------------
     dict(title="US CPI holds at 3.4% but core runs hot at 0.3% m/m; hike odds jump",
          summary="Headline y/y 3.4% against 3.4% expected and headline m/m 0.4% "
@@ -526,6 +588,33 @@ CONFLICTS = [
     "other three are timeless and a timeless price cannot be aged. That is the "
     "whole reason this page carries a live client: in a browser none of this "
     "matters, because the Binance stream replaces the cell within a second.",
+    "THE RELEASE CLOCK NOW RUNS TO 17 DECEMBER, and that is deliberate rather "
+    "than decorative. Scheduled release dates are PUBLISHED IN ADVANCE and do "
+    "not move, so eighteen pending events can be loaded in one pass and the "
+    "countdown panel never runs dry - two days ago it held two, both on the same "
+    "Wednesday. What still needs a human scan is the ACTUALS, and those only "
+    "exist on the days they print. This is the whole argument against a "
+    "scheduled loop: the calendar is static and the actuals are rare.",
+    "FOMC HIKE ODDS, FOUR READINGS AND NO RESOLUTION. Yahoo puts them at 86.5% on "
+    "14 September, up from 69.4% on Friday morning. CME FedWatch was quoted at "
+    "85.5% on the 12th. Kalshi was 48% and Polymarket 49%. The futures-implied "
+    "readings agree with each other and the prediction venues agree with each "
+    "other, and the two camps are nearly forty points apart two days before the "
+    "decision. All four are on the page.",
+    "PAYROLLS DATE: one carrier put the September employment report on 3 October, "
+    "which is a SATURDAY. 2 October is carried - first Friday, the published "
+    "cadence - and the bad date is recorded here rather than silently corrected, "
+    "because a carrier that gets a weekday wrong is telling you something about "
+    "its other dates.",
+    "US RETAIL SALES AFTER SEPTEMBER IS NOT ON THIS BOARD. Census has moved its "
+    "economic indicator calendar from October onward to TBA following a lapse in "
+    "federal funding. The 16 September release is dated and carried; the ones "
+    "after it are genuinely unscheduled, and an invented date on a countdown is "
+    "worse than an absent row.",
+    "BITCOIN, 14 September: 77,873.33 at a stated 7:31 a.m. ET against 77,782 "
+    "from a carrier that states no time. Ninety-one dollars, recorded. The timed "
+    "quote is carried for the same reason as yesterday's: a price with no "
+    "timestamp cannot be aged.",
     "CRYPTO LIQUIDATIONS: a later read reverses the side but cannot be carried. "
     "COINOTAG gives $444.82m over 24 hours with longs at 79% and Bitcoin longs at "
     "$111.34m against $9.37m of shorts - the mirror of the 4 September window the "
@@ -793,17 +882,52 @@ GEO = [
                  "why crude sold off four percent into it rather than rallying on the "
                  "reminder that the strait is shut",
          assets=("Brent", "WTI", "Gold", "Breakevens")),
-    dict(headline="GCC foreign ministers to meet Iran's in Salalah, Oman on a temporary "
-                  "Hormuz shipping arrangement",
-         region="Strait of Hormuz", severity=86, as_of="2026-09-12T12:00:00Z",
-         source="Reported via Trading Economics commodity desk", tier=3,
-         url="https://tradingeconomics.com/commodity/brent-crude-oil",
-         status="SCHEDULED MONDAY 14 SEPTEMBER - TIME NOT PUBLISHED",
-         channel="Brent fell from a 108.92 open to a 104.42 close on the ANNOUNCEMENT "
-                 "alone. The meeting itself is therefore the largest single event risk "
-                 "into Monday's open, ahead of the FOMC, and it publishes no time - so "
-                 "it can be watched but not counted down",
-         assets=("Brent", "WTI", "Breakevens", "UST 10Y")),
+    dict(headline="Iran-GCC Hormuz talks in Salalah POSTPONED; Saudi amendments, "
+                  "Bahrain refused to attend",
+         region="Strait of Hormuz", severity=91, as_of="2026-09-13T20:00:00Z",
+         source="Oman FM Badr Al Busaidi, via CNN / Al Jazeera", tier=2, url="https://www.aljazeera.com/news-analysis/2026/9/14/temporary-hormuz-solution-deferred-as-iran-arab-summit-falls-through",
+         status="POSTPONED - NO NEW DATE",
+         channel="THE BOARD CALLED THIS ONE AND IT BROKE THE OTHER WAY. Brent fell "
+                 "four percent on Friday on the ANNOUNCEMENT of this meeting and the "
+                 "board said the meeting itself was the largest event risk into "
+                 "Monday's open. It was deferred late Sunday 'in the interest of "
+                 "consensus' - Saudi Arabia filed amendments objecting that the "
+                 "Iran-Oman wording would establish a new status quo, and Bahrain "
+                 "said it would not attend. Brent reopened above 108. No new date "
+                 "has been published, so there is nothing to count down to",
+         assets=("Brent", "WTI", "Gold", "Breakevens", "UST 10Y")),
+    # ---- 14 September ---------------------------------------------------
+    dict(headline="Saudi Arabia shuts the East-West pipeline to Yanbu after drone "
+                  "attacks; up to 4% of global supply at risk",
+         region="Saudi Arabia", severity=94, as_of="2026-09-14T12:00:00Z",
+         source="Reuters via OilPrice / Trading Economics", tier=3, url="https://oilprice.com/Latest-Energy-News/World-News/Brent-at-108-Gulf-States-Halt-Hormuz-Talks-as-Houthis-Strike-Saudi-Airbase.html",
+         status="ESCALATING",
+         channel="THE HIGHEST-SEVERITY ITEM ON THIS BOARD, because it is the only "
+                 "one that removes barrels rather than pricing the risk of it. The "
+                 "East-West line carries 7 million barrels a day to the Red Sea port "
+                 "of Yanbu and is the ONLY material route that bypasses Hormuz. "
+                 "Shutting it does not add a premium to the waterborne barrel - it "
+                 "deletes the hedge against the strait itself, which is why crude "
+                 "went to a four-month high on it",
+         assets=("Brent", "WTI", "Breakevens", "UST 10Y", "S&P 500")),
+    dict(headline="Houthi strike on a Saudi airbase",
+         region="Red Sea", severity=83, as_of="2026-09-14T12:00:00Z",
+         source="OilPrice", tier=3, url="https://oilprice.com/Latest-Energy-News/World-News/Brent-at-108-Gulf-States-Halt-Hormuz-Talks-as-Houthis-Strike-Saudi-Airbase.html", status="ESCALATING",
+         channel="Widens the conflict from a chokepoint dispute to strikes on the "
+                 "territory of the swing producer. The transmission is the same as "
+                 "the pipeline: what was a transit risk is becoming a production "
+                 "risk",
+         assets=("Brent", "WTI", "Defence")),
+    dict(headline="UN General Assembly 81: General Debate and High-Level Week",
+         region="Diplomacy", severity=64, as_of="2026-09-22T00:00:00Z",
+         source="United Nations", tier=1, url="https://www.un.org/en/high-level-week-2026",
+         status="SCHEDULED 22-28 SEPTEMBER - TIMES NOT PUBLISHED PER SESSION",
+         channel="The one scheduled venue where the parties to this conflict are in "
+                 "the same building. It resolves nothing by itself, but every "
+                 "de-escalation in this crisis so far has been announced around a "
+                 "meeting rather than at one - so it is the diary entry to watch, "
+                 "not the event to trade",
+         assets=("Brent", "WTI", "Gold")),
 ]
 
 # Observed BTC closes. The liquidation heatmap is built from these and nothing

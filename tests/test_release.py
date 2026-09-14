@@ -14,7 +14,7 @@ from macro.reaction import MacroRegime, build_matrix
 from macro.surprise import Impulse
 from macro.release import (
     ABOVE, BEARISH, BELOW, BULLISH, IN_LINE, MIXED, NEUTRAL,
-    Expectation, assess, fmt_value, roll_up,
+    Expectation, Forecast, assess, fmt_value, roll_up,
 )
 from macro.types import Insufficient
 
@@ -66,6 +66,63 @@ class TestConstruction(unittest.TestCase):
         for bad in (float("nan"), float("inf")):
             with self.assertRaises(ValueError):
                 exp(actual=bad)
+
+
+class TestForecastConstruction(unittest.TestCase):
+    """A Forecast is only half an Expectation, and the half it keeps still has
+    to carry provenance."""
+
+    def fc(self, **kw):
+        base = dict(metric="Headline YoY", consensus=3.7, unit="pct",
+                    consensus_source="Consensus forecast, via Nowflation",
+                    as_of="2026-09-14T18:00:00Z", previous=3.4)
+        base.update(kw)
+        return Forecast(**base)
+
+    def test_it_builds(self):
+        self.assertIn("3.7% expected", self.fc().render())
+        self.assertIn("not yet printed", self.fc().render())
+
+    def test_consensus_needs_a_carrier(self):
+        for bad in ("", "   "):
+            with self.assertRaises(ValueError):
+                self.fc(consensus_source=bad)
+
+    def test_unit_is_mandatory(self):
+        with self.assertRaises(ValueError):
+            self.fc(unit=" ")
+
+    def test_metric_is_mandatory(self):
+        with self.assertRaises(ValueError):
+            self.fc(metric="")
+
+    def test_stamp_must_be_iso_z(self):
+        with self.assertRaises(ValueError):
+            self.fc(as_of="2026-09-14")
+
+    def test_non_finite_consensus_is_rejected(self):
+        for bad in (float("nan"), float("inf")):
+            with self.assertRaises(ValueError):
+                self.fc(consensus=bad)
+
+    def test_it_carries_no_actual_at_all(self):
+        """The reason this is a separate type: there is no field a caller could
+        forget to check."""
+        self.assertFalse(hasattr(self.fc(), "actual"))
+
+    def test_every_shipped_forecast_constructs(self):
+        seen = 0
+        for r in RELEASE_CLOCK:
+            for spec in r.get("forecasts") or ():
+                Forecast(**{k: v for k, v in spec.items() if k != "note"})
+                seen += 1
+        self.assertGreaterEqual(seen, 2)
+
+    def test_no_forecast_is_attached_to_a_release_that_already_printed(self):
+        for r in RELEASE_CLOCK:
+            if r.get("forecasts"):
+                self.assertGreater(r["when"], seed.CAPTURE,
+                                   f"{r['code']} has printed but still shows a forecast")
 
 
 class TestRefusals(unittest.TestCase):
@@ -299,9 +356,75 @@ class TestRenderedPanel(unittest.TestCase):
         self.assertIn("Dow Jones consensus", self.doc)
         self.assertIn("BLS via CNBC", self.doc)
 
-    def test_a_future_release_renders_no_verdict_block(self):
-        fomc = [r for r in self.snap.releases if r["code"] == "FOMC"][0]
-        self.assertEqual(terminal.render_prints(fomc, self.snap), "")
+    def test_a_future_release_never_renders_a_verdict(self):
+        """A pending release may show what the market is CARRYING, but never a
+        direction and never a risk read - there is no actual to compare to."""
+        pending = [r for r in self.snap.releases if r["when"] > self.snap.captured]
+        self.assertGreaterEqual(len(pending), 10, "the calendar has run dry")
+        for r in pending:
+            html = terminal.render_prints(r, self.snap)
+            self.assertNotIn("VERDICT", html, r["code"])
+            self.assertNotIn("BEARISH", html, r["code"])
+            self.assertNotIn("BULLISH", html, r["code"])
+            if r.get("forecasts"):
+                self.assertIn("AWAITING", html, r["code"])
+                self.assertIn("NOT PRINTED", html, r["code"])
+            else:
+                self.assertEqual(html, "", r["code"])
+
+    def test_a_pending_release_shows_its_consensus_and_its_carrier(self):
+        cpi = [r for r in self.snap.releases if r["code"] == "US_CPI_SEP"][0]
+        html = terminal.render_prints(cpi, self.snap)
+        self.assertIn("3.7%", html)
+        self.assertIn("Nowflation", html)
+        self.assertIn("awaiting", html)
+
+    def test_the_calendar_reaches_beyond_the_next_month(self):
+        """The panel ran dry two days out before this existed. A shallow
+        calendar is the failure this guards, and it is silent otherwise."""
+        pending = sorted(r["when"] for r in self.snap.releases
+                         if r["when"] > self.snap.captured)
+        self.assertGreaterEqual(len(pending), 15)
+        self.assertGreater(pending[-1][:7], self.snap.captured[:7],
+                           "the furthest pending event is still this month")
+
+    def test_every_release_row_is_uniquely_coded_and_dated(self):
+        codes = [r["code"] for r in self.snap.releases]
+        self.assertEqual(len(codes), len(set(codes)), "duplicate release codes")
+        for r in self.snap.releases:
+            self.assertRegex(r["when"], r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+            self.assertTrue(r.get("url", "").startswith("https://"), r["code"])
+            self.assertTrue(r.get("agency", "").strip(), r["code"])
+
+    def test_a_day_granularity_row_declares_itself(self):
+        """A row whose carrier published no time must not render a clock. The
+        marker has to reach the DOM: the JS reads data-day, and without it the
+        row silently grows a second counter against an assumed midnight."""
+        day = [r for r in self.snap.releases if r.get("day")]
+        self.assertTrue(day, "no day-granularity row to check")
+        self.assertIn('data-day="1"', self.doc)
+        self.assertIn("time not published", self.doc)
+        for r in day:
+            self.assertTrue(r["when"].endswith("T00:00:00Z"), r["code"])
+
+    def test_pending_releases_render_above_released_ones(self):
+        """Source order buried Wednesday's FOMC under last week's CPI once the
+        calendar grew past four rows."""
+        import re as _re
+        rows = _re.findall(r'<div class="rl">.*?data-when="([^"]+)"', self.doc)
+        self.assertGreaterEqual(len(rows), 20)
+        cap = self.snap.captured
+        past = [i for i, w in enumerate(rows) if w <= cap]
+        future = [i for i, w in enumerate(rows) if w > cap]
+        self.assertTrue(future and past)
+        self.assertLess(max(future), min(past),
+                        "a released row rendered above a pending one")
+        # pending ascending: the soonest event is the top row
+        self.assertEqual([rows[i] for i in future],
+                         sorted(rows[i] for i in future))
+        # released descending: the most recent print sits directly under them
+        self.assertEqual([rows[i] for i in past],
+                         sorted((rows[i] for i in past), reverse=True))
 
     def test_a_past_release_with_no_figures_says_so(self):
         """Silence on a passed release reads as 'nothing happened'."""

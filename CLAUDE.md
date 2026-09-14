@@ -192,3 +192,39 @@ released/pending split is decided against the snapshot's own `captured` stamp,
 never the renderer's wall clock, so a snapshot renders identically whenever it
 is regenerated. Tolerance is zero by default; a non-zero band (weekly claims,
 5k) is a stated design choice carried in that print's own note.
+
+## The release calendar, and why it does not need a schedule
+
+`RELEASE_CLOCK` runs to **17 December 2026** — eighteen pending events. That
+depth is the answer to "we need more pending data", and it is also the answer
+to whether a weekly Routine is needed: **scheduled release dates are published
+in advance and do not move**, so a whole quarter loads in one pass and the
+countdown panel cannot run dry. Before this it held two events, both on the
+same Wednesday. What genuinely needs a session is the **actuals**, and those
+exist only on the days they print — two or three that matter per month. A
+weekly loop would spend a context re-reading a calendar that had not changed.
+
+Three things the calendar enforces, each with a probe and a mutant:
+
+- **Pending rows never carry a verdict.** A release that has not printed may
+  show `forecasts` — what the market is carrying — rendered by
+  `render_forecasts()` under an `AWAITING` header with `NOT PRINTED` in the
+  risk column. `Forecast` is a *separate type* from `Expectation` with no
+  `actual` field at all, so no caller can forget to check for one.
+- **Ordering is pending-ascending then released-descending**, via `_order()`
+  and `_invert_stamp()`. Source order buried the imminent FOMC under last
+  week's CPI the moment the list grew past four rows.
+- **A carrier that published a date but no time gets `"day": True`**, a
+  midnight stamp and a day-only countdown (`data-day` in the DOM). The BoJ
+  publishes no decision time; an invented hour on it is exactly the false
+  precision the earnings panel already refuses.
+
+**UTC conversions are the sharp edge here and are done by hand.** US clocks go
+back 1 November 2026 and European clocks 25 October, so 08:30 ET is 12:30Z
+through October and 13:30Z from November, and the ECB's 14:15 CET is 12:15Z in
+September but 13:15Z in October. Getting one wrong is a one-hour error on the
+most market-moving print of the month.
+
+**When a release prints**, move its row from `forecasts` to `prints`, add the
+`actual` and its carrier, and regenerate. The countdown flips to RELEASED on
+its own; the verdict only appears because a human sourced the number.
